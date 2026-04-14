@@ -1,7 +1,7 @@
 chrome.storage.local.get(["color"]).then((result) => {
-  console.log("Value currently is " + result["color"], result);
-  document.querySelectorAll("*").forEach(e => {
-    e.style.color = result["color"]
-  })
+  const color = result["color"];
+  if (typeof color !== "string" || !color) return;
+  document.querySelectorAll("*").forEach((e) => {
+    e.style.setProperty("color", color, "important");
+  });
 });
-

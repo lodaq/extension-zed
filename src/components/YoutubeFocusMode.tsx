@@ -1,66 +1,62 @@
 import { Button } from "@/components/ui/button"
+import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
+import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
+import { KBD } from "@/lib/shortcuts"
+import { cn } from "@/lib/utils"
 
-const handleFocusMode = () => {
+const runScript = (files: string[]) => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const activeTabId = tabs[0].id
-    if (!activeTabId) return;
-
-    chrome.runtime.sendMessage({ event: "hideMainScrollBar", tabId: activeTabId });
-    chrome.scripting.executeScript({
-      target: { tabId: activeTabId },
-      func: () => {
-        /* const content = document.getElementById("content")
-        const below = document.getElementById("below")
-        const statusBanner = document.querySelector(".status-banner")
-        const youtubeChromeBottom = document.querySelector(".ytp-chrome-bottom")
-        const captions = document.getElementById("ytp-caption-window-container")
-        const guide = document.getElementById("guide")
-        const start = document.getElementById("start")
-        const end = document.getElementById("end")
-        const guideService = document.getElementById("guide-service")
-        const primary = document.getElementById("primary")
-        const video = document.querySelector(".video-stream.html5-main-video") as HTMLVideoElement
-
-        if (content) {
-          content.style.display = "flex"
-          content.style.alignItems = "center"
-          content.style.height = "100vh"
-        }
-
-        if (primary) {
-          primary.style.margin = "0"
-          primary.style.padding = "0"
-        }
-
-        if (video) {
-          video.style.width = "100%"
-          video.style.borderRadius = "10px"
-        }
-
-        start?.remove()
-        end?.remove()
-        guide?.remove()
-        guideService?.remove()
-        statusBanner?.remove()
-        below?.remove()
-        youtubeChromeBottom?.remove()
-        console.log(content, captions) */
-
-      // const fullScreenButton = document.querySelector(".ytp-fullscreen-button") as HTMLButtonElement;
-      const playerContainer = document.getElementById("player-full-bleed-container") as HTMLDivElement;
-
-      playerContainer?.style.setProperty("height","calc(100vh - 56px)")
-      playerContainer?.style.setProperty("max-height","calc(100vh - 56px)")
-      // fullScreenButton?.click();
-      }
-    })
+    const activeTabId = tabs[0]?.id
+    if (!activeTabId) return
+    chrome.scripting.executeScript({ target: { tabId: activeTabId }, files })
   })
 }
 
-const Test = () => {
+const hideProgressBar = () => {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const activeTabId = tabs[0]?.id
+    if (!activeTabId) return
+    chrome.runtime.sendMessage({ event: "hideYoutubeProgressBar", tabId: activeTabId })
+  })
+}
+
+const YoutubeFocusMode = () => {
   return (
-    <Button onClick={handleFocusMode}>Focus Mode</Button>
+    <section className={cn(popupPanel, popupSectionInner)} aria-labelledby="zed-youtube-heading">
+      <h2 id="zed-youtube-heading" className={popupSectionTitle}>
+        YouTube
+      </h2>
+      <div className="flex flex-col gap-3">
+        <Button
+          type="button"
+          size="sm"
+          className={cn(shortcutHostClassName, "min-h-10 w-full justify-start px-4")}
+          onClick={() => runScript(["scripts/youtubeFocusMode.js"])}
+        >
+          Focus mode
+          <ShortcutKbd label={KBD.youtubeFocus} />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          className={cn(shortcutHostClassName, "min-h-10 w-full justify-start px-4")}
+          onClick={() => runScript(["scripts/youtubeFocusModeReset.js"])}
+        >
+          Reset layout
+          <ShortcutKbd label={KBD.youtubeReset} />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          className={cn(shortcutHostClassName, "min-h-10 w-full justify-start px-4")}
+          onClick={hideProgressBar}
+        >
+          Hide progress bar
+          <ShortcutKbd label={KBD.youtubeProgressBar} />
+        </Button>
+      </div>
+    </section>
   )
 }
 
-export default Test
+export default YoutubeFocusMode

@@ -1,35 +1,69 @@
 {
-  "manifest_version":3,
-
-  "name":"extension-zed",
-  "description":"from a to z",
-  "version":"1.0.0",
-
-  "action":{
-    "default_popup":"index.html",
-    "default_title":"hi ya khalid",
+  "manifest_version": 3,
+  "name": "extension-zed",
+  "description": "from a to z",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Extension Zed",
     "default_icon": "images/icon.png"
   },
-
   "background": {
     "service_worker": "background.js"
   },
-
-  "permissions":[
-    "scripting",
-    "activeTab",
-    "storage"
+  "content_scripts": [
+    {
+      "matches": ["https://*/*", "http://*/*"],
+      "js": ["scripts/playbackRatePersist.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
   ],
-  "host_permissions":[
-    "https://*/*",
-    "http://*/*"
-  ],
-
-"commands": {
+  "permissions": ["scripting", "activeTab", "storage"],
+  "host_permissions": ["https://*/*", "http://*/*"],
+  "commands": {
     "_execute_action": {
-      "suggested_key": {
-        "default": "Alt+Z"
-      }
+      "suggested_key": { "default": "Alt+Z" },
+      "description": "Open Extension Zed popup"
+    },
+    "zed_playback_slower": {
+      "suggested_key": { "default": "Alt+Comma" },
+      "description": "Video: slower (preset step)"
+    },
+    "zed_playback_faster": {
+      "suggested_key": { "default": "Alt+Period" },
+      "description": "Video: faster (preset step)"
+    },
+    "zed_playback_normal": {
+      "suggested_key": { "default": "Alt+1" },
+      "description": "Video: 1× speed"
+    },
+    "zed_playback_double": {
+      "description": "Video: 2× speed"
+    },
+    "zed_youtube_focus": {
+      "description": "YouTube: focus mode (player only)"
+    },
+    "zed_youtube_reset": {
+      "description": "YouTube: reset layout"
+    },
+    "zed_youtube_progress_bar": {
+      "description": "YouTube: hide progress bar & time"
+    },
+    "zed_scrollbar_main": {
+      "description": "Hide main scrollbar (page)"
+    },
+    "zed_scrollbar_all": {
+      "description": "Hide all scrollbars (page)"
+    },
+    "zed_design_mode": {
+      "description": "Toggle design mode (page)"
+    },
+    "zed_inspect": {
+      "description": "Toggle inspect mode (hover highlight)"
+    },
+    "zed_reset_page_colors": {
+      "description": "Reset page text & background colors"
     }
   }
 }

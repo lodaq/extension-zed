@@ -1,6 +1,8 @@
 chrome.storage.local.get(["background-color"]).then((result) => {
-  console.log("Value currently is " + result["background-color"], result);
-  document.querySelectorAll("*").forEach(e => {
-    e.style.background = result["background-color"]
-  })
+  const color = result["background-color"];
+  if (typeof color !== "string" || !color) return;
+  document.querySelectorAll("*").forEach((e) => {
+    e.style.setProperty("background-color", color, "important");
+    e.style.setProperty("background", color, "important");
+  });
 });

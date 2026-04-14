@@ -1,17 +1,19 @@
-const styleElement = document.createElement("style");
+(function () {
+  const ID = "zed-hide-all-scrollbars";
+  document.getElementById(ID)?.remove();
 
-styleElement.appendChild(document.createTextNode(`
-  /* In Chrome, Safari, Opera, and other WebKit-based browsers */
-  *::-webkit-scrollbar{
+  const style = document.createElement("style");
+  style.id = ID;
+  style.appendChild(
+    document.createTextNode(`
+  *::-webkit-scrollbar {
     display: none;
   }
   * {
-    /* In Firefox */
     scrollbar-width: none;
-    /* In IE (Internet Explorer) and Edge */
     -ms-overflow-style: none;
-    color:red;
   }
-`));
-
-document.getElementsByTagName("head")[0].appendChild(styleElement);
+`)
+  );
+  (document.head || document.documentElement).appendChild(style);
+})();

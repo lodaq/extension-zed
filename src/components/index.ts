@@ -1,20 +1,21 @@
-import ChangeColors from "./ChangeColors";
-import ChangePlaybackRate from "./ChangePlaybackRate";
-import InspectCurrentPageBtn from "./InspectCurrentPageBtn";
-import HideMainScrollBarBtn from "./HideMainScrollBarBtn";
-import HideAllScrollBarsBtn from "./HideAllScrollBarsBtn";
-import DesignMode from "./DesignMode";
-import YoutubeFocusMode from "./YoutubeFocusMode";
+import ChangeColors from "./ChangeColors"
+import ChangePlaybackRate from "./ChangePlaybackRate"
+import DesignMode from "./DesignMode"
+import InspectModeToggle from "./InspectModeToggle"
+import ModesSection from "./ModesSection"
+import ScrollbarsSection from "./ScrollbarsSection"
 import Test from "./Test"
-
+import YoutubeFocusMode from "./YoutubeFocusMode"
 
 export {
   ChangeColors,
   ChangePlaybackRate,
-  InspectCurrentPageBtn,
-  Test,
-  HideAllScrollBarsBtn,
-  HideMainScrollBarBtn,
   DesignMode,
-  YoutubeFocusMode
+  InspectModeToggle,
+  ModesSection,
+  ScrollbarsSection,
+  Test,
+  YoutubeFocusMode,
 }
+
+export { Switch } from "./ui/switch"

@@ -1,5 +1,6 @@
 import DesignMode from "@/components/DesignMode"
 import InspectModeToggle from "@/components/InspectModeToggle"
+import ArabicRtlMode from "@/components/ArabicRtlMode"
 import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
 import { cn } from "@/lib/utils"
 
@@ -12,6 +13,7 @@ const ModesSection = () => {
       <div className="flex flex-col gap-3">
         <InspectModeToggle />
         <DesignMode />
+        <ArabicRtlMode />
       </div>
     </section>
   )

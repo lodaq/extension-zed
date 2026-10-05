@@ -17,6 +17,12 @@
       "js": ["scripts/playbackRatePersist.js"],
       "run_at": "document_idle",
       "all_frames": true
+    },
+    {
+      "matches": ["https://*/*", "http://*/*"],
+      "js": ["scripts/arabicRtlMode.js"],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
   "permissions": ["scripting", "activeTab", "storage"],

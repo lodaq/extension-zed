@@ -183,6 +183,12 @@ chrome.runtime.onMessage.addListener((data, _sender, sendResponse) => {
     injectAllFrames(tabId, ["scripts/resetAllScrollBars.js"]);
   } else if (data.event === "designMode") {
     injectDesignMode(tabId);
+  } else if (data.event === "arabicRtlMode") {
+    chrome.storage.local.get(["arabicRtlMode"]).then((r) => {
+      const on = String(r?.arabicRtlMode).toLowerCase() === "on";
+      const msg = on ? { action: "rtl-enable" } : { action: "rtl-disable" };
+      chrome.tabs.sendMessage(tabId, msg).catch(() => {});
+    });
   } else if (data.event === "hideYoutubeProgressBar") {
     injectAllFrames(tabId, ["scripts/youtubeProgressBar.js"]);
   }

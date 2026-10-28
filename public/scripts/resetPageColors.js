@@ -1,12 +1,4 @@
-(function () {
-  document.querySelectorAll("*").forEach((el) => {
-    try {
-      const st = el.style;
-      if (!st) return;
-      st.removeProperty("color");
-      st.removeProperty("background");
-      st.removeProperty("background-color");
-      st.removeProperty("background-image");
-    } catch (_) {}
-  });
-})();
+/* Supports the keyboard command, which runs without popup-side storage updates. */
+chrome.storage.local.remove([`pageColors:${location.origin}`]).then(() => {
+  document.getElementById("zed-page-colors")?.remove();
+});

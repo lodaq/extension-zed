@@ -9,11 +9,9 @@ import {
   popupSectionTitle,
 } from "@/lib/popupLayout"
 import { KBD } from "@/lib/shortcuts"
-import { withActiveTab } from "@/lib/withActiveTab"
+import { sendPageAction } from "@/lib/withActiveTab"
 import { cn } from "@/lib/utils"
 
-const STORAGE_BG = "background-color"
-const STORAGE_COLOR = "color"
 const DEFAULT_BG = "#1a1a1a"
 const DEFAULT_FG = "#f5f5f5"
 
@@ -22,57 +20,61 @@ const ChangeColors = () => {
   const textPickerRef = useRef<HTMLInputElement>(null)
   const [bg, setBg] = useState(DEFAULT_BG)
   const [fg, setFg] = useState(DEFAULT_FG)
+  const [storageKey, setStorageKey] = useState<string | null>(null)
 
   useEffect(() => {
-    chrome.storage.local.get([STORAGE_BG, STORAGE_COLOR]).then((r) => {
-      if (typeof r[STORAGE_BG] === "string") setBg(r[STORAGE_BG])
-      if (typeof r[STORAGE_COLOR] === "string") setFg(r[STORAGE_COLOR])
+    chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+      if (!tab?.url?.startsWith("http")) return
+      const key = `pageColors:${new URL(tab.url).origin}`
+      setStorageKey(key)
+      chrome.storage.local.get([key]).then((r) => {
+        const settings = r[key] as { background?: string; text?: string } | undefined
+        if (typeof settings?.background === "string") setBg(settings.background)
+        if (typeof settings?.text === "string") setFg(settings.text)
+      })
     })
   }, [])
+
+  const updateSettings = useCallback((update: { background?: string; text?: string }) => {
+    if (!storageKey) return Promise.resolve()
+    return chrome.storage.local.get([storageKey]).then((r) =>
+      chrome.storage.local.set({ [storageKey]: { ...(r[storageKey] || {}), ...update } })
+    )
+  }, [storageKey])
 
   const applyBackground = useCallback((hex: string) => {
     setBg(hex)
-    withActiveTab((tabId) => {
-      void chrome.storage.local.set({ [STORAGE_BG]: hex }).then(() => {
-        chrome.runtime.sendMessage({ event: "changeBackgroundColor", tabId })
-      })
-    })
-  }, [])
+    void updateSettings({ background: hex }).then(() =>
+      sendPageAction("changeBackgroundColor", "Background color applied")
+    )
+  }, [updateSettings])
 
   const applyTextColor = useCallback((hex: string) => {
     setFg(hex)
-    withActiveTab((tabId) => {
-      void chrome.storage.local.set({ [STORAGE_COLOR]: hex }).then(() => {
-        chrome.runtime.sendMessage({ event: "changeColor", tabId })
-      })
-    })
-  }, [])
+    void updateSettings({ text: hex }).then(() =>
+      sendPageAction("changeColor", "Text color applied")
+    )
+  }, [updateSettings])
 
   const resetBackgroundDefault = useCallback(() => {
-    withActiveTab((tabId) => {
-      void chrome.storage.local.remove([STORAGE_BG]).then(() => {
-        chrome.runtime.sendMessage({ event: "resetBackgroundOnly", tabId })
-      })
-    })
-  }, [])
+    void updateSettings({ background: "" }).then(() =>
+      sendPageAction("resetBackgroundOnly", "Background color reset")
+    )
+  }, [updateSettings])
 
   const resetTextDefault = useCallback(() => {
-    withActiveTab((tabId) => {
-      void chrome.storage.local.remove([STORAGE_COLOR]).then(() => {
-        chrome.runtime.sendMessage({ event: "resetTextColorOnly", tabId })
-      })
-    })
-  }, [])
+    void updateSettings({ text: "" }).then(() =>
+      sendPageAction("resetTextColorOnly", "Text color reset")
+    )
+  }, [updateSettings])
 
   const resetAll = useCallback(() => {
     setBg(DEFAULT_BG)
     setFg(DEFAULT_FG)
-    withActiveTab((tabId) => {
-      void chrome.storage.local.remove([STORAGE_BG, STORAGE_COLOR]).then(() => {
-        chrome.runtime.sendMessage({ event: "resetPageColors", tabId })
-      })
-    })
-  }, [])
+    void updateSettings({ background: "", text: "" }).then(() =>
+      sendPageAction("resetPageColors", "Page colors reset")
+    )
+  }, [updateSettings])
 
   return (
     <section
@@ -102,14 +104,15 @@ const ChangeColors = () => {
         onChange={(e) => applyTextColor(e.currentTarget.value)}
       />
 
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
           <Label className="text-sm font-medium text-foreground">Backgrounds</Label>
           <div className={popupControlRow}>
             <Button
               type="button"
               size="sm"
-              className="min-h-10 flex-1 sm:flex-none"
+              disabled={!storageKey}
+              className="min-h-9 flex-1 sm:flex-none"
               onClick={() => bgPickerRef.current?.click()}
             >
               Change
@@ -117,7 +120,8 @@ const ChangeColors = () => {
             <Button
               type="button"
               size="sm"
-              className="min-h-10 flex-1 sm:flex-none"
+              disabled={!storageKey}
+              className="min-h-9 flex-1 sm:flex-none"
               onClick={resetBackgroundDefault}
             >
               Reset
@@ -125,13 +129,14 @@ const ChangeColors = () => {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           <Label className="text-sm font-medium text-foreground">Text</Label>
           <div className={popupControlRow}>
             <Button
               type="button"
               size="sm"
-              className="min-h-10 flex-1 sm:flex-none"
+              disabled={!storageKey}
+              className="min-h-9 flex-1 sm:flex-none"
               onClick={() => textPickerRef.current?.click()}
             >
               Change
@@ -139,7 +144,8 @@ const ChangeColors = () => {
             <Button
               type="button"
               size="sm"
-              className="min-h-10 flex-1 sm:flex-none"
+              disabled={!storageKey}
+              className="min-h-9 flex-1 sm:flex-none"
               onClick={resetTextDefault}
             >
               Reset
@@ -150,7 +156,8 @@ const ChangeColors = () => {
         <Button
           type="button"
           size="sm"
-          className={cn(shortcutHostClassName, "min-h-10 w-full")}
+          disabled={!storageKey}
+          className={cn(shortcutHostClassName, "min-h-9 w-full")}
           onClick={resetAll}
         >
           Reset all colors

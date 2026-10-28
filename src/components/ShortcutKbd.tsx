@@ -19,12 +19,12 @@ export function ShortcutKbd({ label, className }: ShortcutKbdProps) {
   return (
     <span
       className={cn(
-        "pointer-events-none absolute right-0 top-0 z-10 translate-x-1/2 -translate-y-1/2",
+        "pointer-events-none absolute right-1 top-1 z-10 opacity-60",
         className
       )}
       title={kbdTitle(label)}
     >
-      <Kbd className="flex h-4 min-w-[1.125rem] items-center justify-center px-1 text-[9px] font-medium leading-none tabular-nums shadow-sm ring-1 ring-border/80">
+      <Kbd className="flex h-3.5 min-w-3.5 items-center justify-center border-0 bg-transparent px-0.5 text-[8px] font-medium leading-none tabular-nums shadow-none">
         {label}
       </Kbd>
     </span>

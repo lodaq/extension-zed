@@ -1,6 +1,28 @@
 (function () {
   if (!location.hostname.endsWith("youtube.com")) return;
 
+  const enabled = window.__zedYoutubeFocusEnabled;
+  delete window.__zedYoutubeFocusEnabled;
+
+  if (!enabled) {
+    window.__extensionZedYtFocusAbortController?.abort();
+    window.__extensionZedYtFocusAbortController = undefined;
+    document.documentElement.classList.remove("extension-zed-yt-focus-lock");
+    document.getElementById("extension-zed-yt-focus-base")?.remove();
+    document.querySelectorAll("[data-zed-focus-hidden]").forEach((node) => {
+      node.removeAttribute("data-zed-focus-hidden");
+      node.style.removeProperty("display");
+    });
+    const anchor = document.querySelector("[data-zed-focus-anchor]");
+    if (anchor) {
+      ["position", "inset", "z-index", "background", "width", "height", "max-width", "margin", "box-sizing"].forEach((p) => anchor.style.removeProperty(p));
+      anchor.removeAttribute("data-zed-focus-anchor");
+      anchor.removeAttribute("data-zed-focus-fs-suspended");
+    }
+    window.dispatchEvent(new Event("resize"));
+    return;
+  }
+
   const anchor =
     document.querySelector("ytd-watch-flexy ytd-player#ytd-player") ||
     document.querySelector("ytd-watch-flexy ytd-player") ||

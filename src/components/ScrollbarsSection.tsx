@@ -9,7 +9,7 @@ import {
   popupSubhead,
 } from "@/lib/popupLayout"
 import { KBD } from "@/lib/shortcuts"
-import { withActiveTab } from "@/lib/withActiveTab"
+import { sendPageAction } from "@/lib/withActiveTab"
 import { cn } from "@/lib/utils"
 
 const ScrollbarsSection = () => {
@@ -30,11 +30,7 @@ const ScrollbarsSection = () => {
               type="button"
               size="sm"
               className={cn(shortcutHostClassName, "min-h-10 flex-1 sm:flex-none")}
-              onClick={() =>
-                withActiveTab((tabId) =>
-                  chrome.runtime.sendMessage({ event: "hideMainScrollBar", tabId })
-                )
-              }
+              onClick={() => void sendPageAction("hideMainScrollBar", "Main scrollbar hidden")}
             >
               Hide
               <ShortcutKbd label={KBD.hideMainScrollbar} />
@@ -43,11 +39,7 @@ const ScrollbarsSection = () => {
               type="button"
               size="sm"
               className="min-h-10 flex-1 sm:flex-none"
-              onClick={() =>
-                withActiveTab((tabId) =>
-                  chrome.runtime.sendMessage({ event: "resetMainScrollBar", tabId })
-                )
-              }
+              onClick={() => void sendPageAction("resetMainScrollBar", "Main scrollbar reset")}
             >
               Reset
             </Button>
@@ -65,11 +57,7 @@ const ScrollbarsSection = () => {
                 type="button"
                 size="sm"
                 className={cn(shortcutHostClassName, "min-h-10 flex-1 sm:flex-none")}
-                onClick={() =>
-                  withActiveTab((tabId) =>
-                    chrome.runtime.sendMessage({ event: "hideAllScrollBars", tabId })
-                  )
-                }
+                onClick={() => void sendPageAction("hideAllScrollBars", "All scrollbars hidden")}
               >
                 Hide
                 <ShortcutKbd label={KBD.hideAllScrollbars} />
@@ -78,11 +66,7 @@ const ScrollbarsSection = () => {
                 type="button"
                 size="sm"
                 className="min-h-10 flex-1 sm:flex-none"
-                onClick={() =>
-                  withActiveTab((tabId) =>
-                    chrome.runtime.sendMessage({ event: "resetAllScrollBars", tabId })
-                  )
-                }
+                onClick={() => void sendPageAction("resetAllScrollBars", "All scrollbars reset")}
               >
                 Reset
               </Button>

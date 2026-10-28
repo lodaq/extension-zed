@@ -2,6 +2,31 @@ const PLAYBACK_PRESETS = Array.from({ length: 100 }, (_, i) =>
   Number(((i + 1) / 10).toFixed(1))
 );
 
+/** @type {Readonly<Record<string, string>>} */
+const SCRIPT_EVENTS = Object.freeze({
+  changeBackgroundColor: "scripts/applyPageColors.js",
+  changeColor: "scripts/applyPageColors.js",
+  resetPageColors: "scripts/applyPageColors.js",
+  inspectModeApply: "scripts/inspectMode.js",
+  resetBackgroundOnly: "scripts/applyPageColors.js",
+  resetTextColorOnly: "scripts/applyPageColors.js",
+  hideMainScrollBar: "scripts/hideMainScrollBar.js",
+  hideAllScrollBars: "scripts/hideAllScrollBars.js",
+  resetMainScrollBar: "scripts/resetMainScrollBar.js",
+  resetAllScrollBars: "scripts/resetAllScrollBars.js",
+  hideYoutubeProgressBar: "scripts/youtubeProgressBar.js",
+  hideYoutubeControls: "scripts/youtubeControls.js",
+  youtubeFocus: "scripts/youtubeFocusMode.js",
+  volumeBoost: "scripts/volumeBoost.js",
+});
+
+/** @type {Readonly<Record<string, string>>} */
+const COMMAND_EVENTS = Object.freeze({
+  zed_scrollbar_main: "hideMainScrollBar",
+  zed_scrollbar_all: "hideAllScrollBars",
+  zed_youtube_progress_bar: "hideYoutubeProgressBar",
+});
+
 function clampPlaybackRate(r) {
   const n = Number(r);
   if (!Number.isFinite(n)) return 1;
@@ -20,6 +45,22 @@ function injectAllFrames(tabId, files) {
         files,
       })
     );
+}
+
+function runScriptEvent(tabId, event) {
+  const file = SCRIPT_EVENTS[event];
+  if (!file) return Promise.resolve();
+  return injectAllFrames(tabId, [file]);
+}
+
+function injectYoutubeFocus(tabId) {
+  return chrome.storage.local.get(["youtubeFocus"]).then(({ youtubeFocus }) =>
+    chrome.scripting.executeScript({
+      target: { tabId },
+      func: (enabled) => { window.__zedYoutubeFocusEnabled = enabled; },
+      args: [Boolean(youtubeFocus)],
+    }).then(() => chrome.scripting.executeScript({ target: { tabId }, files: ["scripts/youtubeFocusMode.js"] }))
+  );
 }
 
 /** designMode must run in the page JS world; MAIN has no chrome.storage — set a flag first. */
@@ -107,28 +148,9 @@ chrome.commands.onCommand.addListener((command) => {
       case "zed_playback_double":
         setPlayback(tabId, 2);
         break;
-      case "zed_scrollbar_main":
-        injectAllFrames(tabId, ["scripts/hideMainScrollBar.js"]);
-        break;
-      case "zed_scrollbar_all":
-        injectAllFrames(tabId, ["scripts/hideAllScrollBars.js"]);
-        break;
       case "zed_youtube_focus":
-        chrome.scripting.executeScript({
-          target: { tabId },
-          files: ["scripts/youtubeFocusMode.js"],
-        });
-        break;
-      case "zed_youtube_reset":
-        chrome.scripting.executeScript({
-          target: { tabId },
-          files: ["scripts/youtubeFocusModeReset.js"],
-        });
-        break;
-      case "zed_youtube_progress_bar":
-        chrome.scripting.executeScript({
-          target: { tabId },
-          files: ["scripts/youtubeProgressBar.js"],
+        chrome.storage.local.get(["youtubeFocus"]).then(({ youtubeFocus }) => {
+          chrome.storage.local.set({ youtubeFocus: !youtubeFocus }).then(() => injectYoutubeFocus(tabId));
         });
         break;
       case "zed_design_mode":
@@ -151,6 +173,7 @@ chrome.commands.onCommand.addListener((command) => {
           .then(() => injectAllFrames(tabId, ["scripts/resetPageColors.js"]));
         break;
       default:
+        if (COMMAND_EVENTS[command]) runScriptEvent(tabId, COMMAND_EVENTS[command]);
         break;
     }
   });
@@ -159,37 +182,28 @@ chrome.commands.onCommand.addListener((command) => {
 
 chrome.runtime.onMessage.addListener((data, _sender, sendResponse) => {
   const tabId = data.tabId;
-  if (typeof tabId !== "number") return;
+  if (typeof tabId !== "number") {
+    sendResponse({ ok: false, error: "No active tab is available" });
+    return;
+  }
 
-  if (data.event === "changeBackgroundColor") {
-    injectAllFrames(tabId, ["scripts/changeBackgroundColor.js"]);
-  } else if (data.event === "changeColor") {
-    injectAllFrames(tabId, ["scripts/changeColor.js"]);
-  } else if (data.event === "resetPageColors") {
-    injectAllFrames(tabId, ["scripts/resetPageColors.js"]);
-  } else if (data.event === "inspectModeApply") {
-    injectAllFrames(tabId, ["scripts/inspectMode.js"]);
-  } else if (data.event === "resetBackgroundOnly") {
-    injectAllFrames(tabId, ["scripts/resetBackgroundOnly.js"]);
-  } else if (data.event === "resetTextColorOnly") {
-    injectAllFrames(tabId, ["scripts/resetTextColorOnly.js"]);
-  } else if (data.event === "hideMainScrollBar") {
-    injectAllFrames(tabId, ["scripts/hideMainScrollBar.js"]);
-  } else if (data.event === "hideAllScrollBars") {
-    injectAllFrames(tabId, ["scripts/hideAllScrollBars.js"]);
-  } else if (data.event === "resetMainScrollBar") {
-    injectAllFrames(tabId, ["scripts/resetMainScrollBar.js"]);
-  } else if (data.event === "resetAllScrollBars") {
-    injectAllFrames(tabId, ["scripts/resetAllScrollBars.js"]);
-  } else if (data.event === "designMode") {
-    injectDesignMode(tabId);
-  } else if (data.event === "arabicRtlMode") {
+  if (data.event === "arabicRtlMode") {
     chrome.storage.local.get(["arabicRtlMode"]).then((r) => {
       const on = String(r?.arabicRtlMode).toLowerCase() === "on";
       const msg = on ? { action: "rtl-enable" } : { action: "rtl-disable" };
       chrome.tabs.sendMessage(tabId, msg).catch(() => {});
     });
-  } else if (data.event === "hideYoutubeProgressBar") {
-    injectAllFrames(tabId, ["scripts/youtubeProgressBar.js"]);
+    return;
   }
+
+  const action = data.event === "designMode"
+    ? injectDesignMode(tabId)
+    : data.event === "youtubeFocus"
+      ? injectYoutubeFocus(tabId)
+      : runScriptEvent(tabId, data.event);
+
+  action
+    .then(() => sendResponse({ ok: true }))
+    .catch((error) => sendResponse({ ok: false, error: error?.message || "Script injection failed" }));
+  return true;
 });

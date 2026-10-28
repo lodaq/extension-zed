@@ -49,6 +49,16 @@ npm install
 npm run build
 ```
 
+### Verification checklist
+
+Run `pnpm test`, `pnpm lint`, and `pnpm build` before loading `dist/`.
+Then manually check a normal page and a single-page app: apply and reset both
+page colors (site inline styles must remain intact), hide/reset each scrollbar,
+toggle inspect/design modes, and change playback speed on a page with a video.
+On YouTube, check focus/reset/progress controls and enter/exit fullscreen.
+Finally, try a restricted page such as `chrome://extensions`; the popup should
+show a clear action error instead of silently failing.
+
 Load **Unpacked** extension from the `dist/` folder (after build). `npm run dev` is for normal web dev; the extension expects the built bundle plus copied `public/` assets.
 
 ### Known issues / tech debt (important for contributors)
@@ -86,7 +96,7 @@ Load **Unpacked** extension from the `dist/` folder (after build). `npm run dev`
 
 **Today:** A toolbox popup to tweak the **active tab** — page colors, scrollbars, video playback rate, design mode, inspect helpers, and experimental YouTube “focus” layout.
 
-**Direction:** Grow into a modular “Zed” suite: reading/article mode, YouTube notes/highlights, reminders (posture, azkar, salah, eyes, custom), integrations (Notion, Google, social), new-tab surfaces, capture/share (tweet/post to image), sync hooks, and optional “clear site data / incognito-like reset” style actions — all behind clear permissions and reversible toggles where possible.
+**Direction:** Grow into a modular “Zed” suite: reading/article mode, YouTube highlights, reminders (posture, azkar, salah, eyes, custom), integrations (Notion, Google, social), new-tab surfaces, capture/share (tweet/post to image), sync hooks, and optional “clear site data / incognito-like reset” style actions — all behind clear permissions and reversible toggles where possible.
 
 **Design principle (from your notes):** Prefer **reversible changes** (toggle off restores prior state) and a **scalable structure** before the feature list explodes.
 
@@ -103,7 +113,6 @@ Load **Unpacked** extension from the `dist/` folder (after build). `npm run dev`
 - [ ] Dark mode / grayscale / custom page & background colors — related to current color scripts
 - [ ] Boost volume / custom `playbackRate` — playback partial
 - [ ] One-click clear cookies, `localStorage`, cache, etc. (“fresh incognito” feel)
-- [ ] Web notes / “video notebook” / save-anything inbox
 - [ ] Hide YouTube duration (always / on demand) — align with missing `youtubeProgressBar.js`
 
 ### Reading
@@ -112,7 +121,7 @@ Load **Unpacked** extension from the `dist/` folder (after build). `npm run dev`
 
 ### YouTube
 
-- [ ] Highlights, markers, bookmarks, notes; Readwise-style highlights
+- [ ] Highlights, markers, bookmarks; Readwise-style highlights
 - [ ] Auto half-screen layout
 - [ ] Fullscreen-by-default (optional)
 - Ideas: browse extension store for patterns; avoid brittle DOM selectors long-term

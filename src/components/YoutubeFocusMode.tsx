@@ -1,59 +1,77 @@
-import { Button } from "@/components/ui/button"
 import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
 import { KBD } from "@/lib/shortcuts"
 import { cn } from "@/lib/utils"
-
-const runScript = (files: string[]) => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const activeTabId = tabs[0]?.id
-    if (!activeTabId) return
-    chrome.scripting.executeScript({ target: { tabId: activeTabId }, files })
-  })
-}
-
-const hideProgressBar = () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const activeTabId = tabs[0]?.id
-    if (!activeTabId) return
-    chrome.runtime.sendMessage({ event: "hideYoutubeProgressBar", tabId: activeTabId })
-  })
-}
+import { sendPageAction } from "@/lib/withActiveTab"
+import { useEffect, useState } from "react"
 
 const YoutubeFocusMode = () => {
+  const [focus, setFocus] = useState(false)
+  const [hideProgress, setHideProgress] = useState(false)
+  const [hideControls, setHideControls] = useState(false)
+  useEffect(() => { chrome.storage.local.get(["youtubeFocus", "youtubeHideProgress", "youtubeHideControls"]).then((r) => { setFocus(Boolean(r.youtubeFocus)); setHideProgress(Boolean(r.youtubeHideProgress)); setHideControls(Boolean(r.youtubeHideControls)) }) }, [])
+  const toggleFocus = (next: boolean) => { setFocus(next); void chrome.storage.local.set({ youtubeFocus: next }).then(() => sendPageAction("youtubeFocus", `Focus mode ${next ? "on" : "off"}`)) }
+  const toggleProgress = (next: boolean) => { setHideProgress(next); void chrome.storage.local.set({ youtubeHideProgress: next }).then(() => sendPageAction("hideYoutubeProgressBar", `Progress bar ${next ? "hidden" : "shown"}`)) }
+  const toggleControls = (next: boolean) => { setHideControls(next); void chrome.storage.local.set({ youtubeHideControls: next }).then(() => sendPageAction("hideYoutubeControls", `Controls ${next ? "hidden" : "shown"}`)) }
   return (
     <section className={cn(popupPanel, popupSectionInner)} aria-labelledby="zed-youtube-heading">
       <h2 id="zed-youtube-heading" className={popupSectionTitle}>
         YouTube
       </h2>
-      <div className="flex flex-col gap-3">
-        <Button
-          type="button"
-          size="sm"
-          className={cn(shortcutHostClassName, "min-h-10 w-full justify-start px-4")}
-          onClick={() => runScript(["scripts/youtubeFocusMode.js"])}
+      <div className="flex flex-col gap-1">
+        <div
+          className={cn(
+            shortcutHostClassName,
+            "flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
+          )}
+          onClick={() => toggleFocus(!focus)}
         >
-          Focus mode
-          <ShortcutKbd label={KBD.youtubeFocus} />
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          className={cn(shortcutHostClassName, "min-h-10 w-full justify-start px-4")}
-          onClick={() => runScript(["scripts/youtubeFocusModeReset.js"])}
+          <div>
+            <Label className="cursor-pointer text-sm font-medium">Focus mode</Label>
+            <ShortcutKbd label={KBD.youtubeFocus} />
+          </div>
+          <Switch
+            id="youtube-focus"
+            checked={focus}
+            onClick={(event) => event.stopPropagation()}
+            onCheckedChange={toggleFocus}
+            aria-label={`Focus mode ${focus ? "on" : "off"}`}
+          />
+        </div>
+        <div
+          className={cn(
+            shortcutHostClassName,
+            "flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
+          )}
+          onClick={() => toggleProgress(!hideProgress)}
         >
-          Reset layout
-          <ShortcutKbd label={KBD.youtubeReset} />
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          className={cn(shortcutHostClassName, "min-h-10 w-full justify-start px-4")}
-          onClick={hideProgressBar}
+          <div>
+            <Label className="cursor-pointer text-sm font-medium">Hide progress bar</Label>
+            <ShortcutKbd label={KBD.youtubeProgressBar} />
+          </div>
+          <Switch
+            id="youtube-progress"
+            checked={hideProgress}
+            onClick={(event) => event.stopPropagation()}
+            onCheckedChange={toggleProgress}
+            aria-label={`Progress bar ${hideProgress ? "hidden" : "shown"}`}
+          />
+        </div>
+        <div
+          className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
+          onClick={() => toggleControls(!hideControls)}
         >
-          Hide progress bar
-          <ShortcutKbd label={KBD.youtubeProgressBar} />
-        </Button>
+          <Label className="cursor-pointer text-sm font-medium">Hide controls</Label>
+          <Switch
+            id="youtube-controls"
+            checked={hideControls}
+            onClick={(event) => event.stopPropagation()}
+            onCheckedChange={toggleControls}
+            aria-label={`Controls ${hideControls ? "hidden" : "shown"}`}
+          />
+        </div>
       </div>
     </section>
   )

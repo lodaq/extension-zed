@@ -1,192 +1,200 @@
-# Extension Zed — tasks & backlog
+# Extension Zed Tasks
 
-Living checklist derived from [README.md](./README.md), product vision, and follow-up ideas.  
-**Tabs** below map to popup information architecture: **current** tabs first, then **target** tabs when you split the UI.
+Prioritized backlog for the Chrome extension. Keep this file focused on work that is valid for the current product and remove ideas that are no longer planned.
 
-_(Consolidated with former `tasks.md` — context menu item preserved under [Capture & share](#capture--share).)_
+## Current Product
 
----
+Current popup tabs: **Misc**, **YouTube**, **Shortcuts**, and **Settings**.
 
-## How to use
+Implemented capabilities:
 
-- Check items off as you ship them (`[x]` / `[ ]`).
-- Prefer **reversible** page changes and **clear permissions** for new capabilities.
-- Large items → link PRs or issues in parentheses when useful.
+- Page background and text color controls with reset flows
+- Main and all-scrollbar hide/reset controls
+- Playback-rate presets, persistence, and shortcuts
+- Design mode and inspect mode
+- YouTube focus mode, progress-bar controls, and reset behavior
+- Shortcut listing from the Chrome manifest
+- Persistent dark theme, defaulting to dark
+- Success/error toast feedback for page actions
+- Settings export/import for all `chrome.storage.local` data
 
----
+## Priority Order
 
-## Current popup tabs (today)
+Work through these groups in order. A task should move to Done only after implementation and verification.
 
-Tabs: **Misc**, **YouTube**, **Shortcuts**, **Download** (Alt+Q / W / E / L).
+### P0: Reliability And Correctness
 
-### Misc tab — page & video toolbox
+| Status | Task |
+|---|---|
+| [ ] | Fix and verify Design Mode on normal pages, single-page apps, hostile pages, and restricted Chrome pages. |
+| [ ] | Add regression checks for every injected action: apply, toggle, reset, and failure feedback. |
+| [ ] | Make every injected visual change fully reversible using Zed-owned classes or style elements. |
+| [ ] | Handle popup startup/storage failures with clear fallback UI instead of silent failure. |
+| [ ] | Verify settings import with malformed, older, and partially populated JSON files. |
 
-| Status | Task                                                                                                                    |
-| ------ | ----------------------------------------------------------------------------------------------------------------------- |
-| [x]    | Page background / text color pickers + storage + reset flows                                                            |
-| [x]    | Hide main scrollbar + hide all scrollbars + per-mode reset                                                              |
-| [x]    | Playback rate presets + shortcuts + active-speed UI                                                                     |
-| [ ]    | **Design mode:** fix toggle — currently not working reliably (verify MAIN-world injection, storage race, hostile pages) |
-| [x]    | Inspect mode toggle (hover highlight)                                                                                   |
-| [x]    | Popup layout: sections, spacing, shortcut chips                                                                         |
-| [ ]    | **Scrollbar polish:** custom scrollbar _styling_ tab (not only hide)                                                    |
-| [ ]    | **Volume / audio:** boost tab volume or per-tab gain (needs API research)                                               |
-| [ ]    | **Page themes:** one-click dark / grayscale / saved theme presets                                                       |
-| [ ]    | **“Fresh tab”:** clear cookies, `localStorage`, cache for current origin (permissions + UX)                             |
-| [ ]    | **Timestamps / age:** show relative time or ms somewhere (define: status bar vs injected badge)                         |
-| [ ]    | **Web notes / inbox:** quick capture from page → local list or export                                                   |
-| [ ]    | **Ad blocker** (heavy; scope: cosmetic vs network — decide before building)                                             |
-| [ ]    | **Extension manager:** disable other extensions except Zed (permissions + warnings)                                     |
+### P1: Security And Permissions
 
-### YouTube tab
+| Status | Task |
+|---|---|
+| [ ] | Audit `activeTab`, host access, persistent content scripts, and `scripting` usage. Remove access that is not required. |
+| [ ] | Document the permissions required by each feature before adding new capabilities. |
+| [ ] | Add an explicit warning and scope before any feature that clears cookies, storage, cache, or site data. |
+| [ ] | Decide whether user-injected scripts are in scope. If yes, design sandboxing and warnings before implementation. |
 
-| Status | Task                                                                              |
-| ------ | --------------------------------------------------------------------------------- |
-| [x]    | Focus mode script                                                                 |
-| [x]    | Reset layout script                                                               |
-| [x]    | Hide progress bar / time (`hideYoutubeProgressBar` + popup control)               |
-| [ ]    | Hide duration always vs on-demand (align all progress UI tweaks)                  |
-| [ ]    | Highlights, markers, bookmarks, notes (Readwise-style export optional)            |
-| [ ]    | Auto half-screen / side-by-side layout                                            |
-| [ ]    | Optional fullscreen-by-default                                                    |
-| [ ]    | Survey **ReVanced**-style features; pick a small subset that survives DOM changes |
-| [ ]    | Reduce reliance on brittle selectors; document break-glass when YouTube updates   |
+### P1: Engineering Quality
 
-### Shortcuts tab
+| Status | Task |
+|---|---|
+| [ ] | Refactor background action routing into a typed event registry with shared command handling. |
+| [ ] | Choose npm or pnpm as the single package manager and keep only its lockfile. |
+| [x] | Keep `pnpm lint` passing with zero warnings. |
+| [x] | Keep `pnpm build` passing before loading `dist/` into Chrome. |
+| [ ] | Add focused unit tests for playback presets, storage helpers, and import/export validation. |
+| [ ] | Add a documented manual injection smoke-test checklist. |
+| [ ] | Remove or merge the unused legacy `src/index.css`. |
+| [ ] | Add a short contributor guide for adding a popup action, injected script, and command. |
 
-| Status | Task                                                                         |
-| ------ | ---------------------------------------------------------------------------- |
-| [x]    | List Chrome commands + keybindings from manifest                             |
-| [ ]    | Surface “not set” bindings with link hint to `chrome://extensions/shortcuts` |
-| [ ]    | Group shortcuts by tab / feature in the list                                 |
-| [ ]    | Document **4 suggested_key limit** for new contributors                      |
+## Current Tabs
 
-## Target popup tabs (information architecture)
+### Misc
 
-Use these buckets when the feature set outgrows **Misc / YouTube / Shortcuts** — future splits may still use these buckets.
+Implemented:
 
-### Home (future tab)
+- Playback speed controls
+- Page colors
+- Scrollbar controls
+- Design mode
+- Inspect mode
+- Volume boost for page audio and video up to 2000%
+- Arabic RTL mode toggle
 
-| Status | Task                                                                    |
-| ------ | ----------------------------------------------------------------------- |
-| [ ]    | At-a-glance: last used actions, pinned toggles                          |
-| [ ]    | Optional quote / ayah / tip of the day (from bookmarks & new-tab ideas) |
+Good next additions:
 
-### Reading (future tab)
+| Status | Task |
+|---|---|
+| [ ] | Add custom scrollbar styling without changing page layout unexpectedly. |
+| [ ] | Add saved page-theme presets for dark, grayscale, and custom colors. |
+| [x] | Add volume boost for page audio and video with a capped 20× gain and safety warning. |
+| [ ] | Define a useful timestamp/age feature before implementation. |
 
-| Status | Task                                                    |
-| ------ | ------------------------------------------------------- |
-| [ ]    | Article / reader mode (column width, font size, colors) |
-| [ ]    | Save article to reading list (local or sync)            |
-| [ ]    | Typography presets (serif/sans, line height)            |
+Defer until there is a clear product and permission design:
 
-### Productivity (future tab)
+- Ad blocking
+- Clearing cookies, local storage, cache, or other site data
+- Disabling or managing other extensions
 
-| Status | Task                                                             |
-| ------ | ---------------------------------------------------------------- |
-| [ ]    | **Pomodoro** mini-app (`chrome.alarms` + optional notifications) |
-| [ ]    | **Reminders:** posture, azkar, salah, eyes, exercise, custom     |
-| [ ]    | Lightweight “remember this” with snooze                          |
+### YouTube
 
-### Coding / dev (future tab)
+Implemented:
 
-| Status | Task                                                                  |
-| ------ | --------------------------------------------------------------------- |
-| [ ]    | Page design mode + inspect shortcuts grouped here if audience is devs |
-| [ ]    | Optional: JSON viewer / quick console helpers (scope tightly)         |
+- Focus mode
+- Focus reset behavior
+- Hide progress bar/time
+- Hide controls
 
-### Scripts (future tab)
+Good next additions:
 
-| Status | Task                                                                      |
-| ------ | ------------------------------------------------------------------------- |
-| [ ]    | User-defined or preset injected snippets (dangerous — sandbox + warnings) |
-| [ ]    | Registry UI for `background.js` events → scripts (see tech debt)          |
+| Status | Task |
+|---|---|
+| [ ] | Reduce brittle YouTube selectors and document fallback behavior when YouTube changes. |
+| [ ] | Add hide-duration behavior as a deliberate extension of the progress controls. |
+| [ ] | Add lightweight markers/bookmarks with local storage and export. |
+| [ ] | Add optional half-screen layout after validating it across common YouTube layouts. |
 
-### Pomodoro (future tab)
+Defer until the basics are stable:
 
-| Status | Task                                                         |
-| ------ | ------------------------------------------------------------ |
-| [ ]    | Standalone tab OR merge under **Productivity** (pick one IA) |
-| [ ]    | Sound optional; respect focus / DND                          |
+- Broad ReVanced-style feature parity
+- Fullscreen-by-default behavior
+- Large annotation/highlight systems
 
----
+### Shortcuts
 
-## Bookmarks & new tab
+Implemented:
 
-| Status | Task                                                      |
-| ------ | --------------------------------------------------------- |
-| [ ]    | Bookmark sync story (less import/export friction)         |
-| [ ]    | New tab page: curated bookmarks                           |
-| [ ]    | Random card: quote, ayah, Vim tip, life hack, remembrance |
+- Manifest command list and current keybindings
 
----
+| Status | Task |
+|---|---|
+| [ ] | Group shortcuts by feature and show commands whose keys are not assigned. |
+| [ ] | Add a clear link or instruction for `chrome://extensions/shortcuts`. |
+| [ ] | Keep the four-default-`suggested_key` limit documented for contributors. |
 
-## Integrations (modules — later)
+### Settings
 
-Treat each as a **separate permission story** (OAuth, official APIs, or safe patterns).
+Implemented:
 
-| Area        | Ideas                                            |
-| ----------- | ------------------------------------------------ |
-| Notes / PKM | Notion, Mesbah Matrix, Savvy                     |
-| Google      | Tasks, Calendar, Keep                            |
-| Social      | YouTube (beyond scripts), Instagram, X, Facebook |
+- Persistent dark theme, defaulting to dark
+- JSON export/import of all `chrome.storage.local` settings
 
----
+| Status | Task |
+|---|---|
+| [ ] | Add an export schema version migration strategy before changing stored data shapes. |
+| [ ] | Show import/export errors for file size, invalid JSON, unsupported versions, and storage failures. |
+| [ ] | Add a reset-settings action with confirmation and a documented list of reset keys. |
+| [ ] | Add first-run permission and privacy explanation. |
 
-## Capture & share
+## Planned Product Areas
 
-| Status | Task                                                                                                                |
-| ------ | ------------------------------------------------------------------------------------------------------------------- |
-| [ ]    | Tweet/post → shareable image (Pikaso-style)                                                                         |
-| [ ]    | Instagram-friendly screenshot flows                                                                                 |
-| [ ]    | Context menu **“Save to Zed…”** / save entry (`chrome.contextMenus` + permission)                                   |
-| [ ]    | **Chrome context menu:** add a **Save** action (from legacy `tasks.md`; align label + target with extension policy) |
+These are valid future directions, but should not be started until P0/P1 work is stable.
 
----
+### Reading
 
-## Media
+| Status | Task |
+|---|---|
+| [ ] | Build reader mode with width, font, line height, and color controls. |
+| [ ] | Add a local reading list only after deciding how pages are captured and restored. |
+| [ ] | Add typography presets. |
 
-| Status | Task                                                         |
-| ------ | ------------------------------------------------------------ |
-| [ ]    | In-extension downloads policy (store rules)                  |
-| [ ]    | Document external tools (e.g. `yt-dlp`) vs in-browser limits |
-| [x]    | Align with [Download tab](#download-tab): yt-dlp native host |
+### Productivity
 
----
+| Status | Task |
+|---|---|
+| [ ] | Build a Pomodoro timer using `chrome.alarms`, with optional notifications. |
+| [ ] | Add reminders only after defining scheduling, quiet hours, and notification settings. |
+| [ ] | Add a lightweight snoozable “remember this” item. |
 
-## Engineering & quality
+### Bookmarks And New Tab
 
-| Status | Task                                                                                  |
-| ------ | ------------------------------------------------------------------------------------- |
-| [x]    | Tailwind entry: `main.tsx` → `main.css`                                               |
-| [x]    | `youtubeProgressBar.js` wired via `hideYoutubeProgressBar`                            |
-| [ ]    | **Refactor `background.js`:** map `event → script path` or registry (~8+ events now)  |
-| [ ]    | Merge or delete legacy `src/index.css` (unused entry)                                 |
-| [ ]    | Tests for playback presets / storage keys (where valuable)                            |
-| [ ]    | CONTRIBUTING snippet: add script + manifest command + popup row                       |
-| [ ]    | **Design mode:** root-cause + regression check on representative sites (see Misc tab) |
+| Status | Task |
+|---|---|
+| [ ] | Decide whether bookmark sync is local-only, Chrome-sync based, or integration based. |
+| [ ] | Build a curated bookmark new-tab page after the sync decision. |
+| [ ] | Add optional rotating quote, ayah, Vim tip, or remembrance content. |
 
----
+### Capture And Share
 
-## Cross-cutting UX
+| Status | Task |
+|---|---|
+| [ ] | Add a context-menu “Save to Zed” action after defining the saved item format. |
+| [ ] | Add page/post capture to an image only after choosing supported sites and permissions. |
+| [ ] | Add Instagram-friendly capture flows if they fit the extension permission model. |
 
-| Status | Task                                                                      |
-| ------ | ------------------------------------------------------------------------- |
-| [ ]    | Reversible injected changes: prefer removable `<style id>` or class hooks |
-| [ ]    | Settings backup / export `chrome.storage.local`                           |
-| [ ]    | Onboarding: first-run permissions explanation                             |
+### Integrations
 
----
+Treat each integration as a separate permission and authentication project.
 
-## Reference
+| Area | Candidates |
+|---|---|
+| Knowledge management | Notion, Mesbah Matrix, Savvy |
+| Google | Tasks, Calendar, Keep |
+| Social/media | YouTube APIs, Instagram, X, Facebook |
 
-- **README roadmap:** [README.md § Roadmap](./README.md#roadmap-organized)
-- **Adding a feature:** [README.md § Request flow](./README.md#request-flow-typical-feature)
-- **Chrome commands cap:** max **four** default `suggested_key` (includes popup open)
+### Media
 
-## other tasks and ideas (yet to organize )
+| Status | Task |
+|---|---|
+| [ ] | Document browser download limitations and store-policy constraints. |
+| [ ] | Decide whether yt-dlp belongs in a separate native host project rather than the extension. |
 
-- settings page
+## Product Decisions To Make
 
--> Preset video quality for all videos on all websites
+- Keep the current four-tab information architecture until a tab has enough related features to justify splitting.
+- Prefer reversible page changes and local storage before adding accounts or external services.
+- Treat broad ad blocking, extension management, site-data clearing, and ReVanced parity as separate projects, not ordinary backlog items.
+- Do not add a new permission without documenting its user-facing reason.
 
+## References
+
+- [README.md](./README.md)
+- [Adding a feature](./README.md#request-flow-typical-feature)
+- [Chrome extension shortcuts](chrome://extensions/shortcuts)

@@ -82,22 +82,22 @@ const ChangePlaybackRate = () => {
         Playback speed
       </h2>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
 
         <div className={cn(popupControlRow, "items-stretch")}>
           <Button
             type="button"
             size="icon"
-            className={cn(shortcutHostClassName, "h-11 w-11 shrink-0")}
+            className={cn(shortcutHostClassName, "h-9 w-9 shrink-0")}
             aria-label="Slower"
             onClick={() => step(-1)}
           >
-            <span className="text-lg leading-none">−</span>
+            <span className="text-base leading-none">−</span>
             <ShortcutKbd label={KBD.playbackSlower} className="scale-[0.85]" />
           </Button>
           <select
             id="zed-playback-rate"
-            className="relative z-0 h-11 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-center text-sm font-medium shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative z-0 h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-center text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={String(speed)}
             onChange={(e) => onSelect(e.target.value)}
           >
@@ -110,20 +110,20 @@ const ChangePlaybackRate = () => {
           <Button
             type="button"
             size="icon"
-            className={cn(shortcutHostClassName, "h-11 w-11 shrink-0")}
+            className={cn(shortcutHostClassName, "h-9 w-9 shrink-0")}
             aria-label="Faster"
             onClick={() => step(1)}
           >
-            <span className="text-lg leading-none">+</span>
+            <span className="text-base leading-none">+</span>
             <ShortcutKbd label={KBD.playbackFaster} className="scale-[0.85]" />
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             type="button"
             size="sm"
-            className={cn(shortcutHostClassName, "h-11 w-full")}
+            className={cn(shortcutHostClassName, "h-9 w-full")}
             aria-label="Normal speed (1×)"
             onClick={setNormal}
           >
@@ -133,7 +133,7 @@ const ChangePlaybackRate = () => {
           <Button
             type="button"
             size="sm"
-            className={cn(shortcutHostClassName, "h-11 w-full")}
+            className={cn(shortcutHostClassName, "h-9 w-full")}
             aria-label="Double speed (2×)"
             onClick={setDouble}
           >

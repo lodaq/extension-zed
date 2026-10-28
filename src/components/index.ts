@@ -4,8 +4,8 @@ import DesignMode from "./DesignMode"
 import InspectModeToggle from "./InspectModeToggle"
 import ModesSection from "./ModesSection"
 import ScrollbarsSection from "./ScrollbarsSection"
-import Test from "./Test"
 import YoutubeFocusMode from "./YoutubeFocusMode"
+import VolumeBooster from "./VolumeBooster"
 
 export {
   ChangeColors,
@@ -14,8 +14,8 @@ export {
   InspectModeToggle,
   ModesSection,
   ScrollbarsSection,
-  Test,
   YoutubeFocusMode,
+  VolumeBooster,
 }
 
 export { Switch } from "./ui/switch"

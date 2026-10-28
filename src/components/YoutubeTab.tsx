@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 export default function YoutubeTab() {
   return (
-    <div className={cn(popupSectionStack, "px-0.5 pb-3 pt-6")}>
+    <div className={cn(popupSectionStack, "px-0.5 pb-1 pt-3")}>
       <YoutubeFocusMode />
     </div>
   )

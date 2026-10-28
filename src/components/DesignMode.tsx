@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { KBD } from "@/lib/shortcuts"
 import { cn } from "@/lib/utils"
+import { sendPageAction } from "@/lib/withActiveTab"
+import { useCallback, useEffect, useState } from "react"
 
 const DesignMode = () => {
   const [on, setOn] = useState(false)
@@ -20,22 +21,24 @@ const DesignMode = () => {
     return () => chrome.storage.onChanged.removeListener(listener)
   }, [])
 
-  const toggle = useCallback(() => {
-    const next = on ? "off" : "on"
-    setOn(next === "on")
-    void chrome.storage.local.set({ designMode: next }).then(() => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const tabId = tabs[0]?.id
-        if (tabId === undefined) return
-        chrome.runtime.sendMessage({ event: "designMode", tabId })
-      })
-    })
-  }, [on])
+  const toggle = useCallback((checked: boolean) => {
+    const next = checked ? "on" : "off"
+    setOn(checked)
+    void chrome.storage.local.set({ designMode: next }).then(() =>
+      sendPageAction("designMode", `Design mode ${next}`)
+    )
+  }, [])
 
   return (
-    <div className={cn(shortcutHostClassName, "flex items-center justify-between gap-3 px-4 py-3")}>
+    <div
+      className={cn(
+        shortcutHostClassName,
+        "flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
+      )}
+      onClick={() => toggle(!on)}
+    >
       <div className="flex flex-col gap-1">
-        <Label htmlFor="design-mode" className="text-sm font-medium cursor-pointer">
+        <Label className="cursor-pointer text-sm font-medium">
           Design mode
         </Label>
         <ShortcutKbd label={KBD.designMode} />
@@ -43,6 +46,7 @@ const DesignMode = () => {
       <Switch
         id="design-mode"
         checked={on}
+        onClick={(event) => event.stopPropagation()}
         onCheckedChange={toggle}
         aria-label={`Design mode ${on ? "on" : "off"}`}
       />

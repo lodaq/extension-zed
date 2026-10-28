@@ -1,20 +1,12 @@
-// Hides the main progress bar and time display on youtube.com/watch (DOM may change).
+// Applies or removes a Zed-owned style based on the persisted toggle.
 (function () {
-  var KEY = "__extensionZedYoutubeProgressBar";
-  if (window[KEY]) return;
-  window[KEY] = true;
-
-  const hide = () => {
-    document
-      .querySelectorAll(
-        ".ytp-progress-bar-container, .ytp-time-display, .ytp-chapter-container"
-      )
-      .forEach((el) => {
-        el.style.setProperty("display", "none", "important");
-      });
-  };
-
-  hide();
-  const obs = new MutationObserver(hide);
-  obs.observe(document.documentElement, { childList: true, subtree: true });
+  const ID = "zed-youtube-progress-bar";
+  chrome.storage.local.get(["youtubeHideProgress"]).then(({ youtubeHideProgress }) => {
+    document.getElementById(ID)?.remove();
+    if (!youtubeHideProgress) return;
+    const style = document.createElement("style");
+    style.id = ID;
+    style.textContent = ".ytp-progress-bar-container, .ytp-time-display, .ytp-chapter-container { display: none !important; }";
+    (document.head || document.documentElement).appendChild(style);
+  });
 })();

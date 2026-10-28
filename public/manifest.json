@@ -26,7 +26,6 @@
     }
   ],
   "permissions": ["scripting", "activeTab", "storage"],
-  "host_permissions": ["https://*/*", "http://*/*"],
   "commands": {
     "_execute_action": {
       "suggested_key": { "default": "Alt+Z" },
@@ -49,9 +48,6 @@
     },
     "zed_youtube_focus": {
       "description": "YouTube: focus mode (player only)"
-    },
-    "zed_youtube_reset": {
-      "description": "YouTube: reset layout"
     },
     "zed_youtube_progress_bar": {
       "description": "YouTube: hide progress bar & time"

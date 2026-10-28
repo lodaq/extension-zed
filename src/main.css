@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
 @layer base {
   :root {
@@ -127,6 +126,7 @@
     height: fit-content;
     min-height: fit-content;
     overflow-x: hidden;
+    font-size: 14px;
   }
 
   #root {
@@ -136,3 +136,4 @@
     min-height: fit-content;
   }
 }
+

@@ -89,7 +89,6 @@
     };
   }
 
-  // Listen for messages from background/popup
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "rtl-enable") {
       enable();
@@ -98,7 +97,6 @@
     }
   });
 
-  // Check initial state from storage
   chrome.storage.local.get(["arabicRtlMode"]).then((r) => {
     const on = String(r?.arabicRtlMode).toLowerCase() === "on";
     if (on) {

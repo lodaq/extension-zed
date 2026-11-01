@@ -2,7 +2,6 @@ const PLAYBACK_PRESETS = Array.from({ length: 100 }, (_, i) =>
   Number(((i + 1) / 10).toFixed(1))
 );
 
-/** @type {Readonly<Record<string, string>>} */
 const SCRIPT_EVENTS = Object.freeze({
   changeBackgroundColor: "scripts/applyPageColors.js",
   changeColor: "scripts/applyPageColors.js",
@@ -18,9 +17,9 @@ const SCRIPT_EVENTS = Object.freeze({
   hideYoutubeControls: "scripts/youtubeControls.js",
   youtubeFocus: "scripts/youtubeFocusMode.js",
   volumeBoost: "scripts/volumeBoost.js",
+  playbackRateApply: "scripts/changePlaybackRate.js",
 });
 
-/** @type {Readonly<Record<string, string>>} */
 const COMMAND_EVENTS = Object.freeze({
   zed_scrollbar_main: "hideMainScrollBar",
   zed_scrollbar_all: "hideAllScrollBars",
@@ -47,10 +46,23 @@ function injectAllFrames(tabId, files) {
     );
 }
 
-function runScriptEvent(tabId, event) {
+function injectForEvent(tabId, event) {
   const file = SCRIPT_EVENTS[event];
-  if (!file) return Promise.resolve();
+  if (!file) return Promise.reject(new Error(`Unknown page action: ${event}`));
   return injectAllFrames(tabId, [file]);
+}
+
+function runPageAction(tabId, event) {
+  if (event === "designMode") return injectDesignMode(tabId);
+  if (event === "youtubeFocus") return injectYoutubeFocus(tabId);
+  if (event === "arabicRtlMode") {
+    return chrome.storage.local.get(["arabicRtlMode"]).then((r) =>
+      chrome.tabs.sendMessage(tabId, {
+        action: String(r.arabicRtlMode).toLowerCase() === "on" ? "rtl-enable" : "rtl-disable",
+      })
+    );
+  }
+  return injectForEvent(tabId, event);
 }
 
 function injectYoutubeFocus(tabId) {
@@ -63,7 +75,6 @@ function injectYoutubeFocus(tabId) {
   );
 }
 
-/** designMode must run in the page JS world; MAIN has no chrome.storage — set a flag first. */
 function injectDesignMode(tabId) {
   return chrome.storage.local.get(["designMode"]).then((r) => {
     const on = String(r.designMode).toLowerCase() === "on";
@@ -116,7 +127,7 @@ function stepPlayback(tabId, delta) {
     idx = Math.min(PLAYBACK_PRESETS.length - 1, Math.max(0, idx + delta));
     const next = PLAYBACK_PRESETS[idx];
     chrome.storage.local.set({ speed: String(next) }).then(() => {
-      injectAllFrames(tabId, ["scripts/changePlaybackRate.js"]);
+      runPageAction(tabId, "playbackRateApply");
     });
   });
 }
@@ -124,7 +135,7 @@ function stepPlayback(tabId, delta) {
 function setPlayback(tabId, rate) {
   const next = clampPlaybackRate(rate);
   chrome.storage.local.set({ speed: String(next) }).then(() => {
-    injectAllFrames(tabId, ["scripts/changePlaybackRate.js"]);
+    runPageAction(tabId, "playbackRateApply");
   });
 }
 
@@ -150,30 +161,28 @@ chrome.commands.onCommand.addListener((command) => {
         break;
       case "zed_youtube_focus":
         chrome.storage.local.get(["youtubeFocus"]).then(({ youtubeFocus }) => {
-          chrome.storage.local.set({ youtubeFocus: !youtubeFocus }).then(() => injectYoutubeFocus(tabId));
+          chrome.storage.local.set({ youtubeFocus: !youtubeFocus }).then(() => runPageAction(tabId, "youtubeFocus"));
         });
         break;
       case "zed_design_mode":
         chrome.storage.local.get(["designMode"]).then((r) => {
           const next = String(r.designMode).toLowerCase() === "on" ? "off" : "on";
-          chrome.storage.local.set({ designMode: next }).then(() => injectDesignMode(tabId));
+          chrome.storage.local.set({ designMode: next }).then(() => runPageAction(tabId, "designMode"));
         });
         break;
       case "zed_inspect":
         chrome.storage.local.get(["inspectMode"]).then((r) => {
           const next = String(r.inspectMode).toLowerCase() === "on" ? "off" : "on";
           chrome.storage.local.set({ inspectMode: next }).then(() =>
-            injectAllFrames(tabId, ["scripts/inspectMode.js"])
+            runPageAction(tabId, "inspectModeApply")
           );
         });
         break;
       case "zed_reset_page_colors":
-        chrome.storage.local
-          .remove(["background-color", "color"])
-          .then(() => injectAllFrames(tabId, ["scripts/resetPageColors.js"]));
+        runPageAction(tabId, "resetPageColors");
         break;
       default:
-        if (COMMAND_EVENTS[command]) runScriptEvent(tabId, COMMAND_EVENTS[command]);
+        if (COMMAND_EVENTS[command]) runPageAction(tabId, COMMAND_EVENTS[command]);
         break;
     }
   });
@@ -181,28 +190,18 @@ chrome.commands.onCommand.addListener((command) => {
 
 
 chrome.runtime.onMessage.addListener((data, _sender, sendResponse) => {
+  if (!data || typeof data.event !== "string") {
+    sendResponse({ ok: false, error: "No page action was provided" });
+    return;
+  }
+
   const tabId = data.tabId;
   if (typeof tabId !== "number") {
     sendResponse({ ok: false, error: "No active tab is available" });
     return;
   }
 
-  if (data.event === "arabicRtlMode") {
-    chrome.storage.local.get(["arabicRtlMode"]).then((r) => {
-      const on = String(r?.arabicRtlMode).toLowerCase() === "on";
-      const msg = on ? { action: "rtl-enable" } : { action: "rtl-disable" };
-      chrome.tabs.sendMessage(tabId, msg).catch(() => {});
-    });
-    return;
-  }
-
-  const action = data.event === "designMode"
-    ? injectDesignMode(tabId)
-    : data.event === "youtubeFocus"
-      ? injectYoutubeFocus(tabId)
-      : runScriptEvent(tabId, data.event);
-
-  action
+  runPageAction(tabId, data.event)
     .then(() => sendResponse({ ok: true }))
     .catch((error) => sendResponse({ ok: false, error: error?.message || "Script injection failed" }));
   return true;

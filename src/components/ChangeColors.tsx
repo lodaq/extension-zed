@@ -29,8 +29,8 @@ const ChangeColors = () => {
       setStorageKey(key)
       chrome.storage.local.get([key]).then((r) => {
         const settings = r[key] as { background?: string; text?: string } | undefined
-        if (typeof settings?.background === "string") setBg(settings.background)
-        if (typeof settings?.text === "string") setFg(settings.text)
+        if (settings && /^#[\da-f]{6}$/i.test(settings.background ?? "")) setBg(settings.background!)
+        if (settings && /^#[\da-f]{6}$/i.test(settings.text ?? "")) setFg(settings.text!)
       })
     })
   }, [])

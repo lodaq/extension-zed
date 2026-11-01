@@ -4,30 +4,16 @@ import { Switch } from "@/components/ui/switch"
 import { KBD } from "@/lib/shortcuts"
 import { cn } from "@/lib/utils"
 import { sendPageAction } from "@/lib/withActiveTab"
-import { useCallback, useEffect, useState } from "react"
+import { useStoredValue } from "@/lib/useStoredValue"
 
 const DesignMode = () => {
-  const [on, setOn] = useState(false)
+  const [mode, setMode] = useStoredValue<string>("designMode", "off")
+  const on = mode.toLowerCase() === "on"
 
-  useEffect(() => {
-    chrome.storage.local.get(["designMode"]).then((r) => {
-      setOn(String(r.designMode).toLowerCase() === "on")
-    })
-    const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
-      if (area !== "local" || !changes.designMode) return
-      setOn(String(changes.designMode.newValue).toLowerCase() === "on")
-    }
-    chrome.storage.onChanged.addListener(listener)
-    return () => chrome.storage.onChanged.removeListener(listener)
-  }, [])
-
-  const toggle = useCallback((checked: boolean) => {
+  const toggle = (checked: boolean) => {
     const next = checked ? "on" : "off"
-    setOn(checked)
-    void chrome.storage.local.set({ designMode: next }).then(() =>
-      sendPageAction("designMode", `Design mode ${next}`)
-    )
-  }, [])
+    void setMode(next).then(() => sendPageAction("designMode", `Design mode ${next}`))
+  }
 
   return (
     <div

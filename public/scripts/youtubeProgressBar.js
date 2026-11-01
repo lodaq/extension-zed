@@ -1,4 +1,3 @@
-// Applies or removes a Zed-owned style based on the persisted toggle.
 (function () {
   const ID = "zed-youtube-progress-bar";
   chrome.storage.local.get(["youtubeHideProgress"]).then(({ youtubeHideProgress }) => {

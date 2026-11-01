@@ -37,7 +37,6 @@
       gainNode.gain.value = currentGain
       media.addEventListener("play", resumeContext, { passive: true })
     } catch (_) {
-      // A media element may already be connected to another AudioContext.
     }
   }
 

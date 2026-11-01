@@ -40,7 +40,6 @@
     };
   }
 
-  /* MAIN world has no chrome.storage — background sets __zedDesignModeFlag before this file runs. */
   if (typeof window.__zedDesignModeFlag === "boolean") {
     const on = window.__zedDesignModeFlag;
     try {

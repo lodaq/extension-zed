@@ -6,7 +6,6 @@
   style.id = ID;
   style.appendChild(
     document.createTextNode(`
-  /* Viewport / document scrollbar only (not inner overflow areas). */
   html::-webkit-scrollbar,
   body::-webkit-scrollbar {
     display: none;

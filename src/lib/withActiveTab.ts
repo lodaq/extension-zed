@@ -1,6 +1,24 @@
 export const PAGE_ACTION_FEEDBACK_EVENT = "zed-page-action-feedback"
 
 type PageActionResponse = { ok: boolean; error?: string }
+export type PageAction =
+  | "changeBackgroundColor"
+  | "changeColor"
+  | "resetPageColors"
+  | "inspectModeApply"
+  | "resetBackgroundOnly"
+  | "resetTextColorOnly"
+  | "hideMainScrollBar"
+  | "hideAllScrollBars"
+  | "resetMainScrollBar"
+  | "resetAllScrollBars"
+  | "hideYoutubeProgressBar"
+  | "hideYoutubeControls"
+  | "youtubeFocus"
+  | "volumeBoost"
+  | "designMode"
+  | "arabicRtlMode"
+  | "playbackRateApply"
 
 function report(message: string, tone: "success" | "error") {
   window.dispatchEvent(
@@ -8,8 +26,7 @@ function report(message: string, tone: "success" | "error") {
   )
 }
 
-/** Runs a background-routed action and reports whether Chrome could inject it. */
-export async function sendPageAction(event: string, successMessage = "Applied to this page") {
+export async function sendPageAction(event: PageAction, successMessage = "Applied to this page") {
   try {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
     const tabId = tabs[0]?.id

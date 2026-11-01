@@ -4,30 +4,16 @@ import { Switch } from "@/components/ui/switch"
 import { KBD } from "@/lib/shortcuts"
 import { cn } from "@/lib/utils"
 import { sendPageAction } from "@/lib/withActiveTab"
-import { useCallback, useEffect, useState } from "react"
+import { useStoredValue } from "@/lib/useStoredValue"
 
 const InspectModeToggle = () => {
-  const [on, setOn] = useState(false)
+  const [mode, setMode] = useStoredValue<string>("inspectMode", "off")
+  const on = mode.toLowerCase() === "on"
 
-  useEffect(() => {
-    chrome.storage.local.get(["inspectMode"]).then((r) => {
-      setOn(String(r.inspectMode).toLowerCase() === "on")
-    })
-    const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
-      if (area !== "local" || !changes.inspectMode) return
-      setOn(String(changes.inspectMode.newValue).toLowerCase() === "on")
-    }
-    chrome.storage.onChanged.addListener(listener)
-    return () => chrome.storage.onChanged.removeListener(listener)
-  }, [])
-
-  const toggle = useCallback((checked: boolean) => {
+  const toggle = (checked: boolean) => {
     const next = checked ? "on" : "off"
-    setOn(checked)
-    void chrome.storage.local.set({ inspectMode: next }).then(() =>
-      sendPageAction("inspectModeApply", `Inspect mode ${next}`)
-    )
-  }, [])
+    void setMode(next).then(() => sendPageAction("inspectModeApply", `Inspect mode ${next}`))
+  }
 
   return (
     <div

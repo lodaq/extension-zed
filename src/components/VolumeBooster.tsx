@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button"
 import { popupControlRow, popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
 import { sendPageAction } from "@/lib/withActiveTab"
-import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
+import { useStoredValue } from "@/lib/useStoredValue"
 
 const STORAGE_KEY = "volumeBoost"
 const MIN_BOOST = 100
@@ -14,26 +14,12 @@ function clampBoost(value: number) {
 }
 
 export default function VolumeBooster() {
-  const [boost, setBoost] = useState(MIN_BOOST)
-
-  useEffect(() => {
-    chrome.storage.local.get([STORAGE_KEY]).then((result) => {
-      setBoost(clampBoost(Number(result[STORAGE_KEY])))
-    })
-    const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
-      if (area !== "local" || !changes[STORAGE_KEY]) return
-      setBoost(clampBoost(Number(changes[STORAGE_KEY].newValue)))
-    }
-    chrome.storage.onChanged.addListener(listener)
-    return () => chrome.storage.onChanged.removeListener(listener)
-  }, [])
+  const [storedBoost, setBoost] = useStoredValue(STORAGE_KEY, MIN_BOOST)
+  const boost = clampBoost(Number(storedBoost))
 
   const applyBoost = (value: number) => {
     const next = clampBoost(value)
-    setBoost(next)
-    void chrome.storage.local.set({ [STORAGE_KEY]: next }).then(() =>
-      sendPageAction("volumeBoost", `Volume boost ${next}%`)
-    )
+    void setBoost(next).then(() => sendPageAction("volumeBoost", `Volume boost ${next}%`))
   }
 
   return (

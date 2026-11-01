@@ -21,14 +21,12 @@
 
     function updateSpeed(newSpeed) {
       currentSpeed = clampRate(newSpeed)
-      // Update all existing videos
       document.querySelectorAll('video').forEach(video => applyRate(video, currentSpeed))
     }
 
     function checkUrlChange() {
       if (location.href !== currentUrl) {
         currentUrl = location.href
-        // URL changed, re-apply to any new videos
         document.querySelectorAll('video').forEach(video => applyRate(video, currentSpeed))
       }
     }
@@ -54,10 +52,8 @@
     chrome.storage.local.get(["speed"]).then((result) => {
       updateSpeed(Number(result["speed"]))
 
-      // Process existing video elements
       document.querySelectorAll("video").forEach(watchVideo)
 
-      // Watch for new video elements added to the DOM
       const observer = new MutationObserver((mutations) => {
         mutations.forEach((m) => {
           m.addedNodes.forEach(processNode)
@@ -71,14 +67,12 @@
 
       window[KEY] = { observer, watchers }
 
-      // Listen for storage changes from UI popup
       chrome.storage.onChanged.addListener((changes, area) => {
         if (area === 'local' && changes.speed) {
           updateSpeed(Number(changes.speed.newValue))
         }
       })
 
-      // Check for URL changes every second (for SPA navigation)
       setInterval(checkUrlChange, 1000)
     })
   }

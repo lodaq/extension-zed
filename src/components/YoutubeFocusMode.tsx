@@ -5,16 +5,15 @@ import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLay
 import { KBD } from "@/lib/shortcuts"
 import { cn } from "@/lib/utils"
 import { sendPageAction } from "@/lib/withActiveTab"
-import { useEffect, useState } from "react"
+import { useStoredValue } from "@/lib/useStoredValue"
 
 const YoutubeFocusMode = () => {
-  const [focus, setFocus] = useState(false)
-  const [hideProgress, setHideProgress] = useState(false)
-  const [hideControls, setHideControls] = useState(false)
-  useEffect(() => { chrome.storage.local.get(["youtubeFocus", "youtubeHideProgress", "youtubeHideControls"]).then((r) => { setFocus(Boolean(r.youtubeFocus)); setHideProgress(Boolean(r.youtubeHideProgress)); setHideControls(Boolean(r.youtubeHideControls)) }) }, [])
-  const toggleFocus = (next: boolean) => { setFocus(next); void chrome.storage.local.set({ youtubeFocus: next }).then(() => sendPageAction("youtubeFocus", `Focus mode ${next ? "on" : "off"}`)) }
-  const toggleProgress = (next: boolean) => { setHideProgress(next); void chrome.storage.local.set({ youtubeHideProgress: next }).then(() => sendPageAction("hideYoutubeProgressBar", `Progress bar ${next ? "hidden" : "shown"}`)) }
-  const toggleControls = (next: boolean) => { setHideControls(next); void chrome.storage.local.set({ youtubeHideControls: next }).then(() => sendPageAction("hideYoutubeControls", `Controls ${next ? "hidden" : "shown"}`)) }
+  const [focus, setFocus] = useStoredValue("youtubeFocus", false)
+  const [hideProgress, setHideProgress] = useStoredValue("youtubeHideProgress", false)
+  const [hideControls, setHideControls] = useStoredValue("youtubeHideControls", false)
+  const toggleFocus = (next: boolean) => { void setFocus(next).then(() => sendPageAction("youtubeFocus", `Focus mode ${next ? "on" : "off"}`)) }
+  const toggleProgress = (next: boolean) => { void setHideProgress(next).then(() => sendPageAction("hideYoutubeProgressBar", `Progress bar ${next ? "hidden" : "shown"}`)) }
+  const toggleControls = (next: boolean) => { void setHideControls(next).then(() => sendPageAction("hideYoutubeControls", `Controls ${next ? "hidden" : "shown"}`)) }
   return (
     <section className={cn(popupPanel, popupSectionInner)} aria-labelledby="zed-youtube-heading">
       <h2 id="zed-youtube-heading" className={popupSectionTitle}>

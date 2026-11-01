@@ -1,34 +1,22 @@
-import { useCallback, useEffect, useState } from "react"
+import { useStoredValue } from "@/lib/useStoredValue"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
 const ArabicRtlMode = () => {
-  const [on, setOn] = useState(false)
+  const [mode, setMode] = useStoredValue<string>("arabicRtlMode", "off")
+  const on = mode.toLowerCase() === "on"
 
-  useEffect(() => {
-    chrome.storage.local.get(["arabicRtlMode"]).then((r) => {
-      setOn(String(r.arabicRtlMode).toLowerCase() === "on")
-    })
-    const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
-      if (area !== "local" || !changes.arabicRtlMode) return
-      setOn(String(changes.arabicRtlMode.newValue).toLowerCase() === "on")
-    }
-    chrome.storage.onChanged.addListener(listener)
-    return () => chrome.storage.onChanged.removeListener(listener)
-  }, [])
-
-  const toggle = useCallback(() => {
+  const toggle = () => {
     const next = on ? "off" : "on"
-    setOn(next === "on")
-    void chrome.storage.local.set({ arabicRtlMode: next }).then(() => {
+    void setMode(next).then(() => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tabId = tabs[0]?.id
         if (tabId === undefined) return
         chrome.runtime.sendMessage({ event: "arabicRtlMode", tabId })
       })
     })
-  }, [on])
+  }
 
   return (
     <div className={cn("flex items-center justify-between gap-3 px-4 py-3")}>

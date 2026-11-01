@@ -1,4 +1,3 @@
-/* The active origin owns its setting; this is the only style Zed adds to a page. */
 (function () {
   const STYLE_ID = "zed-page-colors";
   const key = `pageColors:${location.origin}`;

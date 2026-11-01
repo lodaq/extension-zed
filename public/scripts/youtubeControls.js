@@ -1,4 +1,3 @@
-// Applies or removes the complete bottom control strip on YouTube players.
 (function () {
   const ID = "zed-youtube-controls";
   chrome.storage.local.get(["youtubeHideControls"]).then(({ youtubeHideControls }) => {

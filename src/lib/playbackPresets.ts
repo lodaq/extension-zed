@@ -1,7 +1,6 @@
 export const PLAYBACK_MIN = 0.1
 export const PLAYBACK_MAX = 10
 
-/** 0.1, 0.2, … 10.0 */
 export const PLAYBACK_PRESETS = Object.freeze(
   Array.from({ length: 100 }, (_, i) => Number(((i + 1) / 10).toFixed(1)))
 ) as readonly number[]

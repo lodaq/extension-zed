@@ -3,18 +3,12 @@ import { kbdTitle } from "@/lib/shortcuts"
 import { cn } from "@/lib/utils"
 
 type ShortcutKbdProps = {
-  /** Single key cap (comma / period / letter / digit); Alt is implied. */
   label: string
   className?: string
 }
 
-/** Use on the parent control (e.g. Button) so the corner badge is not clipped. */
 export const shortcutHostClassName = "relative overflow-visible"
 
-/**
- * Key cap sits with its **center** on the host’s top-right corner (half overlaps outside).
- * Render as a **child** of an element with `shortcutHostClassName` (or `relative overflow-visible`).
- */
 export function ShortcutKbd({ label, className }: ShortcutKbdProps) {
   return (
     <span

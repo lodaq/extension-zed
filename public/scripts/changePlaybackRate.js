@@ -13,7 +13,6 @@
   chrome.storage.local.get(["speed"]).then((result) => {
     const speed = clampRate(Number(result["speed"]))
     
-    // Apply speed to all existing videos
     document.querySelectorAll("video").forEach((video) => setPlaybackRate(video, speed))
   })
 })()

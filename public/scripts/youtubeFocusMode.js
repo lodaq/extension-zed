@@ -1,5 +1,7 @@
 (function () {
-  if (!location.hostname.endsWith("youtube.com")) return;
+  if (location.hostname !== "youtube.com" && !location.hostname.endsWith(".youtube.com")) {
+    throw new Error("Focus mode requires a YouTube page");
+  }
 
   const enabled = window.__zedYoutubeFocusEnabled;
   delete window.__zedYoutubeFocusEnabled;
@@ -33,7 +35,7 @@
     (document.querySelector("video.html5-main-video") &&
       document.querySelector("video.html5-main-video").closest("#movie_player"));
 
-  if (!anchor) return;
+  if (!anchor) throw new Error("No YouTube player was found on this page");
 
   window.__extensionZedYtFocusAbortController?.abort();
   const ac = new AbortController();

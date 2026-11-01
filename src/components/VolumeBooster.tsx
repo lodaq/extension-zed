@@ -14,12 +14,12 @@ function clampBoost(value: number) {
 }
 
 export default function VolumeBooster() {
-  const [storedBoost, setBoost] = useStoredValue(STORAGE_KEY, MIN_BOOST)
+  const [storedBoost] = useStoredValue(STORAGE_KEY, MIN_BOOST)
   const boost = clampBoost(Number(storedBoost))
 
   const applyBoost = (value: number) => {
     const next = clampBoost(value)
-    void setBoost(next).then(() => sendPageAction("volumeBoost", `Volume boost ${next}%`))
+    void sendPageAction("volumeBoost", `Volume boost ${next}%`, next)
   }
 
   return (

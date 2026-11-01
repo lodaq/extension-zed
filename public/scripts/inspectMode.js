@@ -7,7 +7,7 @@
     delete window[CLEANUP_KEY];
   }
 
-  chrome.storage.local.get(["inspectMode"]).then((r) => {
+  return chrome.storage.local.get(["inspectMode"]).then((r) => {
     const on = String(r?.inspectMode).toLowerCase() === "on";
     if (!on) return;
 

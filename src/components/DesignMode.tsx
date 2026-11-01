@@ -7,12 +7,12 @@ import { sendPageAction } from "@/lib/withActiveTab"
 import { useStoredValue } from "@/lib/useStoredValue"
 
 const DesignMode = () => {
-  const [mode, setMode] = useStoredValue<string>("designMode", "off")
+  const [mode] = useStoredValue<string>("designMode", "off")
   const on = mode.toLowerCase() === "on"
 
   const toggle = (checked: boolean) => {
     const next = checked ? "on" : "off"
-    void setMode(next).then(() => sendPageAction("designMode", `Design mode ${next}`))
+    void sendPageAction("designMode", `Design mode ${next}`, checked)
   }
 
   return (

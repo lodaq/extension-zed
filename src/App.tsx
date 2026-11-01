@@ -11,6 +11,7 @@ import { KBD } from "@/lib/shortcuts"
 import { cn } from "@/lib/utils"
 import { PAGE_ACTION_FEEDBACK_EVENT } from "@/lib/withActiveTab"
 import { useCallback, useEffect, useState } from "react"
+import { readSetting } from "@/lib/settings"
 
 const TAB_KEY = "popupActiveTab"
 const TAB_VALUES = ["misc", "youtube", "shortcuts", "settings"] as const
@@ -36,11 +37,11 @@ function App() {
     chrome.storage.local.get([TAB_KEY, "darkTheme"]).then((r) => {
       const v = r[TAB_KEY]
       if (typeof v === "string" && isTabValue(v)) setTab(v)
-      const darkTheme = r.darkTheme === undefined ? true : Boolean(r.darkTheme)
+      const darkTheme = readSetting("darkTheme", r.darkTheme, true)
       document.documentElement.classList.toggle("dark", darkTheme)
       if (r.darkTheme === undefined) void chrome.storage.local.set({ darkTheme: true })
       setReady(true)
-    })
+    }).catch(() => setReady(true))
   }, [])
 
   useEffect(() => {

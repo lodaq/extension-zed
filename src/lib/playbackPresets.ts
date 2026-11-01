@@ -13,15 +13,14 @@ export function clampPlayback(rate: number): number {
 }
 
 export function nearestPreset(rate: number): PlaybackPreset {
-  const c = clampPlayback(rate)
-  const rounded = Math.round(c * 10) / 10
-  const clamped = clampPlayback(rounded)
-  return [...PLAYBACK_PRESETS].reduce((a, b) =>
-    Math.abs(b - clamped) < Math.abs(a - clamped) ? b : a
-  )
+  return clampPlayback(Math.round(clampPlayback(rate) * 10) / 10)
 }
 
 export function presetIndex(rate: number): number {
   const n = nearestPreset(rate)
   return PLAYBACK_PRESETS.indexOf(n)
+}
+
+export function stepPlayback(rate: number, delta: -1 | 1): number {
+  return PLAYBACK_PRESETS[Math.min(PLAYBACK_PRESETS.length - 1, Math.max(0, presetIndex(rate) + delta))]
 }

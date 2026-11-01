@@ -2,20 +2,14 @@ import { useStoredValue } from "@/lib/useStoredValue"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { sendPageAction } from "@/lib/withActiveTab"
 
 const ArabicRtlMode = () => {
-  const [mode, setMode] = useStoredValue<string>("arabicRtlMode", "off")
+  const [mode] = useStoredValue<string>("arabicRtlMode", "off")
   const on = mode.toLowerCase() === "on"
 
-  const toggle = () => {
-    const next = on ? "off" : "on"
-    void setMode(next).then(() => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const tabId = tabs[0]?.id
-        if (tabId === undefined) return
-        chrome.runtime.sendMessage({ event: "arabicRtlMode", tabId })
-      })
-    })
+  const toggle = (checked: boolean) => {
+    void sendPageAction("arabicRtlMode", `Arabic RTL mode ${checked ? "on" : "off"}`, checked)
   }
 
   return (

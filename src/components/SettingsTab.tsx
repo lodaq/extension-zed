@@ -4,11 +4,11 @@ import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLay
 import { cn } from "@/lib/utils"
 import { toast } from "@/components/ui/use-toast"
 import { ChangeEvent, useEffect, useRef, useState } from "react"
+import { exportSettings, importSettings, readSetting } from "@/lib/settings"
+import { useStoredValue } from "@/lib/useStoredValue"
 
-const EXPORT_VERSION = 1
-
-function downloadSettings(settings: Record<string, unknown>) {
-  const blob = new Blob([JSON.stringify({ version: EXPORT_VERSION, settings }, null, 2)], {
+function downloadSettings(backup: Awaited<ReturnType<typeof exportSettings>>) {
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {
     type: "application/json",
   })
   const url = URL.createObjectURL(blob)
@@ -20,51 +20,41 @@ function downloadSettings(settings: Record<string, unknown>) {
 }
 
 export default function SettingsTab() {
-  const [dark, setDark] = useState(true)
+  const [dark, setDark] = useStoredValue("darkTheme", true)
+  const [busy, setBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
-    chrome.storage.local.get(["darkTheme"]).then((r) => {
-      const enabled = r.darkTheme === undefined ? true : Boolean(r.darkTheme)
-      setDark(enabled)
-      document.documentElement.classList.toggle("dark", enabled)
-      if (r.darkTheme === undefined) void chrome.storage.local.set({ darkTheme: true })
-    })
-  }, [])
+    document.documentElement.classList.toggle("dark", readSetting("darkTheme", dark, true))
+  }, [dark])
   const toggle = (enabled: boolean) => {
-    setDark(enabled)
-    document.documentElement.classList.toggle("dark", enabled)
-    void chrome.storage.local.set({ darkTheme: enabled })
+    void setDark(enabled).catch((error) => toast({ title: "Theme could not be saved", description: String(error), variant: "destructive" }))
   }
 
-  const exportSettings = async () => {
-    const settings = await chrome.storage.local.get(null)
-    downloadSettings(settings)
-    toast({ title: "Settings exported", description: "Your Zed settings were downloaded." })
+  const onExport = async () => {
+    setBusy(true)
+    try {
+      downloadSettings(await exportSettings())
+      toast({ title: "Settings exported", description: "Your Zed settings were downloaded." })
+    } catch (error) {
+      toast({ title: "Export failed", description: String(error), variant: "destructive" })
+    } finally { setBusy(false) }
   }
 
-  const importSettings = async (event: ChangeEvent<HTMLInputElement>) => {
+  const onImport = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ""
     if (!file) return
+    setBusy(true)
     try {
-      const parsed: unknown = JSON.parse(await file.text())
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid settings file")
-      const payload = parsed as { version?: unknown; settings?: unknown }
-      if (payload.version !== EXPORT_VERSION || !payload.settings || typeof payload.settings !== "object" || Array.isArray(payload.settings)) {
-        throw new Error("Unsupported settings file")
-      }
-      await chrome.storage.local.set(payload.settings as Record<string, unknown>)
-      const importedDark = Boolean((payload.settings as Record<string, unknown>).darkTheme)
-      setDark(importedDark)
-      document.documentElement.classList.toggle("dark", importedDark)
-      toast({ title: "Settings imported", description: "Your Zed settings were restored." })
+      await importSettings(JSON.parse(await file.text()))
+      toast({ title: "Settings imported", description: "Preferences merged. Page toggles apply when used; playback updates open pages." })
     } catch (error) {
       toast({
         title: "Import failed",
         description: error instanceof Error ? error.message : "The settings file could not be read.",
         variant: "destructive",
       })
-    }
+    } finally { setBusy(false) }
   }
 
   return (
@@ -76,14 +66,14 @@ export default function SettingsTab() {
       </div>
       <h2 className={popupSectionTitle}>Data</h2>
       <div className="flex gap-2">
-        <button type="button" className="flex-1 rounded-md border border-input px-3 py-2 text-sm hover:bg-muted" onClick={() => void exportSettings()}>
+        <button type="button" disabled={busy} className="flex-1 rounded-md border border-input px-3 py-2 text-sm hover:bg-muted" onClick={() => void onExport()}>
           Export settings
         </button>
-        <button type="button" className="flex-1 rounded-md border border-input px-3 py-2 text-sm hover:bg-muted" onClick={() => fileInputRef.current?.click()}>
+        <button type="button" disabled={busy} className="flex-1 rounded-md border border-input px-3 py-2 text-sm hover:bg-muted" onClick={() => fileInputRef.current?.click()}>
           Import settings
         </button>
       </div>
-      <input ref={fileInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => void importSettings(event)} />
+      <input ref={fileInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => void onImport(event)} />
     </section>
   )
 }

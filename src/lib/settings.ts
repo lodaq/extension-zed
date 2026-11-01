@@ -1,0 +1,77 @@
+import { PLAYBACK_MAX, PLAYBACK_MIN } from "./playbackPresets"
+
+export const POPUP_TABS = ["misc", "youtube", "shortcuts", "settings"] as const
+export type PopupTab = (typeof POPUP_TABS)[number]
+export const isColor = (value: unknown): value is string =>
+  typeof value === "string" && (value === "" || /^#[\da-f]{6}$/i.test(value))
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+const isMode = (value: unknown) => value === "on" || value === "off"
+const isBoolean = (value: unknown) => typeof value === "boolean"
+const validators: Record<string, (value: unknown) => boolean> = {
+  speed: (value) => (typeof value === "number" || (typeof value === "string" && value.trim() !== "")) &&
+    Number.isFinite(Number(value)) && Number(value) >= PLAYBACK_MIN && Number(value) <= PLAYBACK_MAX,
+  volumeBoost: (value) => typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 2000,
+  darkTheme: isBoolean,
+  youtubeFocus: isBoolean,
+  youtubeHideProgress: isBoolean,
+  youtubeHideControls: isBoolean,
+  inspectMode: isMode,
+  designMode: isMode,
+  arabicRtlMode: isMode,
+  popupActiveTab: (value) => POPUP_TABS.some((tab) => tab === value),
+}
+
+function validateColors(key: string, value: unknown) {
+  const origin = key.slice("pageColors:".length)
+  try {
+    const url = new URL(origin)
+    if (!/^https?:$/.test(url.protocol) || url.origin !== origin) return false
+  } catch { return false }
+  return isRecord(value) &&
+    (value.background === undefined || isColor(value.background)) &&
+    (value.text === undefined || isColor(value.text))
+}
+
+export function readSetting<T>(key: string, value: unknown, fallback: T): T {
+  return Object.prototype.hasOwnProperty.call(validators, key) && validators[key](value) ? value as T : fallback
+}
+
+function recognizedSettings(input: Record<string, unknown>) {
+  const settings: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(input)) {
+    if (key.startsWith("pageColors:")) {
+      if (!validateColors(key, value)) throw new Error(`Invalid setting: ${key}`)
+      const colors = value as Record<string, unknown>
+      settings[key] = Object.fromEntries(Object.entries(colors).filter(([name]) => name === "background" || name === "text"))
+    } else if (Object.prototype.hasOwnProperty.call(validators, key)) {
+      if (!validators[key](value)) throw new Error(`Invalid setting: ${key}`)
+      settings[key] = value
+    }
+  }
+  return settings
+}
+
+export async function exportSettings() {
+  return { version: 1, settings: recognizedSettings(await chrome.storage.local.get(null)) }
+}
+
+export async function importSettings(input: unknown) {
+  if (!isRecord(input) || input.version !== 1 || !isRecord(input.settings)) {
+    throw new Error("Unsupported settings file")
+  }
+  const settings = recognizedSettings(input.settings)
+  const colorKeys = Object.keys(settings).filter((key) => key.startsWith("pageColors:"))
+  if (colorKeys.length) {
+    const stored = await chrome.storage.local.get(colorKeys)
+    for (const key of colorKeys) {
+      const previous = isRecord(stored[key]) ? stored[key] : {}
+      const colors = Object.fromEntries(Object.entries(previous).filter(([name, value]) =>
+        (name === "background" || name === "text") && isColor(value)))
+      settings[key] = { ...colors, ...settings[key] as Record<string, unknown> }
+    }
+  }
+  await chrome.storage.local.set(settings)
+  return settings
+}

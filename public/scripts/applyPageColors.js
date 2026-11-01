@@ -1,10 +1,10 @@
 (function () {
   const STYLE_ID = "zed-page-colors";
   const key = `pageColors:${location.origin}`;
-  chrome.storage.local.get([key]).then((result) => {
+  return chrome.storage.local.get([key]).then((result) => {
     const settings = result[key] || {};
-    const background = typeof settings.background === "string" ? settings.background : "";
-    const text = typeof settings.text === "string" ? settings.text : "";
+    const background = typeof settings.background === "string" && /^#[\da-f]{6}$/i.test(settings.background) ? settings.background : "";
+    const text = typeof settings.text === "string" && /^#[\da-f]{6}$/i.test(settings.text) ? settings.text : "";
     const style = document.getElementById(STYLE_ID);
     if (!background && !text) return style?.remove();
     const next = style || document.createElement("style");

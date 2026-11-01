@@ -7,12 +7,12 @@ import { sendPageAction } from "@/lib/withActiveTab"
 import { useStoredValue } from "@/lib/useStoredValue"
 
 const InspectModeToggle = () => {
-  const [mode, setMode] = useStoredValue<string>("inspectMode", "off")
+  const [mode] = useStoredValue<string>("inspectMode", "off")
   const on = mode.toLowerCase() === "on"
 
   const toggle = (checked: boolean) => {
     const next = checked ? "on" : "off"
-    void setMode(next).then(() => sendPageAction("inspectModeApply", `Inspect mode ${next}`))
+    void sendPageAction("inspectModeApply", `Inspect mode ${next}`, checked)
   }
 
   return (

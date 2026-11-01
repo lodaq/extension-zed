@@ -8,12 +8,12 @@ import { sendPageAction } from "@/lib/withActiveTab"
 import { useStoredValue } from "@/lib/useStoredValue"
 
 const YoutubeFocusMode = () => {
-  const [focus, setFocus] = useStoredValue("youtubeFocus", false)
-  const [hideProgress, setHideProgress] = useStoredValue("youtubeHideProgress", false)
-  const [hideControls, setHideControls] = useStoredValue("youtubeHideControls", false)
-  const toggleFocus = (next: boolean) => { void setFocus(next).then(() => sendPageAction("youtubeFocus", `Focus mode ${next ? "on" : "off"}`)) }
-  const toggleProgress = (next: boolean) => { void setHideProgress(next).then(() => sendPageAction("hideYoutubeProgressBar", `Progress bar ${next ? "hidden" : "shown"}`)) }
-  const toggleControls = (next: boolean) => { void setHideControls(next).then(() => sendPageAction("hideYoutubeControls", `Controls ${next ? "hidden" : "shown"}`)) }
+  const [focus] = useStoredValue("youtubeFocus", false)
+  const [hideProgress] = useStoredValue("youtubeHideProgress", false)
+  const [hideControls] = useStoredValue("youtubeHideControls", false)
+  const toggleFocus = (next: boolean) => { void sendPageAction("youtubeFocus", `Focus mode ${next ? "on" : "off"}`, next) }
+  const toggleProgress = (next: boolean) => { void sendPageAction("hideYoutubeProgressBar", `Progress bar ${next ? "hidden" : "shown"}`, next) }
+  const toggleControls = (next: boolean) => { void sendPageAction("hideYoutubeControls", `Controls ${next ? "hidden" : "shown"}`, next) }
   return (
     <section className={cn(popupPanel, popupSectionInner)} aria-labelledby="zed-youtube-heading">
       <h2 id="zed-youtube-heading" className={popupSectionTitle}>

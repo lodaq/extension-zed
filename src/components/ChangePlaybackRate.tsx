@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
 import {
@@ -10,68 +9,21 @@ import {
 import { KBD } from "@/lib/shortcuts"
 import {
   PLAYBACK_PRESETS,
-  clampPlayback,
   nearestPreset,
-  presetIndex,
 } from "@/lib/playbackPresets"
 import { cn } from "@/lib/utils"
+import { useStoredValue } from "@/lib/useStoredValue"
+import { sendPageAction } from "@/lib/withActiveTab"
 
 const STORAGE_KEY = "speed"
 
-const applySpeed = (rate: number) => {
-  const s = String(rate)
-  chrome.storage.local.set({ [STORAGE_KEY]: s })
-}
-
 const ChangePlaybackRate = () => {
-  const [speed, setSpeed] = useState(1)
-
-  useEffect(() => {
-    chrome.storage.local.get([STORAGE_KEY]).then((r) => {
-      const n = Number(r[STORAGE_KEY])
-      if (Number.isFinite(n) && n > 0) setSpeed(nearestPreset(clampPlayback(n)))
-    })
-  }, [])
-
-  useEffect(() => {
-    const onChanged: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (
-      changes,
-      area
-    ) => {
-      if (area !== "local" || !changes[STORAGE_KEY]) return
-      const n = Number(changes[STORAGE_KEY].newValue)
-      if (Number.isFinite(n) && n > 0) setSpeed(nearestPreset(clampPlayback(n)))
-    }
-    chrome.storage.onChanged.addListener(onChanged)
-    return () => chrome.storage.onChanged.removeListener(onChanged)
-  }, [])
-
-  const step = useCallback((delta: number) => {
-    setSpeed((prev) => {
-      const i = presetIndex(prev)
-      const next = PLAYBACK_PRESETS[Math.min(PLAYBACK_PRESETS.length - 1, Math.max(0, i + delta))]
-      applySpeed(next)
-      return next
-    })
-  }, [])
-
-  const onSelect = useCallback((value: string) => {
-    const n = Number(value)
-    if (!Number.isFinite(n)) return
-    const next = clampPlayback(n)
-    setSpeed(next)
-    applySpeed(next)
-  }, [])
-
-  const setNormal = useCallback(() => {
-    setSpeed(1)
-    applySpeed(1)
-  }, [])
-
-  const setDouble = useCallback(() => {
-    setSpeed(2)
-    applySpeed(2)
-  }, [])
+  const [storedSpeed] = useStoredValue<string | number>(STORAGE_KEY, "1")
+  const speed = nearestPreset(Number(storedSpeed))
+  const step = (delta: number) => { void sendPageAction(delta < 0 ? "playbackSlower" : "playbackFaster", "Playback speed updated") }
+  const onSelect = (value: string) => { void sendPageAction("playbackRateApply", "Playback speed updated", Number(value)) }
+  const setNormal = () => onSelect("1")
+  const setDouble = () => onSelect("2")
 
   return (
     <section

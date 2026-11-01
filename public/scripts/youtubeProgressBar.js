@@ -1,8 +1,8 @@
 (function () {
   const ID = "zed-youtube-progress-bar";
-  chrome.storage.local.get(["youtubeHideProgress"]).then(({ youtubeHideProgress }) => {
+  return chrome.storage.local.get(["youtubeHideProgress"]).then(({ youtubeHideProgress }) => {
     document.getElementById(ID)?.remove();
-    if (!youtubeHideProgress) return;
+    if (youtubeHideProgress !== true) return;
     const style = document.createElement("style");
     style.id = ID;
     style.textContent = ".ytp-progress-bar-container, .ytp-time-display, .ytp-chapter-container { display: none !important; }";

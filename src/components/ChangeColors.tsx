@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
@@ -11,6 +11,7 @@ import {
 import { KBD } from "@/lib/shortcuts"
 import { sendPageAction } from "@/lib/withActiveTab"
 import { cn } from "@/lib/utils"
+import { isColor } from "@/lib/settings"
 
 const DEFAULT_BG = "#1a1a1a"
 const DEFAULT_FG = "#f5f5f5"
@@ -29,52 +30,37 @@ const ChangeColors = () => {
       setStorageKey(key)
       chrome.storage.local.get([key]).then((r) => {
         const settings = r[key] as { background?: string; text?: string } | undefined
-        if (settings && /^#[\da-f]{6}$/i.test(settings.background ?? "")) setBg(settings.background!)
-        if (settings && /^#[\da-f]{6}$/i.test(settings.text ?? "")) setFg(settings.text!)
+        if (isColor(settings?.background) && settings?.background) setBg(settings.background)
+        if (isColor(settings?.text) && settings?.text) setFg(settings.text)
       })
-    })
+    }).catch(() => setStorageKey(null))
   }, [])
 
-  const updateSettings = useCallback((update: { background?: string; text?: string }) => {
-    if (!storageKey) return Promise.resolve()
-    return chrome.storage.local.get([storageKey]).then((r) =>
-      chrome.storage.local.set({ [storageKey]: { ...(r[storageKey] || {}), ...update } })
-    )
-  }, [storageKey])
-
-  const applyBackground = useCallback((hex: string) => {
+  const applyBackground = (hex: string) => {
     setBg(hex)
-    void updateSettings({ background: hex }).then(() =>
-      sendPageAction("changeBackgroundColor", "Background color applied")
-    )
-  }, [updateSettings])
+    void sendPageAction("changeBackgroundColor", "Background color applied", hex)
+  }
 
-  const applyTextColor = useCallback((hex: string) => {
+  const applyTextColor = (hex: string) => {
     setFg(hex)
-    void updateSettings({ text: hex }).then(() =>
-      sendPageAction("changeColor", "Text color applied")
-    )
-  }, [updateSettings])
+    void sendPageAction("changeColor", "Text color applied", hex)
+  }
 
-  const resetBackgroundDefault = useCallback(() => {
-    void updateSettings({ background: "" }).then(() =>
-      sendPageAction("resetBackgroundOnly", "Background color reset")
-    )
-  }, [updateSettings])
+  const resetBackgroundDefault = () => {
+    setBg(DEFAULT_BG)
+    void sendPageAction("resetBackgroundOnly", "Background color reset")
+  }
 
-  const resetTextDefault = useCallback(() => {
-    void updateSettings({ text: "" }).then(() =>
-      sendPageAction("resetTextColorOnly", "Text color reset")
-    )
-  }, [updateSettings])
+  const resetTextDefault = () => {
+    setFg(DEFAULT_FG)
+    void sendPageAction("resetTextColorOnly", "Text color reset")
+  }
 
-  const resetAll = useCallback(() => {
+  const resetAll = () => {
     setBg(DEFAULT_BG)
     setFg(DEFAULT_FG)
-    void updateSettings({ background: "", text: "" }).then(() =>
-      sendPageAction("resetPageColors", "Page colors reset")
-    )
-  }, [updateSettings])
+    void sendPageAction("resetPageColors", "Page colors reset")
+  }
 
   return (
     <section

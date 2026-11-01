@@ -1,24 +1,6 @@
+import type { PageAction, PageActionRequest, PageActionResult } from "./pageActions"
+export type { PageAction } from "./pageActions"
 export const PAGE_ACTION_FEEDBACK_EVENT = "zed-page-action-feedback"
-
-type PageActionResponse = { ok: boolean; error?: string }
-export type PageAction =
-  | "changeBackgroundColor"
-  | "changeColor"
-  | "resetPageColors"
-  | "inspectModeApply"
-  | "resetBackgroundOnly"
-  | "resetTextColorOnly"
-  | "hideMainScrollBar"
-  | "hideAllScrollBars"
-  | "resetMainScrollBar"
-  | "resetAllScrollBars"
-  | "hideYoutubeProgressBar"
-  | "hideYoutubeControls"
-  | "youtubeFocus"
-  | "volumeBoost"
-  | "designMode"
-  | "arabicRtlMode"
-  | "playbackRateApply"
 
 function report(message: string, tone: "success" | "error") {
   window.dispatchEvent(
@@ -26,13 +8,9 @@ function report(message: string, tone: "success" | "error") {
   )
 }
 
-export async function sendPageAction(event: PageAction, successMessage = "Applied to this page") {
+export async function sendPageAction(event: PageAction, successMessage = "Applied to this page", value?: PageActionRequest["value"]) {
   try {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-    const tabId = tabs[0]?.id
-    if (typeof tabId !== "number") throw new Error("No active tab is available")
-
-    const response = (await chrome.runtime.sendMessage({ event, tabId })) as PageActionResponse
+    const response = (await chrome.runtime.sendMessage({ event, value })) as PageActionResult
     if (!response?.ok) throw new Error(response?.error || "Chrome could not modify this page")
     report(successMessage, "success")
     return true

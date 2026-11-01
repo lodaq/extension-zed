@@ -13,8 +13,7 @@
   }
 
   if (previous?.setGain) {
-    chrome.storage.local.get([STORAGE_KEY]).then((result) => previous.setGain(result[STORAGE_KEY]))
-    return
+    return chrome.storage.local.get([STORAGE_KEY]).then((result) => previous.setGain(result[STORAGE_KEY]))
   }
 
   let currentGain = MIN_GAIN
@@ -65,7 +64,7 @@
     applyGain(changes[STORAGE_KEY].newValue)
   }
 
-  chrome.storage.local.get([STORAGE_KEY]).then((result) => {
+  return chrome.storage.local.get([STORAGE_KEY]).then((result) => {
     currentGain = clampGain(result[STORAGE_KEY])
     applyGain(currentGain * 100)
     observer.observe(document.documentElement, { childList: true, subtree: true })

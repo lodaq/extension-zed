@@ -1,7 +1,7 @@
+import MiscSection from "@/components/MiscSection"
 import { Button } from "@/components/ui/button"
-import { popupControlRow, popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
+import { popupControlRow } from "@/lib/popupLayout"
 import { sendPageAction } from "@/lib/withActiveTab"
-import { cn } from "@/lib/utils"
 import { useStoredValue } from "@/lib/useStoredValue"
 
 const STORAGE_KEY = "volumeBoost"
@@ -23,8 +23,7 @@ export default function VolumeBooster() {
   }
 
   return (
-    <section className={cn(popupPanel, popupSectionInner)} aria-labelledby="zed-volume-heading">
-      <h2 id="zed-volume-heading" className={popupSectionTitle}>Volume boost</h2>
+    <MiscSection title="Volume boost" id="zed-volume-heading">
       <div className="flex items-center justify-between gap-3">
         <label htmlFor="zed-volume-boost" className="text-sm font-medium">Amplification</label>
         <output htmlFor="zed-volume-boost" className="min-w-14 text-right text-sm font-semibold">{boost}%</output>
@@ -48,6 +47,6 @@ export default function VolumeBooster() {
           Reset to 100%
         </Button>
       </div>
-    </section>
+    </MiscSection>
   )
 }

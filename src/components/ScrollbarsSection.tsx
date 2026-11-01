@@ -1,11 +1,9 @@
+import MiscSection from "@/components/MiscSection"
 import { Button } from "@/components/ui/button"
 import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
 import {
   popupControlRow,
   popupDescription,
-  popupPanel,
-  popupSectionInner,
-  popupSectionTitle,
   popupSubhead,
 } from "@/lib/popupLayout"
 import { KBD } from "@/lib/shortcuts"
@@ -14,11 +12,7 @@ import { cn } from "@/lib/utils"
 
 const ScrollbarsSection = () => {
   return (
-    <section className={cn(popupPanel, popupSectionInner)} aria-labelledby="zed-scrollbars-heading">
-      <h2 id="zed-scrollbars-heading" className={popupSectionTitle}>
-        Scrollbars
-      </h2>
-
+    <MiscSection title="Scrollbars" id="zed-scrollbars-heading">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <div>
@@ -74,7 +68,7 @@ const ScrollbarsSection = () => {
           </div>
         </div>
       </div>
-    </section>
+    </MiscSection>
   )
 }
 

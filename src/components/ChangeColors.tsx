@@ -1,13 +1,9 @@
+import MiscSection from "@/components/MiscSection"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
-import {
-  popupControlRow,
-  popupPanel,
-  popupSectionInner,
-  popupSectionTitle,
-} from "@/lib/popupLayout"
+import { popupControlRow } from "@/lib/popupLayout"
 import { KBD } from "@/lib/shortcuts"
 import { sendPageAction } from "@/lib/withActiveTab"
 import { cn } from "@/lib/utils"
@@ -63,14 +59,7 @@ const ChangeColors = () => {
   }
 
   return (
-    <section
-      className={cn(popupPanel, popupSectionInner)}
-      aria-labelledby="zed-colors-heading"
-    >
-      <h2 id="zed-colors-heading" className={popupSectionTitle}>
-        Page colors
-      </h2>
-
+    <MiscSection title="Page colors" id="zed-colors-heading">
       <input
         ref={bgPickerRef}
         type="color"
@@ -150,7 +139,7 @@ const ChangeColors = () => {
           <ShortcutKbd label={KBD.resetPageColors} />
         </Button>
       </div>
-    </section>
+    </MiscSection>
   )
 }
 

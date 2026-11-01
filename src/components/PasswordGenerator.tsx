@@ -1,11 +1,11 @@
+import MiscSection from "@/components/MiscSection"
 import { useState } from "react"
 import { ReloadIcon } from "@radix-ui/react-icons"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
-import { popupDescription, popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
+import { popupDescription } from "@/lib/popupLayout"
 import { generatePassword, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, type PasswordOptions } from "@/lib/passwordGenerator"
-import { cn } from "@/lib/utils"
 
 const DEFAULT_OPTIONS: PasswordOptions = { length: 20, uppercase: true, lowercase: true, numbers: true, symbols: true }
 const CHARACTER_OPTIONS = [
@@ -37,8 +37,7 @@ export default function PasswordGenerator() {
   }
 
   return (
-    <section className={cn(popupPanel, popupSectionInner)} aria-labelledby="zed-password-heading">
-      <h2 id="zed-password-heading" className={popupSectionTitle}>Password generator</h2>
+    <MiscSection title="Password generator" id="zed-password-heading">
       <div className="flex items-center gap-2">
         <input
           aria-label="Generated password"
@@ -95,6 +94,6 @@ export default function PasswordGenerator() {
       </fieldset>
       {error && <p id="zed-password-error" role="alert" className="text-sm text-destructive">{error}</p>}
       <p className={popupDescription}>Generated on your device. Passwords are not saved.</p>
-    </section>
+    </MiscSection>
   )
 }

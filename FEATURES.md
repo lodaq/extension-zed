@@ -14,6 +14,8 @@ Sources: `src/App.tsx`, `src/background.ts`, `src/lib/withActiveTab.ts`.
 
 ## Misc tab
 
+Each section can be expanded or collapsed with its heading using the mouse, Enter, or Space. Sections start expanded; collapsing preserves their controls and values. Expansion state resets when the Misc tab is remounted or the popup reopens.
+
 | Feature | Behavior | Persistence/reset |
 | --- | --- | --- |
 | Password generator | Length 4–128 (default 20); uppercase, lowercase, numbers, and symbols; regenerate and copy | Cryptographic randomness; includes each enabled type. Passwords/options are session-only and excluded from settings backups. Clipboard is changed only on Copy |

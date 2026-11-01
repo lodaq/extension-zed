@@ -11,6 +11,7 @@
 | Page-action module | Background owns validation, saving, targeting, execution, and errors; popup and keyboard share the interface | Caller parity, failures, invalid inputs, missing tabs, color resets, deferred completion tests |
 | Failure semantics | Application failures retain saved preferences and report failure; storage failure stops application; popup and keyboard feedback | Handler tests; browser-specific feedback still needs loaded-extension coverage |
 | Settings-transfer module | Validated version-1 merge, recognized-only export, unknown-key filtering, safe reader defaults | Round trips, partial imports/theme preservation, invalid values/versions, no writes on rejection |
+| Saved-preference loading | Live storage updates take precedence over startup reads; save completion never overwrites live state; cleanup invalidates pending reads | Deferred read success/failure, save ordering/errors, cleanup, validation and reset tests |
 | Injected completion | Async scripts return their storage work; generated CSS rejects malformed colors | Actual-script deferred-storage and CSS tests |
 | RTL application | Reuses existing application function; restores recorded alignment | Source review; real DOM coverage recommended |
 | RTL performance | Batches rendered-text reads before style writes, including mutation batches | Fixture median 141.6 → 28.5 ms; layouts per enable 401 → 1; see [PERF.md](PERF.md) |

@@ -1,21 +1,17 @@
+import MiscSection from "@/components/MiscSection"
 import DesignMode from "@/components/DesignMode"
 import InspectModeToggle from "@/components/InspectModeToggle"
 import ArabicRtlMode from "@/components/ArabicRtlMode"
-import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
-import { cn } from "@/lib/utils"
 
 const ModesSection = () => {
   return (
-    <section className={cn(popupPanel, popupSectionInner)} aria-labelledby="zed-modes-heading">
-      <h2 id="zed-modes-heading" className={popupSectionTitle}>
-        Modes
-      </h2>
+    <MiscSection title="Modes" id="zed-modes-heading">
       <div className="flex flex-col gap-3">
         <InspectModeToggle />
         <DesignMode />
         <ArabicRtlMode />
       </div>
-    </section>
+    </MiscSection>
   )
 }
 

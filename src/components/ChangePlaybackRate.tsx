@@ -1,11 +1,7 @@
+import MiscSection from "@/components/MiscSection"
 import { Button } from "@/components/ui/button"
 import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
-import {
-  popupControlRow,
-  popupPanel,
-  popupSectionInner,
-  popupSectionTitle,
-} from "@/lib/popupLayout"
+import { popupControlRow } from "@/lib/popupLayout"
 import { KBD } from "@/lib/shortcuts"
 import {
   PLAYBACK_PRESETS,
@@ -26,14 +22,7 @@ const ChangePlaybackRate = () => {
   const setDouble = () => onSelect("2")
 
   return (
-    <section
-      className={cn(popupPanel, popupSectionInner)}
-      aria-labelledby="zed-playback-heading"
-    >
-      <h2 id="zed-playback-heading" className={popupSectionTitle}>
-        Playback speed
-      </h2>
-
+    <MiscSection title="Playback speed" id="zed-playback-heading">
       <div className="flex flex-col gap-2">
 
         <div className={cn(popupControlRow, "items-stretch")}>
@@ -94,7 +83,7 @@ const ChangePlaybackRate = () => {
           </Button>
         </div>
       </div>
-    </section>
+    </MiscSection>
   )
 }
 

@@ -1,6 +1,6 @@
 import { PLAYBACK_MAX, PLAYBACK_MIN } from "./playbackPresets"
 
-export const POPUP_TABS = ["misc", "youtube", "shortcuts", "settings"] as const
+export const POPUP_TABS = ["misc", "youtube", "settings"] as const
 export type PopupTab = (typeof POPUP_TABS)[number]
 export const MISC_SECTION_ORDER = ["password", "playback", "volume", "colors", "scrollbars", "modes"] as const
 export type MiscSectionId = (typeof MISC_SECTION_ORDER)[number]

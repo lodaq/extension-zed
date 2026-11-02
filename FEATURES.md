@@ -4,11 +4,10 @@ This inventory describes implemented capabilities. See [RECOMMENDATIONS.md](RECO
 
 ## Popup
 
-- Misc, YouTube, Shortcuts, and Settings tabs; the last selected tab is saved locally.
-- Alt+Q/W/E select Misc/YouTube/Shortcuts while the popup is open.
+- Misc, YouTube, and Settings tabs; the last selected tab is saved locally.
 - Scrollable 400 × 600 layout with saved dark/light appearance; dark is the default.
 - The first HTML frame already contains the tab bar and collapsed Misc section headers at the final 400 × 600 size, so the popup does not show a placeholder or resize while settings load.
-- Page actions show success/error toasts. Keyboard failures show a per-tab `!` badge and error tooltip; a successful action clears them.
+- Page actions show success/error toasts. Action failures show a per-tab `!` badge and error tooltip; a successful action clears them.
 - Saved preferences differ from applied page state. Application failure retains the preference and reports the failure. Storage failure prevents application.
 
 Sources: `src/App.tsx`, `src/background.ts`, `src/lib/withActiveTab.ts`.
@@ -29,9 +28,9 @@ Each section can be expanded or collapsed with its heading using the mouse, Ente
 | All scrollbars | Hide/reset document and nested scrollbars | Separate page-local style; reset both if both were applied |
 | Inspect mode | Hover overlay shows element identity, position, dimensions, box model, colors, layout, and typography | Global preference, applied on command; Escape disables active inspect overlays listening for that change |
 | Design mode | Toggle temporary document editing | Global preference, applied on command. Off stops editing but does not undo edits; reload restores the website document |
-| Arabic RTL mode | Arabic-leading text gets RTL direction/right alignment; observes inserted elements and skips explicit `dir` | Global preference read on HTTP(S) page load. Commands affect the active page; other existing pages read the choice on reload. Disable restores recorded alignment |
+| Arabic RTL mode | Arabic-leading text gets RTL direction/right alignment; observes inserted elements and skips explicit `dir` | Global preference read on HTTP(S) page load. Disable restores recorded alignment |
 
-Speed normalizes before stepping: `1.36` becomes `1.4`, then Faster selects `1.5`. Popup and keyboard use the same policy. Speed targets videos, not audio-only elements.
+Speed normalizes before stepping: `1.36` becomes `1.4`, then Faster selects `1.5`. Speed targets videos, not audio-only elements.
 
 The password generator automatically generates a new password when an option changes. Each enabled character type appears at least once; disabling every type clears the output and disables copying. Lengths must be whole numbers from 4–128. It uses `crypto.getRandomValues` with rejection sampling and a cryptographic shuffle, with no network requests or password storage. Sources: `src/components/PasswordGenerator.tsx`, `src/lib/passwordGenerator.ts`.
 
@@ -45,26 +44,9 @@ Sources: `src/components/MiscTab.tsx`, `src/lib/playbackPresets.ts`, `src/lib/pl
 | Hide progress bar | Hides progress, time, and chapters; toggle off removes its style |
 | Hide controls | Hides bottom controls; toggle off removes its style |
 
-Preferences are global but apply on command to the current page, not automatically after reload. Selectors depend on YouTube's DOM. Exact restoration of existing inline layout values remains a limitation.
+Preferences are global but apply to the current page, not automatically after reload. Selectors depend on YouTube's DOM.
 
 Sources: `src/components/YoutubeFocusMode.tsx`, `public/scripts/youtube*.js`.
-
-## Keyboard commands
-
-| Command | Default |
-| --- | --- |
-| Open popup | Alt+Z |
-| Slower / Faster | Alt+Comma / Alt+Period |
-| Normal speed | Alt+1 |
-| Double speed | Unassigned |
-| YouTube focus / hide progress | Unassigned |
-| Hide main / all scrollbars | Unassigned |
-| Design / inspect mode | Unassigned |
-| Reset page colors | Unassigned |
-
-The Shortcuts tab reads actual Chrome assignments and displays “Not set” when unassigned. Configure keys at `chrome://extensions/shortcuts`. Other popup hints are fixed suggestions, not live assignments. Chrome permits four default bindings including the popup. Volume, RTL, and hiding controls have no command.
-
-Sources: `public/manifest.json`, `src/components/ShortcutsTab.tsx`, `src/lib/pageActions.ts`.
 
 ## Settings transfer
 
@@ -83,4 +65,4 @@ Sources: `src/lib/settings.ts`, `src/components/SettingsTab.tsx`, `src/lib/useSt
 - Chrome internal pages, the Chrome Web Store, and other protected documents generally reject injection.
 - Preferences are local; no account or cloud sync. Exported per-origin colors reveal saved website origins, so backups are personal data.
 - Closed shadow roots and unusual media pipelines may need site-specific support. Reused MediaSource URLs without normal loading events can hide a media-item change.
-- Web Audio amplification can fail for cross-origin or already-connected media and autoplay restrictions. The legacy volume script still swallows some errors. High gain can distort audio.
+- Web Audio amplification can fail for cross-origin or already-connected media and autoplay restrictions. High gain can distort audio.

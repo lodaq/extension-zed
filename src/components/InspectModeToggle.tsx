@@ -1,8 +1,5 @@
-import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { KBD } from "@/lib/shortcuts"
-import { cn } from "@/lib/utils"
 import { sendPageAction } from "@/lib/withActiveTab"
 import { useStoredValue } from "@/lib/useStoredValue"
 
@@ -17,18 +14,12 @@ const InspectModeToggle = () => {
 
   return (
     <div
-      className={cn(
-        shortcutHostClassName,
-        "flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
-      )}
+      className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
       onClick={() => toggle(!on)}
     >
-      <div className="flex flex-col gap-1">
-        <Label className="cursor-pointer text-sm font-medium">
-          Inspect mode
-        </Label>
-        <ShortcutKbd label={KBD.inspect} />
-      </div>
+      <Label className="cursor-pointer text-sm font-medium">
+        Inspect mode
+      </Label>
       <Switch
         id="inspect-mode"
         checked={on}

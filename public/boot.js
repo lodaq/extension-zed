@@ -1,5 +1,5 @@
 (function () {
-  var TABS = ["misc", "youtube", "shortcuts", "settings"]
+  var TABS = ["misc", "youtube", "settings"]
   var SECTIONS = ["password", "playback", "volume", "colors", "scrollbars", "modes"]
   var state = {}
   try {

@@ -1,8 +1,6 @@
-import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
-import { KBD } from "@/lib/shortcuts"
 import { cn } from "@/lib/utils"
 import { sendPageAction } from "@/lib/withActiveTab"
 import { useStoredValue } from "@/lib/useStoredValue"
@@ -21,16 +19,10 @@ const YoutubeFocusMode = () => {
       </h2>
       <div className="flex flex-col gap-1">
         <div
-          className={cn(
-            shortcutHostClassName,
-            "flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
-          )}
+          className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
           onClick={() => toggleFocus(!focus)}
         >
-          <div>
-            <Label className="cursor-pointer text-sm font-medium">Focus mode</Label>
-            <ShortcutKbd label={KBD.youtubeFocus} />
-          </div>
+          <Label className="cursor-pointer text-sm font-medium">Focus mode</Label>
           <Switch
             id="youtube-focus"
             checked={focus}
@@ -40,16 +32,10 @@ const YoutubeFocusMode = () => {
           />
         </div>
         <div
-          className={cn(
-            shortcutHostClassName,
-            "flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
-          )}
+          className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
           onClick={() => toggleProgress(!hideProgress)}
         >
-          <div>
-            <Label className="cursor-pointer text-sm font-medium">Hide progress bar</Label>
-            <ShortcutKbd label={KBD.youtubeProgressBar} />
-          </div>
+          <Label className="cursor-pointer text-sm font-medium">Hide progress bar</Label>
           <Switch
             id="youtube-progress"
             checked={hideProgress}

@@ -2,11 +2,8 @@ import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
 import { popupControlRow } from "@/lib/popupLayout"
-import { KBD } from "@/lib/shortcuts"
 import { sendPageAction } from "@/lib/withActiveTab"
-import { cn } from "@/lib/utils"
 import { isColor } from "@/lib/settings"
 
 const DEFAULT_BG = "#1a1a1a"
@@ -132,11 +129,10 @@ const ChangeColors = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
           type="button"
           size="sm"
           disabled={!storageKey}
-          className={cn(shortcutHostClassName, "min-h-9 w-full")}
+          className="min-h-9 w-full"
           onClick={resetAll}
         >
           Reset all colors
-          <ShortcutKbd label={KBD.resetPageColors} />
         </Button>
       </div>
     </MiscSection>

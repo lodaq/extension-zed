@@ -1,8 +1,6 @@
 import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { Button } from "@/components/ui/button"
-import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
 import { popupControlRow } from "@/lib/popupLayout"
-import { KBD } from "@/lib/shortcuts"
 import {
   PLAYBACK_PRESETS,
   nearestPreset,
@@ -24,17 +22,15 @@ const ChangePlaybackRate = ({ dragHandle, open, onOpenChange }: MiscSectionProps
   return (
     <MiscSection dragHandle={dragHandle} open={open} onOpenChange={onOpenChange} title="Playback speed" id="zed-playback-heading">
       <div className="flex flex-col gap-2">
-
         <div className={cn(popupControlRow, "items-stretch")}>
           <Button
             type="button"
             size="icon"
-            className={cn(shortcutHostClassName, "h-9 w-9 shrink-0")}
+            className="h-9 w-9 shrink-0"
             aria-label="Slower"
             onClick={() => step(-1)}
           >
             <span className="text-base leading-none">−</span>
-            <ShortcutKbd label={KBD.playbackSlower} className="scale-[0.85]" />
           </Button>
           <select
             id="zed-playback-rate"
@@ -51,12 +47,11 @@ const ChangePlaybackRate = ({ dragHandle, open, onOpenChange }: MiscSectionProps
           <Button
             type="button"
             size="icon"
-            className={cn(shortcutHostClassName, "h-9 w-9 shrink-0")}
+            className="h-9 w-9 shrink-0"
             aria-label="Faster"
             onClick={() => step(1)}
           >
             <span className="text-base leading-none">+</span>
-            <ShortcutKbd label={KBD.playbackFaster} className="scale-[0.85]" />
           </Button>
         </div>
 
@@ -64,22 +59,20 @@ const ChangePlaybackRate = ({ dragHandle, open, onOpenChange }: MiscSectionProps
           <Button
             type="button"
             size="sm"
-            className={cn(shortcutHostClassName, "h-9 w-full")}
+            className="h-9 w-full"
             aria-label="Normal speed (1×)"
             onClick={setNormal}
           >
             1× Normal
-            <ShortcutKbd label={KBD.playbackNormal} />
           </Button>
           <Button
             type="button"
             size="sm"
-            className={cn(shortcutHostClassName, "h-9 w-full")}
+            className="h-9 w-full"
             aria-label="Double speed (2×)"
             onClick={setDouble}
           >
             2×
-            <ShortcutKbd label={KBD.playbackDouble} />
           </Button>
         </div>
       </div>

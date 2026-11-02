@@ -35,47 +35,5 @@
       "all_frames": true
     }
   ],
-  "permissions": ["scripting", "activeTab", "storage"],
-  "commands": {
-    "_execute_action": {
-      "suggested_key": { "default": "Alt+Z" },
-      "description": "Open Extension Zed popup"
-    },
-    "zed_playback_slower": {
-      "suggested_key": { "default": "Alt+Comma" },
-      "description": "Video: slower (preset step)"
-    },
-    "zed_playback_faster": {
-      "suggested_key": { "default": "Alt+Period" },
-      "description": "Video: faster (preset step)"
-    },
-    "zed_playback_normal": {
-      "suggested_key": { "default": "Alt+1" },
-      "description": "Video: 1× speed"
-    },
-    "zed_playback_double": {
-      "description": "Video: 2× speed"
-    },
-    "zed_youtube_focus": {
-      "description": "YouTube: focus mode (player only)"
-    },
-    "zed_youtube_progress_bar": {
-      "description": "YouTube: hide progress bar & time"
-    },
-    "zed_scrollbar_main": {
-      "description": "Hide main scrollbar (page)"
-    },
-    "zed_scrollbar_all": {
-      "description": "Hide all scrollbars (page)"
-    },
-    "zed_design_mode": {
-      "description": "Toggle design mode (page)"
-    },
-    "zed_inspect": {
-      "description": "Toggle inspect mode (hover highlight)"
-    },
-    "zed_reset_page_colors": {
-      "description": "Reset page text & background colors"
-    }
-  }
+  "permissions": ["scripting", "activeTab", "storage"]
 }

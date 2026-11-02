@@ -47,7 +47,7 @@
       .zed-boot-tabs {
         box-sizing: border-box;
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 4px;
         flex: none;
         height: 36px;
@@ -79,16 +79,6 @@
       html.dark .zed-boot-tab[data-active] {
         background: oklch(0.15 0.02 269.18);
         color: oklch(0.95 0.01 238.46);
-      }
-      .zed-boot-kbd {
-        position: absolute;
-        right: 4px;
-        top: 4px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        font-size: 8px;
-        font-weight: 500;
-        line-height: 1;
-        opacity: 0.6;
       }
       .zed-boot-body {
         display: flex;
@@ -153,9 +143,8 @@
     <div id="root">
       <div class="zed-boot" aria-hidden="true">
         <div class="zed-boot-tabs" role="presentation">
-          <span class="zed-boot-tab" data-boot-tab="misc">Misc<span class="zed-boot-kbd">Q</span></span>
-          <span class="zed-boot-tab" data-boot-tab="youtube">Youtube<span class="zed-boot-kbd">W</span></span>
-          <span class="zed-boot-tab" data-boot-tab="shortcuts">Shortcuts<span class="zed-boot-kbd">E</span></span>
+          <span class="zed-boot-tab" data-boot-tab="misc">Misc</span>
+          <span class="zed-boot-tab" data-boot-tab="youtube">Youtube</span>
           <span class="zed-boot-tab" data-boot-tab="settings">Settings</span>
         </div>
         <div class="zed-boot-body">

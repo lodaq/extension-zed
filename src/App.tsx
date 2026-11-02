@@ -1,22 +1,19 @@
 import MiscTab from "@/components/MiscTab"
-import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
+import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Toaster } from "@/components/ui/toast"
 import { toast } from "@/components/ui/use-toast"
-import { popupSectionStack } from "@/lib/popupLayout"
-import { KBD } from "@/lib/shortcuts"
-import { cn } from "@/lib/utils"
 import { PAGE_ACTION_FEEDBACK_EVENT } from "@/lib/withActiveTab"
+import { Cross1Icon, ExclamationTriangleIcon } from "@radix-ui/react-icons"
 import { Suspense, lazy, useCallback, useEffect, useState } from "react"
 import { readBootState, updateBootState } from "@/lib/bootCache"
 import { readSetting } from "@/lib/settings"
 
 const YoutubeTab = lazy(() => import("@/components/YoutubeTab"))
-const ShortcutsTab = lazy(() => import("@/components/ShortcutsTab"))
 const SettingsTab = lazy(() => import("@/components/SettingsTab"))
 
 const TAB_KEY = "popupActiveTab"
-const TAB_VALUES = ["misc", "youtube", "shortcuts", "settings"] as const
+const TAB_VALUES = ["misc", "youtube", "settings"] as const
 type TabValue = (typeof TAB_VALUES)[number]
 
 function isTabValue(v: string): v is TabValue {
@@ -28,31 +25,54 @@ const tabPanelClass =
 
 function App() {
   const [tab, setTab] = useState<TabValue>(() => readBootState().tab ?? "misc")
+  const [storageError, setStorageError] = useState<string | null>(null)
 
   const commitTab = useCallback((v: TabValue) => {
     setTab(v)
     updateBootState({ tab: v })
-    void chrome.storage.local.set({ [TAB_KEY]: v })
+    try {
+      void chrome?.storage?.local?.set({ [TAB_KEY]: v })
+    } catch {
+      // storage write failure
+    }
   }, [])
 
-  useEffect(() => {
+  const initStorage = useCallback(() => {
     const applyTheme = (value: unknown) => {
       const darkTheme = readSetting("darkTheme", value, true)
       document.documentElement.classList.toggle("dark", darkTheme)
       updateBootState({ dark: darkTheme })
     }
 
-    chrome.storage.local.get([TAB_KEY, "darkTheme"]).then((r) => {
-      const v = r[TAB_KEY]
-      if (typeof v === "string" && isTabValue(v)) {
-        setTab(v)
-        updateBootState({ tab: v })
+    void Promise.resolve().then(() => {
+      if (typeof chrome === "undefined" || !chrome.storage?.local) {
+        setStorageError("Extension storage is unavailable in this context.")
+        return
       }
-      applyTheme(r.darkTheme)
-      if (r.darkTheme === undefined) void chrome.storage.local.set({ darkTheme: true })
-    }).catch(() => {
-      // Keep the synchronously painted boot theme and tab when storage is unavailable.
+
+      return chrome.storage.local
+        .get([TAB_KEY, "darkTheme"])
+        .then((r) => {
+          setStorageError(null)
+          const v = r[TAB_KEY]
+          if (typeof v === "string" && isTabValue(v)) {
+            setTab(v)
+            updateBootState({ tab: v })
+          }
+          applyTheme(r.darkTheme)
+          if (r.darkTheme === undefined) void chrome.storage.local.set({ darkTheme: true })
+        })
+        .catch((err) => {
+          const msg = err instanceof Error ? err.message : String(err)
+          setStorageError(`Failed to load saved settings: ${msg || "Storage unavailable"}`)
+        })
     })
+  }, [])
+
+  useEffect(() => {
+    initStorage()
+
+    if (typeof chrome === "undefined" || !chrome.storage?.onChanged) return
 
     const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
       if (area !== "local") return
@@ -61,30 +81,15 @@ function App() {
         setTab(nextTab)
         updateBootState({ tab: nextTab })
       }
-      if (changes.darkTheme) applyTheme(changes.darkTheme.newValue)
+      if (changes.darkTheme) {
+        const darkTheme = readSetting("darkTheme", changes.darkTheme.newValue, true)
+        document.documentElement.classList.toggle("dark", darkTheme)
+        updateBootState({ dark: darkTheme })
+      }
     }
     chrome.storage.onChanged.addListener(listener)
     return () => chrome.storage.onChanged.removeListener(listener)
-  }, [])
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!e.altKey || e.ctrlKey || e.metaKey) return
-      const k = e.key.length === 1 ? e.key.toLowerCase() : ""
-      if (k === "q") {
-        e.preventDefault()
-        commitTab("misc")
-      } else if (k === "w") {
-        e.preventDefault()
-        commitTab("youtube")
-      } else if (k === "e") {
-        e.preventDefault()
-        commitTab("shortcuts")
-      }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [commitTab])
+  }, [initStorage])
 
   useEffect(() => {
     const listener = (event: Event) => {
@@ -110,21 +115,48 @@ function App() {
       className="flex h-[600px] w-[400px] flex-col overflow-hidden rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm"
     >
       <div className="sticky top-0 z-10 shrink-0 bg-card pb-1">
-        <TabsList className="grid w-full grid-cols-4 gap-1 overflow-visible">
-          <TabsTrigger value="misc" className={cn(shortcutHostClassName, "px-2 py-2 text-xs")}>
+        <TabsList className="grid w-full grid-cols-3 gap-1 overflow-visible">
+          <TabsTrigger value="misc" className="px-2 py-2 text-xs">
             Misc
-            <ShortcutKbd label={KBD.tabMisc} className="scale-90" />
           </TabsTrigger>
-          <TabsTrigger value="youtube" className={cn(shortcutHostClassName, "px-2 py-2 text-xs")}>
+          <TabsTrigger value="youtube" className="px-2 py-2 text-xs">
             Youtube
-            <ShortcutKbd label={KBD.tabYoutube} className="scale-90" />
           </TabsTrigger>
-          <TabsTrigger value="shortcuts" className={cn(shortcutHostClassName, "px-2 py-2 text-xs")}>
-            Shortcuts
-            <ShortcutKbd label={KBD.tabShortcuts} className="scale-90" />
+          <TabsTrigger value="settings" className="px-2 py-2 text-xs">
+            Settings
           </TabsTrigger>
-          <TabsTrigger value="settings" className="px-2 py-2 text-xs">Settings</TabsTrigger>
         </TabsList>
+
+        {storageError && (
+          <div
+            role="alert"
+            className="mt-1.5 flex items-center justify-between gap-1.5 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-600 dark:text-amber-400"
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{storageError}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 px-1.5 text-[10px]"
+                onClick={() => initStorage()}
+              >
+                Retry
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 px-1 text-[10px] text-muted-foreground hover:text-foreground"
+                onClick={() => setStorageError(null)}
+                aria-label="Dismiss storage warning"
+              >
+                <Cross1Icon className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
       <div className="popup-scrollbar mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
         <TabsContent value="misc" className={tabPanelClass}>
@@ -135,19 +167,10 @@ function App() {
             <YoutubeTab />
           </Suspense>
         </TabsContent>
-        <TabsContent value="shortcuts" className={tabPanelClass}>
-          <div className={cn(popupSectionStack, "px-0.5 pb-3 pt-6")}>
-            <Suspense fallback={null}>
-              <ShortcutsTab />
-            </Suspense>
-          </div>
-        </TabsContent>
         <TabsContent value="settings" className={tabPanelClass}>
-          <div className="px-0.5 pb-1 pt-3">
-            <Suspense fallback={null}>
-              <SettingsTab />
-            </Suspense>
-          </div>
+          <Suspense fallback={null}>
+            <SettingsTab />
+          </Suspense>
         </TabsContent>
       </div>
       <Toaster />

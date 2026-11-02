@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { handlePageAction, requestForCommand } from "./pageActions"
+import { handlePageAction } from "./pageActions"
 
 let values: Record<string, unknown>
 let set: ReturnType<typeof vi.fn>
@@ -10,19 +10,25 @@ beforeEach(() => {
   inject = vi.fn(async () => [{ frameId: 0, result: { ok: true } }])
   vi.stubGlobal("chrome", {
     storage: { local: { get: async () => ({ ...values }), set } },
-    tabs: { query: async () => [{ id: 7 }], get: async () => ({ url: "https://example.com/page" }) },
+    tabs: { query: async () => [{ id: 7 }], get: async () => ({ url: "https://example.com/page" } as unknown as chrome.tabs.Tab) },
     scripting: { executeScript: inject },
   })
 })
 afterEach(() => vi.unstubAllGlobals())
 
 describe("page actions", () => {
-  it("uses the same playback action for popup and keyboard", async () => {
+  it("handles playback faster", async () => {
     expect(await handlePageAction({ event: "playbackFaster" })).toMatchObject({ ok: true })
     expect(values.speed).toBe("1.5")
-    values.speed = "1.36"
-    expect(await handlePageAction(requestForCommand("zed_playback_faster"))).toMatchObject({ ok: true })
-    expect(values.speed).toBe("1.5")
+  })
+
+  it("handles playback slower and direct playback rate apply", async () => {
+    values.speed = "1.5"
+    expect(await handlePageAction({ event: "playbackSlower" })).toMatchObject({ ok: true })
+    expect(values.speed).toBe("1.4")
+
+    expect(await handlePageAction({ event: "playbackRateApply", value: 2 })).toMatchObject({ ok: true })
+    expect(values.speed).toBe("2")
   })
 
   it("does not inject after a storage failure", async () => {
@@ -31,11 +37,17 @@ describe("page actions", () => {
     expect(inject).not.toHaveBeenCalled()
   })
 
-
   it("normalizes Chrome protected URL errors into clean user messages", async () => {
     inject.mockRejectedValue(new Error("Cannot access a chrome:// URL"))
     const result = await handlePageAction({ event: "designMode", value: true })
     expect(result).toMatchObject({ ok: false, saved: true })
+    expect(result.error).toContain("This page is protected by Chrome and cannot be modified.")
+  })
+
+  it("normalizes extension gallery and scripting restriction errors", async () => {
+    inject.mockRejectedValue(new Error("The extensions gallery cannot be scripted"))
+    const result = await handlePageAction({ event: "hideMainScrollBar" })
+    expect(result).toMatchObject({ ok: false })
     expect(result.error).toContain("This page is protected by Chrome and cannot be modified.")
   })
 
@@ -48,7 +60,14 @@ describe("page actions", () => {
   })
 
   it("rejects missing tabs, invalid actions, and invalid values before writing", async () => {
-    for (const request of [{ event: "unknown" }, { event: "designMode", value: "yes" }, { event: "volumeBoost", value: 9999 }, { event: "designMode", tabId: -1 }]) {
+    for (const request of [
+      { event: "unknown" },
+      { event: "designMode", value: "yes" },
+      { event: "volumeBoost", value: 9999 },
+      { event: "volumeBoost", value: 50 },
+      { event: "changeBackgroundColor", value: "not-a-color" },
+      { event: "designMode", tabId: -1 },
+    ]) {
       expect(await handlePageAction(request)).toMatchObject({ ok: false })
     }
     chrome.tabs.query = vi.fn(async () => [])
@@ -56,12 +75,63 @@ describe("page actions", () => {
     expect(set).not.toHaveBeenCalled()
   })
 
-  it("clears stored colors for reset shortcuts and preserves unrelated color settings", async () => {
-    values["pageColors:https://example.com"] = { background: "#000000", text: "#ffffff" }
+  it("applies and resets page colors on valid URLs and blocks non-HTTP pages", async () => {
+    expect(await handlePageAction({ event: "changeBackgroundColor", value: "#123456" })).toMatchObject({ ok: true })
+    expect(values["pageColors:https://example.com"]).toMatchObject({ background: "#123456" })
+
+    expect(await handlePageAction({ event: "changeColor", value: "#abcdef" })).toMatchObject({ ok: true })
+    expect(values["pageColors:https://example.com"]).toEqual({ background: "#123456", text: "#abcdef" })
+
+    await handlePageAction({ event: "resetTextColorOnly" })
+    expect(values["pageColors:https://example.com"]).toEqual({ background: "#123456", text: "" })
+
     await handlePageAction({ event: "resetBackgroundOnly" })
-    expect(values["pageColors:https://example.com"]).toEqual({ background: "", text: "#ffffff" })
-    await handlePageAction(requestForCommand("zed_reset_page_colors"))
     expect(values["pageColors:https://example.com"]).toEqual({ background: "", text: "" })
+
+    // Non-HTTP page
+    chrome.tabs.get = vi.fn(async () => ({ url: "chrome://extensions" } as unknown as chrome.tabs.Tab))
+    const nonHttpResult = await handlePageAction({ event: "changeBackgroundColor", value: "#111111" })
+    expect(nonHttpResult.ok).toBe(false)
+    expect(nonHttpResult.error).toContain("Page colors require an HTTP or HTTPS page")
+  })
+
+  it("handles scrollbar toggle and reset actions", async () => {
+    expect(await handlePageAction({ event: "hideMainScrollBar" })).toMatchObject({ ok: true })
+    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/hideMainScrollBar.js"] }))
+
+    expect(await handlePageAction({ event: "resetMainScrollBar" })).toMatchObject({ ok: true })
+    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/resetMainScrollBar.js"] }))
+
+    expect(await handlePageAction({ event: "hideAllScrollBars" })).toMatchObject({ ok: true })
+    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/hideAllScrollBars.js"] }))
+
+    expect(await handlePageAction({ event: "resetAllScrollBars" })).toMatchObject({ ok: true })
+    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/resetAllScrollBars.js"] }))
+  })
+
+  it("handles YouTube focus mode toggle and boolean options", async () => {
+    expect(await handlePageAction({ event: "youtubeFocus", value: true })).toMatchObject({ ok: true })
+    expect(values.youtubeFocus).toBe(true)
+
+    expect(await handlePageAction({ event: "youtubeFocus", value: false })).toMatchObject({ ok: true })
+    expect(values.youtubeFocus).toBe(false)
+
+    expect(await handlePageAction({ event: "hideYoutubeProgressBar", value: true })).toMatchObject({ ok: true })
+    expect(values.youtubeHideProgress).toBe(true)
+
+    expect(await handlePageAction({ event: "hideYoutubeControls", value: true })).toMatchObject({ ok: true })
+    expect(values.youtubeHideControls).toBe(true)
+  })
+
+  it("handles modes toggle and volume boost apply", async () => {
+    expect(await handlePageAction({ event: "arabicRtlMode", value: true })).toMatchObject({ ok: true })
+    expect(values.arabicRtlMode).toBe("on")
+
+    expect(await handlePageAction({ event: "arabicRtlMode", value: false })).toMatchObject({ ok: true })
+    expect(values.arabicRtlMode).toBe("off")
+
+    expect(await handlePageAction({ event: "volumeBoost", value: 300 })).toMatchObject({ ok: true })
+    expect(values.volumeBoost).toBe(300)
   })
 
   it("awaits injected work before reporting success", async () => {

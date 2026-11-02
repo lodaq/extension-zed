@@ -36,4 +36,206 @@ describe("injected script completion", () => {
     expect(createElement).not.toHaveBeenCalled()
     expect(remove).toHaveBeenCalled()
   })
+
+  it("applies valid hex colors to pageColors style and removes when reset", async () => {
+    let styleText = ""
+    const appendChild = vi.fn((node: { textContent: string }) => { styleText = node.textContent })
+    const remove = vi.fn()
+    const fakeHead = { appendChild }
+
+    // Apply colors
+    await runInNewContext(script("applyPageColors"), {
+      chrome: { storage: { local: { get: async () => ({ "pageColors:https://example.com": { background: "#112233", text: "#445566" } }) } } },
+      location: { origin: "https://example.com" },
+      document: {
+        getElementById: () => null,
+        createElement: (tag: string) => ({ id: "", textContent: "", tag }),
+        head: fakeHead,
+      },
+    })
+    expect(appendChild).toHaveBeenCalled()
+    expect(styleText).toContain("background-color: #112233")
+    expect(styleText).toContain("color: #445566")
+
+    // Reset colors (both empty) removes style element
+    await runInNewContext(script("applyPageColors"), {
+      chrome: { storage: { local: { get: async () => ({ "pageColors:https://example.com": { background: "", text: "" } }) } } },
+      location: { origin: "https://example.com" },
+      document: {
+        getElementById: () => ({ remove }),
+        createElement: () => ({ id: "" }),
+      },
+    })
+    expect(remove).toHaveBeenCalled()
+  })
+
+  it("injects and resets main and all scrollbar style elements", () => {
+    const mainCreated: { id?: string }[] = []
+    const allCreated: { id?: string }[] = []
+    const mainRemove = vi.fn()
+    const allRemove = vi.fn()
+
+    // Hide main scrollbar
+    runInNewContext(script("hideMainScrollBar"), {
+      document: {
+        getElementById: () => null,
+        createElement: () => { const el = { id: "", appendChild: () => {} }; mainCreated.push(el); return el },
+        createTextNode: (t: string) => t,
+        head: { appendChild: () => {} },
+      },
+    })
+    expect(mainCreated[0]?.id).toBe("zed-hide-main-scrollbar")
+
+    // Reset main scrollbar
+    runInNewContext(script("resetMainScrollBar"), {
+      document: { getElementById: (id: string) => (id === "zed-hide-main-scrollbar" ? { remove: mainRemove } : null) },
+    })
+    expect(mainRemove).toHaveBeenCalled()
+
+    // Hide all scrollbars
+    runInNewContext(script("hideAllScrollBars"), {
+      document: {
+        getElementById: () => null,
+        createElement: () => { const el = { id: "", appendChild: () => {} }; allCreated.push(el); return el },
+        createTextNode: (t: string) => t,
+        head: { appendChild: () => {} },
+      },
+    })
+    expect(allCreated[0]?.id).toBe("zed-hide-all-scrollbars")
+
+    // Reset all scrollbars
+    runInNewContext(script("resetAllScrollBars"), {
+      document: { getElementById: (id: string) => (id === "zed-hide-all-scrollbars" ? { remove: allRemove } : null) },
+    })
+    expect(allRemove).toHaveBeenCalled()
+  })
+
+  it("applies and resets YouTube progress bar and controls styles", async () => {
+    let progressStyle = ""
+    const progressAppend = vi.fn((node: { textContent: string }) => { progressStyle = node.textContent })
+    const progressRemove = vi.fn()
+
+    // Enable progress bar hide
+    await runInNewContext(script("youtubeProgressBar"), {
+      chrome: { storage: { local: { get: async () => ({ youtubeHideProgress: true }) } } },
+      document: {
+        getElementById: () => null,
+        createElement: () => ({ id: "", textContent: "" }),
+        head: { appendChild: progressAppend },
+      },
+    })
+    expect(progressStyle).toContain(".ytp-progress-bar-container")
+
+    // Disable progress bar hide
+    await runInNewContext(script("youtubeProgressBar"), {
+      chrome: { storage: { local: { get: async () => ({ youtubeHideProgress: false }) } } },
+      document: {
+        getElementById: () => ({ remove: progressRemove }),
+        createElement: () => ({ id: "" }),
+      },
+    })
+    expect(progressRemove).toHaveBeenCalled()
+
+    // YouTube controls
+    let controlsStyle = ""
+    const controlsAppend = vi.fn((node: { textContent: string }) => { controlsStyle = node.textContent })
+    const controlsRemove = vi.fn()
+
+    await runInNewContext(script("youtubeControls"), {
+      chrome: { storage: { local: { get: async () => ({ youtubeHideControls: true }) } } },
+      document: {
+        getElementById: () => null,
+        createElement: () => ({ id: "", textContent: "" }),
+        head: { appendChild: controlsAppend },
+      },
+    })
+    expect(controlsStyle).toContain(".ytp-chrome-bottom")
+
+    await runInNewContext(script("youtubeControls"), {
+      chrome: { storage: { local: { get: async () => ({ youtubeHideControls: false }) } } },
+      document: {
+        getElementById: () => ({ remove: controlsRemove }),
+        createElement: () => ({ id: "" }),
+      },
+    })
+    expect(controlsRemove).toHaveBeenCalled()
+  })
+
+  it("reversibly applies and resets youtubeFocusMode without mutating element inline styles", () => {
+    const attributes = new Map<string, string>()
+    const classList = new Set<string>()
+    let baseStyleAdded = false
+    let baseStyleRemoved = false
+
+    const anchor = {
+      setAttribute: (k: string, v: string) => attributes.set(k, v),
+      removeAttribute: (k: string) => attributes.delete(k),
+      hasAttribute: (k: string) => attributes.has(k),
+      parentElement: null,
+      style: {
+        setProperty: vi.fn(),
+        removeProperty: vi.fn(),
+      },
+    }
+
+    const doc = {
+      documentElement: {
+        classList: {
+          add: (c: string) => classList.add(c),
+          remove: (c: string) => classList.delete(c),
+        },
+      },
+      head: {
+        appendChild: () => { baseStyleAdded = true },
+      },
+      getElementById: (id: string) => (id === "extension-zed-yt-focus-base" ? { remove: () => { baseStyleRemoved = true } } : null),
+      querySelector: (sel: string) => (sel.includes("player") ? anchor : null),
+      querySelectorAll: () => [],
+      createElement: () => ({ id: "", textContent: "" }),
+      addEventListener: () => {},
+    }
+
+    const win: Record<string, unknown> = {
+      __zedYoutubeFocusEnabled: true,
+      addEventListener: () => {},
+      dispatchEvent: () => {},
+    }
+
+    // Apply Focus Mode
+    runInNewContext(script("youtubeFocusMode"), {
+      location: { hostname: "www.youtube.com" },
+      document: doc,
+      window: win,
+      requestAnimationFrame: (fn: () => void) => fn(),
+      setTimeout: (fn: () => void) => fn(),
+      Event: class {},
+      AbortController: class { abort() {} },
+    })
+
+    expect(baseStyleAdded).toBe(true)
+    expect(classList.has("extension-zed-yt-focus-lock")).toBe(true)
+    expect(attributes.get("data-zed-focus-anchor")).toBe("1")
+    // Assert zero inline style mutations occurred!
+    expect(anchor.style.setProperty).not.toHaveBeenCalled()
+
+    // Disable / Reset Focus Mode
+    win.__zedYoutubeFocusEnabled = false
+    runInNewContext(script("youtubeFocusMode"), {
+      location: { hostname: "www.youtube.com" },
+      document: {
+        ...doc,
+        querySelector: (sel: string) => (sel.includes("anchor") ? anchor : null),
+      },
+      window: win,
+      requestAnimationFrame: (fn: () => void) => fn(),
+      setTimeout: (fn: () => void) => fn(),
+      Event: class {},
+      AbortController: class { abort() {} },
+    })
+
+    expect(baseStyleRemoved).toBe(true)
+    expect(classList.has("extension-zed-yt-focus-lock")).toBe(false)
+    expect(attributes.has("data-zed-focus-anchor")).toBe(false)
+    expect(anchor.style.removeProperty).not.toHaveBeenCalled()
+  })
 })

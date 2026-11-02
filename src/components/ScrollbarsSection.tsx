@@ -1,14 +1,11 @@
 import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { Button } from "@/components/ui/button"
-import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
 import {
   popupControlRow,
   popupDescription,
   popupSubhead,
 } from "@/lib/popupLayout"
-import { KBD } from "@/lib/shortcuts"
 import { sendPageAction } from "@/lib/withActiveTab"
-import { cn } from "@/lib/utils"
 
 const ScrollbarsSection = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
   return (
@@ -23,11 +20,10 @@ const ScrollbarsSection = ({ dragHandle, open, onOpenChange }: MiscSectionProps)
             <Button
               type="button"
               size="sm"
-              className={cn(shortcutHostClassName, "min-h-10 flex-1 sm:flex-none")}
+              className="min-h-10 flex-1 sm:flex-none"
               onClick={() => void sendPageAction("hideMainScrollBar", "Main scrollbar hidden")}
             >
               Hide
-              <ShortcutKbd label={KBD.hideMainScrollbar} />
             </Button>
             <Button
               type="button"
@@ -50,11 +46,10 @@ const ScrollbarsSection = ({ dragHandle, open, onOpenChange }: MiscSectionProps)
               <Button
                 type="button"
                 size="sm"
-                className={cn(shortcutHostClassName, "min-h-10 flex-1 sm:flex-none")}
+                className="min-h-10 flex-1 sm:flex-none"
                 onClick={() => void sendPageAction("hideAllScrollBars", "All scrollbars hidden")}
               >
                 Hide
-                <ShortcutKbd label={KBD.hideAllScrollbars} />
               </Button>
               <Button
                 type="button"

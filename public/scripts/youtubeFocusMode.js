@@ -13,11 +13,9 @@
     document.getElementById("extension-zed-yt-focus-base")?.remove();
     document.querySelectorAll("[data-zed-focus-hidden]").forEach((node) => {
       node.removeAttribute("data-zed-focus-hidden");
-      node.style.removeProperty("display");
     });
     const anchor = document.querySelector("[data-zed-focus-anchor]");
     if (anchor) {
-      ["position", "inset", "z-index", "background", "width", "height", "max-width", "margin", "box-sizing"].forEach((p) => anchor.style.removeProperty(p));
       anchor.removeAttribute("data-zed-focus-anchor");
       anchor.removeAttribute("data-zed-focus-fs-suspended");
     }
@@ -59,36 +57,28 @@
     }
     body::-webkit-scrollbar { display: none; }
     body { scrollbar-width: none; }
+    [data-zed-focus-hidden="1"] {
+      display: none !important;
+    }
+    [data-zed-focus-anchor="1"]:not([data-zed-focus-fs-suspended="1"]) {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 2147483646 !important;
+      background: #000 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      margin: 0 !important;
+      box-sizing: border-box !important;
+    }
   `;
-  document.head.appendChild(base);
-
-  const ANCHOR_PROPS = [
-    "position",
-    "inset",
-    "z-index",
-    "background",
-    "width",
-    "height",
-    "max-width",
-    "margin",
-    "box-sizing",
-  ];
+  (document.head || document.documentElement).appendChild(base);
 
   function applyAnchorChrome() {
-    anchor.style.setProperty("position", "fixed", "important");
-    anchor.style.setProperty("inset", "0", "important");
-    anchor.style.setProperty("z-index", "2147483646", "important");
-    anchor.style.setProperty("background", "#000", "important");
-    anchor.style.setProperty("width", "100vw", "important");
-    anchor.style.setProperty("height", "100vh", "important");
-    anchor.style.setProperty("max-width", "none", "important");
-    anchor.style.setProperty("margin", "0", "important");
-    anchor.style.setProperty("box-sizing", "border-box", "important");
     anchor.removeAttribute("data-zed-focus-fs-suspended");
   }
 
   function clearAnchorChrome() {
-    ANCHOR_PROPS.forEach((p) => anchor.style.removeProperty(p));
     anchor.setAttribute("data-zed-focus-fs-suspended", "1");
   }
 
@@ -123,7 +113,6 @@
       if (child !== el) {
         if (!child.hasAttribute("data-zed-focus-hidden")) {
           child.setAttribute("data-zed-focus-hidden", "1");
-          child.style.setProperty("display", "none", "important");
         }
       }
     }

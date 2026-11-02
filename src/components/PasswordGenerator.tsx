@@ -1,4 +1,4 @@
-import MiscSection from "@/components/MiscSection"
+import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { useState } from "react"
 import { ReloadIcon } from "@radix-ui/react-icons"
 import { Button } from "@/components/ui/button"
@@ -23,7 +23,7 @@ function generate(options: PasswordOptions) {
   }
 }
 
-export default function PasswordGenerator() {
+export default function PasswordGenerator({ dragHandle, open, onOpenChange }: MiscSectionProps) {
   const [{ options, password, error }, setState] = useState(() => generate(DEFAULT_OPTIONS))
   const update = (patch: Partial<PasswordOptions>) => setState(generate({ ...options, ...patch }))
 
@@ -37,7 +37,7 @@ export default function PasswordGenerator() {
   }
 
   return (
-    <MiscSection title="Password generator" id="zed-password-heading">
+    <MiscSection dragHandle={dragHandle} open={open} onOpenChange={onOpenChange} title="Password generator" id="zed-password-heading">
       <div className="flex items-center gap-2">
         <input
           aria-label="Generated password"

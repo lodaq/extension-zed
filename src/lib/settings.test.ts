@@ -11,6 +11,44 @@ function storage(initial: Record<string, unknown>) {
 }
 
 describe("settings transfer", () => {
+  it("preserves section order in backups and partial imports", async () => {
+    const order = ["modes", "password", "playback", "volume", "colors", "scrollbars"]
+    storage({ miscSectionOrder: order })
+    expect((await exportSettings()).settings.miscSectionOrder).toEqual(order)
+    await importSettings({ version: 1, settings: { miscSectionOrder: order } })
+    expect(readSetting("miscSectionOrder", order, [])).toEqual(order)
+  })
+
+  it("preserves expanded sections in backups and partial imports", async () => {
+    const expanded = ["modes", "playback"]
+    storage({ miscExpandedSections: expanded })
+    expect((await exportSettings()).settings.miscExpandedSections).toEqual(expanded)
+    await importSettings({ version: 1, settings: { miscExpandedSections: expanded } })
+    expect(readSetting("miscExpandedSections", expanded, [])).toEqual(expanded)
+  })
+
+  it.each([
+    null,
+    "password",
+    [],
+    ["password", "playback", "volume", "colors", "scrollbars", "password"],
+    ["password", "playback", "volume", "colors", "scrollbars", "unknown"],
+  ].map(order => ({ order })))("rejects invalid section orders before writing: %j", async ({ order }) => {
+    const p = storage({ darkTheme: true })
+    await expect(importSettings({ version: 1, settings: { miscSectionOrder: order } })).rejects.toThrow("Invalid setting")
+    expect(p.set).not.toHaveBeenCalled()
+    expect(readSetting("miscSectionOrder", order, ["fallback"])).toEqual(["fallback"])
+  })
+
+  it.each([
+    null,
+    "password",
+    ["password", "password"],
+    ["unknown"],
+  ])("rejects invalid expanded sections: %j", (expanded) => {
+    expect(readSetting("miscExpandedSections", expanded, ["fallback"])).toEqual(["fallback"])
+  })
+
   it("round-trips recognized settings without exporting unrelated keys", async () => {
     const p = storage({ speed: "1.36", darkTheme: true, inspectMode: "off", "pageColors:https://example.com": { text: "#aabbcc", background: "" }, unused: 42 })
     const backup = await exportSettings()

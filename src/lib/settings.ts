@@ -2,6 +2,8 @@ import { PLAYBACK_MAX, PLAYBACK_MIN } from "./playbackPresets"
 
 export const POPUP_TABS = ["misc", "youtube", "shortcuts", "settings"] as const
 export type PopupTab = (typeof POPUP_TABS)[number]
+export const MISC_SECTION_ORDER = ["password", "playback", "volume", "colors", "scrollbars", "modes"] as const
+export type MiscSectionId = (typeof MISC_SECTION_ORDER)[number]
 export const isColor = (value: unknown): value is string =>
   typeof value === "string" && (value === "" || /^#[\da-f]{6}$/i.test(value))
 
@@ -21,6 +23,10 @@ const validators: Record<string, (value: unknown) => boolean> = {
   designMode: isMode,
   arabicRtlMode: isMode,
   popupActiveTab: (value) => POPUP_TABS.some((tab) => tab === value),
+  miscSectionOrder: (value) => Array.isArray(value) && value.length === MISC_SECTION_ORDER.length &&
+    new Set(value).size === value.length && MISC_SECTION_ORDER.every(id => value.includes(id)),
+  miscExpandedSections: (value) => Array.isArray(value) && new Set(value).size === value.length &&
+    value.every(id => MISC_SECTION_ORDER.some(validId => validId === id)),
 }
 
 function validateColors(key: string, value: unknown) {

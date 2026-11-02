@@ -1,4 +1,4 @@
-import MiscSection from "@/components/MiscSection"
+import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { Button } from "@/components/ui/button"
 import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
 import {
@@ -10,9 +10,9 @@ import { KBD } from "@/lib/shortcuts"
 import { sendPageAction } from "@/lib/withActiveTab"
 import { cn } from "@/lib/utils"
 
-const ScrollbarsSection = () => {
+const ScrollbarsSection = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
   return (
-    <MiscSection title="Scrollbars" id="zed-scrollbars-heading">
+    <MiscSection dragHandle={dragHandle} open={open} onOpenChange={onOpenChange} title="Scrollbars" id="zed-scrollbars-heading">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <div>

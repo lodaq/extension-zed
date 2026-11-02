@@ -1,4 +1,4 @@
-import MiscSection from "@/components/MiscSection"
+import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { Button } from "@/components/ui/button"
 import { popupControlRow } from "@/lib/popupLayout"
 import { sendPageAction } from "@/lib/withActiveTab"
@@ -13,7 +13,7 @@ function clampBoost(value: number) {
   return Math.min(MAX_BOOST, Math.max(MIN_BOOST, Math.round(value)))
 }
 
-export default function VolumeBooster() {
+export default function VolumeBooster({ dragHandle, open, onOpenChange }: MiscSectionProps) {
   const [storedBoost] = useStoredValue(STORAGE_KEY, MIN_BOOST)
   const boost = clampBoost(Number(storedBoost))
 
@@ -23,7 +23,7 @@ export default function VolumeBooster() {
   }
 
   return (
-    <MiscSection title="Volume boost" id="zed-volume-heading">
+    <MiscSection dragHandle={dragHandle} open={open} onOpenChange={onOpenChange} title="Volume boost" id="zed-volume-heading">
       <div className="flex items-center justify-between gap-3">
         <label htmlFor="zed-volume-boost" className="text-sm font-medium">Amplification</label>
         <output htmlFor="zed-volume-boost" className="min-w-14 text-right text-sm font-semibold">{boost}%</output>

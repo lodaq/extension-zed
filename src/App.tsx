@@ -1,17 +1,19 @@
 import MiscTab from "@/components/MiscTab"
-import SettingsTab from "@/components/SettingsTab"
 import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
-import ShortcutsTab from "@/components/ShortcutsTab"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Toaster } from "@/components/ui/toast"
 import { toast } from "@/components/ui/use-toast"
-import YoutubeTab from "@/components/YoutubeTab"
 import { popupSectionStack } from "@/lib/popupLayout"
 import { KBD } from "@/lib/shortcuts"
 import { cn } from "@/lib/utils"
 import { PAGE_ACTION_FEEDBACK_EVENT } from "@/lib/withActiveTab"
-import { useCallback, useEffect, useState } from "react"
+import { Suspense, lazy, useCallback, useEffect, useState } from "react"
+import { readBootState, updateBootState } from "@/lib/bootCache"
 import { readSetting } from "@/lib/settings"
+
+const YoutubeTab = lazy(() => import("@/components/YoutubeTab"))
+const ShortcutsTab = lazy(() => import("@/components/ShortcutsTab"))
+const SettingsTab = lazy(() => import("@/components/SettingsTab"))
 
 const TAB_KEY = "popupActiveTab"
 const TAB_VALUES = ["misc", "youtube", "shortcuts", "settings"] as const
@@ -25,23 +27,44 @@ const tabPanelClass =
   "col-start-1 row-start-1 mt-0 overflow-visible outline-none data-[state=inactive]:pointer-events-none data-[state=inactive]:invisible data-[state=active]:relative data-[state=active]:z-[1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 
 function App() {
-  const [tab, setTab] = useState<TabValue>("misc")
-  const [ready, setReady] = useState(false)
+  const [tab, setTab] = useState<TabValue>(() => readBootState().tab ?? "misc")
 
   const commitTab = useCallback((v: TabValue) => {
     setTab(v)
+    updateBootState({ tab: v })
     void chrome.storage.local.set({ [TAB_KEY]: v })
   }, [])
 
   useEffect(() => {
+    const applyTheme = (value: unknown) => {
+      const darkTheme = readSetting("darkTheme", value, true)
+      document.documentElement.classList.toggle("dark", darkTheme)
+      updateBootState({ dark: darkTheme })
+    }
+
     chrome.storage.local.get([TAB_KEY, "darkTheme"]).then((r) => {
       const v = r[TAB_KEY]
-      if (typeof v === "string" && isTabValue(v)) setTab(v)
-      const darkTheme = readSetting("darkTheme", r.darkTheme, true)
-      document.documentElement.classList.toggle("dark", darkTheme)
+      if (typeof v === "string" && isTabValue(v)) {
+        setTab(v)
+        updateBootState({ tab: v })
+      }
+      applyTheme(r.darkTheme)
       if (r.darkTheme === undefined) void chrome.storage.local.set({ darkTheme: true })
-      setReady(true)
-    }).catch(() => setReady(true))
+    }).catch(() => {
+      // Keep the synchronously painted boot theme and tab when storage is unavailable.
+    })
+
+    const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
+      if (area !== "local") return
+      const nextTab = changes[TAB_KEY]?.newValue
+      if (typeof nextTab === "string" && isTabValue(nextTab)) {
+        setTab(nextTab)
+        updateBootState({ tab: nextTab })
+      }
+      if (changes.darkTheme) applyTheme(changes.darkTheme.newValue)
+    }
+    chrome.storage.onChanged.addListener(listener)
+    return () => chrome.storage.onChanged.removeListener(listener)
   }, [])
 
   useEffect(() => {
@@ -77,14 +100,6 @@ function App() {
     return () => window.removeEventListener(PAGE_ACTION_FEEDBACK_EVENT, listener)
   }, [])
 
-  if (!ready) {
-    return (
-      <div className="w-[400px] rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-        …
-      </div>
-    )
-  }
-
   return (
     <Tabs
       value={tab}
@@ -111,19 +126,29 @@ function App() {
           <TabsTrigger value="settings" className="px-2 py-2 text-xs">Settings</TabsTrigger>
         </TabsList>
       </div>
-      <div className="mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+      <div className="popup-scrollbar mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
         <TabsContent value="misc" className={tabPanelClass}>
           <MiscTab />
         </TabsContent>
         <TabsContent value="youtube" className={tabPanelClass}>
-          <YoutubeTab />
+          <Suspense fallback={null}>
+            <YoutubeTab />
+          </Suspense>
         </TabsContent>
         <TabsContent value="shortcuts" className={tabPanelClass}>
           <div className={cn(popupSectionStack, "px-0.5 pb-3 pt-6")}>
-            <ShortcutsTab />
+            <Suspense fallback={null}>
+              <ShortcutsTab />
+            </Suspense>
           </div>
         </TabsContent>
-        <TabsContent value="settings" className={tabPanelClass}><div className="px-0.5 pb-1 pt-3"><SettingsTab /></div></TabsContent>
+        <TabsContent value="settings" className={tabPanelClass}>
+          <div className="px-0.5 pb-1 pt-3">
+            <Suspense fallback={null}>
+              <SettingsTab />
+            </Suspense>
+          </div>
+        </TabsContent>
       </div>
       <Toaster />
     </Tabs>

@@ -1,4 +1,4 @@
-import MiscSection from "@/components/MiscSection"
+import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { Button } from "@/components/ui/button"
 import { ShortcutKbd, shortcutHostClassName } from "@/components/ShortcutKbd"
 import { popupControlRow } from "@/lib/popupLayout"
@@ -13,7 +13,7 @@ import { sendPageAction } from "@/lib/withActiveTab"
 
 const STORAGE_KEY = "speed"
 
-const ChangePlaybackRate = () => {
+const ChangePlaybackRate = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
   const [storedSpeed] = useStoredValue<string | number>(STORAGE_KEY, "1")
   const speed = nearestPreset(Number(storedSpeed))
   const step = (delta: number) => { void sendPageAction(delta < 0 ? "playbackSlower" : "playbackFaster", "Playback speed updated") }
@@ -22,7 +22,7 @@ const ChangePlaybackRate = () => {
   const setDouble = () => onSelect("2")
 
   return (
-    <MiscSection title="Playback speed" id="zed-playback-heading">
+    <MiscSection dragHandle={dragHandle} open={open} onOpenChange={onOpenChange} title="Playback speed" id="zed-playback-heading">
       <div className="flex flex-col gap-2">
 
         <div className={cn(popupControlRow, "items-stretch")}>

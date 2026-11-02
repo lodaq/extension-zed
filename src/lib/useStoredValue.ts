@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { mirrorBootValue } from "./bootCache"
 import { readSetting } from "./settings"
 
 export function useStoredValue<T>(key: string, initialValue: T) {
@@ -9,12 +10,18 @@ export function useStoredValue<T>(key: string, initialValue: T) {
     const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
       if (area === "local" && changes[key]) {
         acceptInitialRead = false
-        setValue(readSetting(key, changes[key].newValue, initialValue))
+        const next = readSetting(key, changes[key].newValue, initialValue)
+        mirrorBootValue(key, next)
+        setValue(next)
       }
     }
     chrome.storage.onChanged.addListener(listener)
     chrome.storage.local.get([key]).then((result) => {
-      if (acceptInitialRead) setValue(readSetting(key, result[key], initialValue))
+      if (acceptInitialRead) {
+        const next = readSetting(key, result[key], initialValue)
+        mirrorBootValue(key, next)
+        setValue(next)
+      }
     }).catch(() => {
       if (acceptInitialRead) setValue(initialValue)
     })
@@ -25,6 +32,7 @@ export function useStoredValue<T>(key: string, initialValue: T) {
   }, [initialValue, key])
 
   const setStoredValue = (next: T) => {
+    mirrorBootValue(key, next)
     return chrome.storage.local.set({ [key]: next })
   }
 

@@ -1,4 +1,4 @@
-import MiscSection from "@/components/MiscSection"
+import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -12,7 +12,7 @@ import { isColor } from "@/lib/settings"
 const DEFAULT_BG = "#1a1a1a"
 const DEFAULT_FG = "#f5f5f5"
 
-const ChangeColors = () => {
+const ChangeColors = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
   const bgPickerRef = useRef<HTMLInputElement>(null)
   const textPickerRef = useRef<HTMLInputElement>(null)
   const [bg, setBg] = useState(DEFAULT_BG)
@@ -59,7 +59,7 @@ const ChangeColors = () => {
   }
 
   return (
-    <MiscSection title="Page colors" id="zed-colors-heading">
+    <MiscSection dragHandle={dragHandle} open={open} onOpenChange={onOpenChange} title="Page colors" id="zed-colors-heading">
       <input
         ref={bgPickerRef}
         type="color"

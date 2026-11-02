@@ -26,11 +26,11 @@ Work through these groups in order. A task should move to Done only after implem
 
 | Status | Task |
 |---|---|
-| [ ] | Fix and verify Design Mode on normal pages, single-page apps, hostile pages, and restricted Chrome pages. |
+| [x] | Fix and verify Design Mode on normal pages, single-page apps, hostile pages, and restricted Chrome pages. |
 | [ ] | Add regression checks for every injected action: apply, toggle, reset, and failure feedback. |
 | [ ] | Make every injected visual change fully reversible using Zed-owned classes or style elements. |
 | [ ] | Handle popup startup/storage failures with clear fallback UI instead of silent failure. |
-| [ ] | Verify settings import with malformed, older, and partially populated JSON files. |
+| [x] | Verify settings import with malformed, older, and partially populated JSON files. |
 
 ### P1: Security And Permissions
 
@@ -49,7 +49,7 @@ Work through these groups in order. A task should move to Done only after implem
 | [ ] | Choose npm or pnpm as the single package manager and keep only its lockfile. |
 | [x] | Keep `pnpm lint` passing with zero warnings. |
 | [x] | Keep `pnpm build` passing before loading `dist/` into Chrome. |
-| [ ] | Add focused unit tests for playback presets, storage helpers, and import/export validation. |
+| [x] | Add focused unit tests for playback presets, storage helpers, and import/export validation. |
 | [ ] | Add a documented manual injection smoke-test checklist. |
 | [ ] | Remove or merge the unused legacy `src/index.css`. |
 | [ ] | Add a short contributor guide for adding a popup action, injected script, and command. |

@@ -7,6 +7,7 @@ This inventory describes implemented capabilities. See [RECOMMENDATIONS.md](RECO
 - Misc, YouTube, Shortcuts, and Settings tabs; the last selected tab is saved locally.
 - Alt+Q/W/E select Misc/YouTube/Shortcuts while the popup is open.
 - Scrollable 400 × 600 layout with saved dark/light appearance; dark is the default.
+- The first HTML frame already contains the tab bar and collapsed Misc section headers at the final 400 × 600 size, so the popup does not show a placeholder or resize while settings load.
 - Page actions show success/error toasts. Keyboard failures show a per-tab `!` badge and error tooltip; a successful action clears them.
 - Saved preferences differ from applied page state. Application failure retains the preference and reports the failure. Storage failure prevents application.
 
@@ -14,7 +15,7 @@ Sources: `src/App.tsx`, `src/background.ts`, `src/lib/withActiveTab.ts`.
 
 ## Misc tab
 
-Each section can be expanded or collapsed with its heading using the mouse, Enter, or Space. Sections start expanded; collapsing preserves their controls and values. Expansion state resets when the Misc tab is remounted or the popup reopens.
+Each section can be expanded or collapsed with its heading using the mouse, Enter, or Space. Sections default to collapsed; their open/closed state is saved locally and included in settings backups. Drag the handle inside the left side of a section’s title row to reorder it; the insertion line shows its destination. Keyboard users can focus a handle and press Up/Down to move that section. The order is saved locally and included in settings backups; invalid saved orders fall back to the default.
 
 | Feature | Behavior | Persistence/reset |
 | --- | --- | --- |

@@ -72,6 +72,20 @@ function validate(input: unknown): PageActionRequest {
   return request
 }
 
+function normalizeTabError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  if (
+    message.includes("Cannot access a chrome:// URL") ||
+    message.includes("cannot be scripted") ||
+    message.includes("The extensions gallery cannot be scripted") ||
+    message.includes("Cannot access contents of the page") ||
+    message.includes("restricted")
+  ) {
+    return "This page is protected by Chrome and cannot be modified."
+  }
+  return message
+}
+
 async function inject(tabId: number, files: string[], world: "MAIN" | "ISOLATED" = "ISOLATED") {
   const executionWorld = world as chrome.scripting.ExecutionWorld
   const results = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files, world: executionWorld })
@@ -120,7 +134,7 @@ export async function handlePageAction(input: unknown): Promise<PageActionResult
     pending = result.catch(() => {})
     return result
   } catch (error) {
-    return { ok: false, saved: false, error: error instanceof Error ? error.message : String(error) }
+    return { ok: false, saved: false, error: normalizeTabError(error) }
   }
 }
 
@@ -164,7 +178,7 @@ async function perform(input: unknown): Promise<PageActionResult> {
     await apply(tabId, event, { ...stored, ...patch })
     return { ok: true, saved, tabId }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+    const message = normalizeTabError(error)
     return { ok: false, saved, tabId, error: saved ? `Preference saved, but not applied to this page: ${message}` : message }
   }
 }

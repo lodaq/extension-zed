@@ -31,6 +31,14 @@ describe("page actions", () => {
     expect(inject).not.toHaveBeenCalled()
   })
 
+
+  it("normalizes Chrome protected URL errors into clean user messages", async () => {
+    inject.mockRejectedValue(new Error("Cannot access a chrome:// URL"))
+    const result = await handlePageAction({ event: "designMode", value: true })
+    expect(result).toMatchObject({ ok: false, saved: true })
+    expect(result.error).toContain("This page is protected by Chrome and cannot be modified.")
+  })
+
   it("retains saved preferences and reports application failure", async () => {
     inject.mockRejectedValue(new Error("Restricted page"))
     const result = await handlePageAction({ event: "inspectModeApply", value: true })

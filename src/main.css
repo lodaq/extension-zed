@@ -119,6 +119,8 @@
     min-height: 600px;
     max-height: 600px;
     overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   body {
@@ -130,6 +132,16 @@
     max-height: 600px;
     overflow-x: hidden;
     font-size: 14px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  .select-text {
+    user-select: text;
+    -webkit-user-select: text;
   }
 
   #root {
@@ -138,6 +150,56 @@
     height: 600px;
     min-height: 600px;
     max-height: 600px;
+    user-select: none;
+    -webkit-user-select: none;
   }
 }
 
+/* Modular custom scrollbars */
+.modular-scrollbar,
+.popup-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.5 0.03 268.53 / 0.4) transparent;
+  scrollbar-gutter: stable;
+}
+
+.modular-scrollbar::-webkit-scrollbar,
+.popup-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.modular-scrollbar::-webkit-scrollbar-track,
+.popup-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modular-scrollbar::-webkit-scrollbar-thumb,
+.popup-scrollbar::-webkit-scrollbar-thumb {
+  background: oklch(0.5 0.03 268.53 / 0.35);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.15s ease;
+}
+
+.modular-scrollbar::-webkit-scrollbar-thumb:hover,
+.popup-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0.03 268.53 / 0.65);
+  background-clip: padding-box;
+}
+
+.dark .modular-scrollbar,
+.dark .popup-scrollbar {
+  scrollbar-color: oklch(0.6 0.03 269.46 / 0.4) transparent;
+}
+
+.dark .modular-scrollbar::-webkit-scrollbar-thumb,
+.dark .popup-scrollbar::-webkit-scrollbar-thumb {
+  background: oklch(0.6 0.03 269.46 / 0.35);
+}
+
+.dark .modular-scrollbar::-webkit-scrollbar-thumb:hover,
+.dark .popup-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0.03 269.46 / 0.65);
+}

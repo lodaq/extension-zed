@@ -4,13 +4,14 @@ This inventory describes implemented capabilities. See [RECOMMENDATIONS.md](RECO
 
 ## Popup
 
+- Keyboard shortcut `Alt+Z` immediately toggles the popup control panel from anywhere in Chrome.
 - Misc, YouTube, and Settings tabs; the last selected tab is saved locally.
 - Scrollable 400 × 600 layout with saved dark/light appearance; dark is the default.
 - The first HTML frame already contains the tab bar and collapsed Misc section headers at the final 400 × 600 size, so the popup does not show a placeholder or resize while settings load.
 - Page actions show success/error toasts. Action failures show a per-tab `!` badge and error tooltip; a successful action clears them.
 - Saved preferences differ from applied page state. Application failure retains the preference and reports the failure. Storage failure prevents application.
 
-Sources: `src/App.tsx`, `src/background.ts`, `src/lib/withActiveTab.ts`.
+Sources: `src/App.tsx`, `src/background.ts`, `src/lib/withActiveTab.ts`, `public/manifest.json`.
 
 ## Misc tab
 
@@ -22,6 +23,7 @@ Each section can be expanded or collapsed with its heading using the mouse, Ente
 | Video speed | 0.1–10× in 0.1× steps; slower/faster, normal, and double-speed controls | One global local preference; applies to new videos and new media sources |
 | Player overrides | Website player speed changes remain for the current media item | Do not change saved speed; new media or explicit Zed actions restore saved speed, including repeated same-speed actions |
 | Volume boost | Audio/video gain from 100% to 2000%, in steps of 10% | Global preference; activated on the current page and then newly inserted media. Reset changes gain to 100%, not the Web Audio routing |
+| Video quality | Preferred video resolution (Auto, 4320p down to 144p). If preferred resolution is unavailable for the current video, two selectable fallback options: (1) Prefer higher quality, or (2) Prefer lower quality. Concise single-panel controls | Global preference; saved in settings, applied to the active video and automatically to new videos on every site (including Facebook, X, Twitch, and YouTube) across sessions. YouTube uses the player API; other sites use their player settings menu |
 | Background colors | Color picker overrides backgrounds and suppresses background images | Saved per HTTP(S) origin; applied on command, not automatically after reload; independent reset |
 | Text colors | Color picker overrides page text | Saved per origin; independent reset and combined color reset |
 | Main scrollbar | Hide/reset the document scrollbar | Page-local injected style |
@@ -34,7 +36,7 @@ Speed normalizes before stepping: `1.36` becomes `1.4`, then Faster selects `1.5
 
 The password generator automatically generates a new password when an option changes. Each enabled character type appears at least once; disabling every type clears the output and disables copying. Lengths must be whole numbers from 4–128. It uses `crypto.getRandomValues` with rejection sampling and a cryptographic shuffle, with no network requests or password storage. Sources: `src/components/PasswordGenerator.tsx`, `src/lib/passwordGenerator.ts`.
 
-Sources: `src/components/MiscTab.tsx`, `src/lib/playbackPresets.ts`, `src/lib/playback.ts`, `src/lib/pageActions.ts`, `public/scripts/`.
+Sources: `src/components/MiscTab.tsx`, `src/components/VideoQualitySection.tsx`, `src/lib/videoQuality.ts`, `src/lib/playbackPresets.ts`, `src/lib/playback.ts`, `src/lib/pageActions.ts`, `public/scripts/`.
 
 ## YouTube tab
 
@@ -43,10 +45,13 @@ Sources: `src/components/MiscTab.tsx`, `src/lib/playbackPresets.ts`, `src/lib/pl
 | Focus mode | Expands the player to the viewport and hides surrounding content. Suspends sizing during fullscreen; toggle off removes Zed's layout changes. Requires a YouTube player |
 | Hide progress bar | Hides progress, time, and chapters; toggle off removes its style |
 | Hide controls | Hides bottom controls; toggle off removes its style |
+| Hide duration | Hides only the duration/time remaining while keeping the progress bar clickable |
+| Half-screen layout | Constrains the player to a clean half-screen viewport layout for multitasking |
+| Timestamp markers | Bookmark key moments with label and timestamp, jump to any bookmark, export/import markers |
 
-Preferences are global but apply to the current page, not automatically after reload. Selectors depend on YouTube's DOM.
+Preferences are global and saved locally.
 
-Sources: `src/components/YoutubeFocusMode.tsx`, `public/scripts/youtube*.js`.
+Sources: `src/components/YoutubeFocusMode.tsx`, `src/components/YoutubeMarkers.tsx`, `public/scripts/youtube*.js`.
 
 ## Settings transfer
 
@@ -61,7 +66,7 @@ Sources: `src/lib/settings.ts`, `src/components/SettingsTab.tsx`, `src/lib/useSt
 ## Permissions and limitations
 
 - Manifest V3; existing `scripting`, `activeTab`, and `storage` permissions. No new permissions or backend.
-- Playback and RTL content scripts match HTTP(S) pages and all frames. On-demand actions attempt all frames where appropriate, with main-frame fallback. Inaccessible frames may remain unchanged.
+- Playback and RTL content scripts match HTTP(S) pages and all frames. The video-quality engine and its settings bridge also match HTTP(S) pages and all frames. On-demand actions attempt all frames where appropriate, with main-frame fallback. Inaccessible frames may remain unchanged.
 - Chrome internal pages, the Chrome Web Store, and other protected documents generally reject injection.
 - Preferences are local; no account or cloud sync. Exported per-origin colors reveal saved website origins, so backups are personal data.
 - Closed shadow roots and unusual media pipelines may need site-specific support. Reused MediaSource URLs without normal loading events can hide a media-item change.

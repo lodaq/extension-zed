@@ -95,7 +95,7 @@ describe("page actions", () => {
     expect(nonHttpResult.error).toContain("Page colors require an HTTP or HTTPS page")
   })
 
-  it("handles scrollbar toggle and reset actions", async () => {
+  it("handles scrollbar toggle, custom style, and reset actions", async () => {
     expect(await handlePageAction({ event: "hideMainScrollBar" })).toMatchObject({ ok: true })
     expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/hideMainScrollBar.js"] }))
 
@@ -107,6 +107,12 @@ describe("page actions", () => {
 
     expect(await handlePageAction({ event: "resetAllScrollBars" })).toMatchObject({ ok: true })
     expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/resetAllScrollBars.js"] }))
+
+    expect(await handlePageAction({ event: "applyCustomScrollbar" })).toMatchObject({ ok: true })
+    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/applyCustomScrollbar.js"] }))
+
+    expect(await handlePageAction({ event: "resetCustomScrollbar" })).toMatchObject({ ok: true })
+    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/resetCustomScrollbar.js"] }))
   })
 
   it("handles YouTube focus mode toggle and boolean options", async () => {
@@ -121,6 +127,19 @@ describe("page actions", () => {
 
     expect(await handlePageAction({ event: "hideYoutubeControls", value: true })).toMatchObject({ ok: true })
     expect(values.youtubeHideControls).toBe(true)
+
+    expect(await handlePageAction({ event: "hideYoutubeDuration", value: true })).toMatchObject({ ok: true })
+    expect(values.youtubeHideDuration).toBe(true)
+
+    expect(await handlePageAction({ event: "youtubeHalfScreen", value: true })).toMatchObject({ ok: true })
+    expect(values.youtubeHalfScreen).toBe(true)
+  })
+
+  it("handles applyVideoQuality action", async () => {
+    values.videoQuality = "hd1440"
+    values.videoQualityFallback = "higher"
+    expect(await handlePageAction({ event: "applyVideoQuality" })).toMatchObject({ ok: true })
+    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/applyVideoQuality.js"] }))
   })
 
   it("handles modes toggle and volume boost apply", async () => {

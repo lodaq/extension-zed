@@ -41,59 +41,65 @@ export default function PasswordGenerator({ dragHandle, open, onOpenChange }: Mi
       <div className="flex items-center gap-2">
         <input
           aria-label="Generated password"
-          className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-10 min-w-0 flex-1 select-text rounded-md border border-input bg-background px-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           value={password}
           placeholder="Choose character types"
           readOnly
           autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
-          onFocus={(event) => event.currentTarget.select()}
         />
-        <Button type="button" size="icon" className="h-10 w-10 shrink-0" aria-label="Generate a new password" title="Generate a new password" disabled={Boolean(error)} onClick={() => setState(generate(options))}>
-          <ReloadIcon aria-hidden="true" className="h-4 w-4" />
+        <Button variant="outline" size="icon" onClick={() => update({})} aria-label="Generate a new password">
+          <ReloadIcon className="h-4 w-4" />
         </Button>
+        <Button onClick={copy}>Copy</Button>
       </div>
-      <Button type="button" variant="default" disabled={!password} onClick={() => void copy()}>Copy password</Button>
 
-      <div className="mt-1 flex items-center justify-between gap-3">
-        <Label htmlFor="zed-password-length">Password length</Label>
+      {error ? (
+        <p role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <span>Length: {options.length}</span>
+          <span className="text-muted-foreground">({PASSWORD_MIN_LENGTH}–{PASSWORD_MAX_LENGTH})</span>
+        </div>
         <input
-          id="zed-password-length"
-          type="number"
+          type="range"
           min={PASSWORD_MIN_LENGTH}
           max={PASSWORD_MAX_LENGTH}
-          step={1}
-          value={Number.isFinite(options.length) ? options.length : ""}
-          aria-invalid={!Number.isInteger(options.length) || options.length < PASSWORD_MIN_LENGTH || options.length > PASSWORD_MAX_LENGTH}
-          aria-describedby={error ? "zed-password-error" : undefined}
-          onChange={(event) => update({ length: event.currentTarget.valueAsNumber })}
-          className="h-9 w-20 rounded-md border border-input bg-background px-2 text-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          value={options.length}
+          onChange={(event) => update({ length: Number(event.target.value) })}
+          aria-label="Password length"
+          className="w-full cursor-pointer accent-primary"
         />
       </div>
-      <input
-        type="range"
-        min={PASSWORD_MIN_LENGTH}
-        max={PASSWORD_MAX_LENGTH}
-        step={1}
-        value={Number.isFinite(options.length) ? options.length : PASSWORD_MIN_LENGTH}
-        aria-label="Password length slider"
-        onChange={(event) => update({ length: event.currentTarget.valueAsNumber })}
-        className="w-full accent-primary"
-      />
-      <fieldset>
-        <legend className="mb-1 text-sm font-medium">Characters used</legend>
-        <div className="grid grid-cols-2 gap-x-3">
-          {CHARACTER_OPTIONS.map(([key, label, example]) => (
-            <label key={key} className="flex min-h-10 cursor-pointer items-center gap-2 text-sm">
-              <input type="checkbox" checked={options[key]} onChange={(event) => update({ [key]: event.currentTarget.checked })} className="h-4 w-4 accent-primary" />
-              <span>{label} <span className="text-xs text-muted-foreground">{example}</span></span>
+
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        {CHARACTER_OPTIONS.map(([key, label, hint]) => {
+          const checked = options[key]
+          return (
+            <label
+              key={key}
+              className="flex cursor-pointer items-start gap-2 rounded-md border border-border/70 p-2 text-xs hover:bg-muted/40"
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(event) => update({ [key]: event.target.checked })}
+                aria-label={`Include ${label.toLowerCase()} characters`}
+                className="mt-0.5 h-3.5 w-3.5 rounded border-input accent-primary"
+              />
+              <div className="flex flex-col">
+                <Label className="cursor-pointer text-xs font-medium leading-none">{label}</Label>
+                <span className={popupDescription}>{hint}</span>
+              </div>
             </label>
-          ))}
-        </div>
-      </fieldset>
-      {error && <p id="zed-password-error" role="alert" className="text-sm text-destructive">{error}</p>}
-      <p className={popupDescription}>Generated on your device. Passwords are not saved.</p>
+          )
+        })}
+      </div>
     </MiscSection>
   )
 }

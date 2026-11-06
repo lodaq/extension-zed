@@ -1,5 +1,6 @@
 import MiscTab from "@/components/MiscTab"
 import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Toaster } from "@/components/ui/toast"
 import { toast } from "@/components/ui/use-toast"
@@ -51,13 +52,16 @@ function App() {
       }
 
       return chrome.storage.local
-        .get([TAB_KEY, "darkTheme"])
+        .get([TAB_KEY, "darkTheme", "popupScrollPositions"])
         .then((r) => {
           setStorageError(null)
           const v = r[TAB_KEY]
           if (typeof v === "string" && isTabValue(v)) {
             setTab(v)
             updateBootState({ tab: v })
+          }
+          if (r.popupScrollPositions && typeof r.popupScrollPositions === "object") {
+            updateBootState({ scrollPositions: r.popupScrollPositions as Record<string, number> })
           }
           applyTheme(r.darkTheme)
           if (r.darkTheme === undefined) void chrome.storage.local.set({ darkTheme: true })
@@ -80,6 +84,9 @@ function App() {
       if (typeof nextTab === "string" && isTabValue(nextTab)) {
         setTab(nextTab)
         updateBootState({ tab: nextTab })
+      }
+      if (changes.popupScrollPositions?.newValue) {
+        updateBootState({ scrollPositions: changes.popupScrollPositions.newValue as Record<string, number> })
       }
       if (changes.darkTheme) {
         const darkTheme = readSetting("darkTheme", changes.darkTheme.newValue, true)
@@ -112,7 +119,7 @@ function App() {
         if (!isTabValue(v)) return
         commitTab(v)
       }}
-      className="flex h-[600px] w-[400px] flex-col overflow-hidden rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm"
+      className="flex h-[600px] w-[400px] flex-col overflow-hidden rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm select-none"
     >
       <div className="sticky top-0 z-10 shrink-0 bg-card pb-1">
         <TabsList className="grid w-full grid-cols-3 gap-1 overflow-visible">
@@ -158,7 +165,11 @@ function App() {
           </div>
         )}
       </div>
-      <div className="popup-scrollbar mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+      <ScrollArea
+        scrollKey={tab}
+        preserveScroll
+        className="mt-2 min-h-0 flex-1 pr-1"
+      >
         <TabsContent value="misc" className={tabPanelClass}>
           <MiscTab />
         </TabsContent>
@@ -172,7 +183,7 @@ function App() {
             <SettingsTab />
           </Suspense>
         </TabsContent>
-      </div>
+      </ScrollArea>
       <Toaster />
     </Tabs>
   )

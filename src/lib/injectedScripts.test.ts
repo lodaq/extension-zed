@@ -6,7 +6,16 @@ import { describe, expect, it, vi } from "vitest"
 const script = (name: string) => readFileSync(new URL(`../../public/scripts/${name}.js`, import.meta.url), "utf8")
 
 describe("injected script completion", () => {
-  it.each(["applyPageColors", "inspectMode", "youtubeProgressBar", "youtubeControls", "volumeBoost", "arabicRtlMode"])("%s returns its asynchronous work", async (name) => {
+  it.each([
+    "applyPageColors",
+    "inspectMode",
+    "youtubeProgressBar",
+    "youtubeControls",
+    "volumeBoost",
+    "arabicRtlMode",
+    "youtubeDuration",
+    "youtubeHalfScreen",
+  ])("%s returns its asynchronous work", async (name) => {
     let finish!: (value: Record<string, unknown>) => void
     const get = new Promise<Record<string, unknown>>((resolve) => { finish = resolve })
     const result = runInNewContext(script(name), {
@@ -69,11 +78,13 @@ describe("injected script completion", () => {
     expect(remove).toHaveBeenCalled()
   })
 
-  it("injects and resets main and all scrollbar style elements", () => {
+  it("injects and resets main, all, and custom scrollbar style elements", () => {
     const mainCreated: { id?: string }[] = []
     const allCreated: { id?: string }[] = []
+    const customCreated: { id?: string }[] = []
     const mainRemove = vi.fn()
     const allRemove = vi.fn()
+    const customRemove = vi.fn()
 
     // Hide main scrollbar
     runInNewContext(script("hideMainScrollBar"), {
@@ -108,9 +119,26 @@ describe("injected script completion", () => {
       document: { getElementById: (id: string) => (id === "zed-hide-all-scrollbars" ? { remove: allRemove } : null) },
     })
     expect(allRemove).toHaveBeenCalled()
+
+    // Apply custom scrollbar
+    runInNewContext(script("applyCustomScrollbar"), {
+      document: {
+        getElementById: () => null,
+        createElement: () => { const el = { id: "", appendChild: () => {} }; customCreated.push(el); return el },
+        createTextNode: (t: string) => t,
+        head: { appendChild: () => {} },
+      },
+    })
+    expect(customCreated[0]?.id).toBe("zed-custom-scrollbar")
+
+    // Reset custom scrollbar
+    runInNewContext(script("resetCustomScrollbar"), {
+      document: { getElementById: (id: string) => (id === "zed-custom-scrollbar" ? { remove: customRemove } : null) },
+    })
+    expect(customRemove).toHaveBeenCalled()
   })
 
-  it("applies and resets YouTube progress bar and controls styles", async () => {
+  it("applies and resets YouTube progress bar, duration, half-screen, and controls styles", async () => {
     let progressStyle = ""
     const progressAppend = vi.fn((node: { textContent: string }) => { progressStyle = node.textContent })
     const progressRemove = vi.fn()
@@ -135,6 +163,54 @@ describe("injected script completion", () => {
       },
     })
     expect(progressRemove).toHaveBeenCalled()
+
+    // YouTube duration hide
+    let durationStyle = ""
+    const durationAppend = vi.fn((node: { textContent: string }) => { durationStyle = node.textContent })
+    const durationRemove = vi.fn()
+
+    await runInNewContext(script("youtubeDuration"), {
+      chrome: { storage: { local: { get: async () => ({ youtubeHideDuration: true }) } } },
+      document: {
+        getElementById: () => null,
+        createElement: () => ({ id: "", textContent: "" }),
+        head: { appendChild: durationAppend },
+      },
+    })
+    expect(durationStyle).toContain(".ytp-time-duration")
+
+    await runInNewContext(script("youtubeDuration"), {
+      chrome: { storage: { local: { get: async () => ({ youtubeHideDuration: false }) } } },
+      document: {
+        getElementById: () => ({ remove: durationRemove }),
+        createElement: () => ({ id: "" }),
+      },
+    })
+    expect(durationRemove).toHaveBeenCalled()
+
+    // YouTube half screen
+    let halfScreenStyle = ""
+    const halfScreenAppend = vi.fn((node: { textContent: string }) => { halfScreenStyle = node.textContent })
+    const halfScreenRemove = vi.fn()
+
+    await runInNewContext(script("youtubeHalfScreen"), {
+      chrome: { storage: { local: { get: async () => ({ youtubeHalfScreen: true }) } } },
+      document: {
+        getElementById: () => null,
+        createElement: () => ({ id: "", textContent: "" }),
+        head: { appendChild: halfScreenAppend },
+      },
+    })
+    expect(halfScreenStyle).toContain("ytd-watch-flexy")
+
+    await runInNewContext(script("youtubeHalfScreen"), {
+      chrome: { storage: { local: { get: async () => ({ youtubeHalfScreen: false }) } } },
+      document: {
+        getElementById: () => ({ remove: halfScreenRemove }),
+        createElement: () => ({ id: "" }),
+      },
+    })
+    expect(halfScreenRemove).toHaveBeenCalled()
 
     // YouTube controls
     let controlsStyle = ""
@@ -237,5 +313,223 @@ describe("injected script completion", () => {
     expect(classList.has("extension-zed-yt-focus-lock")).toBe(false)
     expect(attributes.has("data-zed-focus-anchor")).toBe(false)
     expect(anchor.style.removeProperty).not.toHaveBeenCalled()
+  })
+
+  it("applies target video quality with fallback to YouTube player and updates localStorage", async () => {
+    let storedPayload = ""
+    const localStorageMock = {
+      setItem: (key: string, val: string) => { if (key === "yt-player-quality") storedPayload = val },
+      removeItem: vi.fn(),
+    }
+
+    let appliedQuality = ""
+    const playerMock = {
+      getAvailableQualityLevels: () => ["hd720", "large", "medium"],
+      setPlaybackQualityRange: (q1: string) => { appliedQuality = q1 },
+      setPlaybackQuality: vi.fn(),
+    }
+
+    const docMock = {
+      getElementById: (id: string) => (id === "movie_player" ? playerMock : null),
+      querySelector: () => null,
+    }
+
+    const winMock = {
+      __zedVideoQualitySettings: { quality: "hd1080", fallback: "lower" },
+      addEventListener: vi.fn(),
+    }
+
+    const res = await runInNewContext(script("applyVideoQuality"), {
+      window: winMock,
+      document: docMock,
+      localStorage: localStorageMock,
+      Date: { now: () => 1700000000000 },
+      setTimeout: vi.fn(),
+      Promise,
+    })
+
+    expect(res).toBe("hd720")
+    expect(appliedQuality).toBe("hd720")
+    expect(JSON.parse(storedPayload).data).toBe("hd1080")
+  })
+
+  it("opens a player settings menu and selects the closest lower quality on Facebook", async () => {
+    type Rect = { width: number; height: number; left: number; top: number; right: number; bottom: number }
+
+    function rect(left: number, top: number, width: number, height: number): Rect {
+      return { left, top, width, height, right: left + width, bottom: top + height }
+    }
+
+    class FakeElement {
+      tagName: string
+      attrs: Record<string, string> = {}
+      parentElement: FakeElement | null = null
+      children: FakeElement[] = []
+      text = ""
+      onclick: (() => void) | null = null
+      private box: Rect
+
+      constructor(tagName: string, attrs: Record<string, string> = {}, box: Rect = rect(0, 0, 100, 30)) {
+        this.tagName = tagName.toUpperCase()
+        this.box = box
+        for (const [name, value] of Object.entries(attrs)) this.attrs[name.toLowerCase()] = value
+      }
+
+      get textContent() { return this.text }
+      set textContent(value: string) { this.text = value }
+      getAttribute(name: string) {
+        const key = name.toLowerCase()
+        return Object.prototype.hasOwnProperty.call(this.attrs, key) ? this.attrs[key] : null
+      }
+      setAttribute(name: string, value: string) { this.attrs[name.toLowerCase()] = value }
+      getBoundingClientRect() { return this.box }
+      append(child: FakeElement) {
+        if (child.parentElement) child.parentElement.removeChild(child)
+        child.parentElement = this
+        this.children.push(child)
+      }
+      removeChild(child: FakeElement) {
+        const index = this.children.indexOf(child)
+        if (index >= 0) this.children.splice(index, 1)
+        child.parentElement = null
+      }
+      contains(node: FakeElement) {
+        let current: FakeElement | null = node
+        while (current) {
+          if (current === this) return true
+          current = current.parentElement
+        }
+        return false
+      }
+      querySelectorAll(selector: string) {
+        return descendants(this).filter((element) => matches(element, selector))
+      }
+      querySelector(selector: string) {
+        return this.querySelectorAll(selector)[0] ?? null
+      }
+      click() { if (this.onclick) this.onclick() }
+      dispatchEvent() { return true }
+    }
+
+    function descendants(root: FakeElement): FakeElement[] {
+      const result: FakeElement[] = []
+      for (const child of root.children) {
+        result.push(child, ...descendants(child))
+      }
+      return result
+    }
+
+    function matches(element: FakeElement, selector: string) {
+      return selector.split(",").some((part) => matchesSimple(element, part.trim()))
+    }
+
+    function matchesSimple(element: FakeElement, selector: string) {
+      const tag = selector.match(/^([a-zA-Z][\w-]*)/)
+      if (tag && element.tagName !== tag[1].toUpperCase()) return false
+      const rest = tag ? selector.slice(tag[0].length) : selector
+      const pattern = /\[\s*([\w-]+)\s*(?:([*^$]?=)\s*(?:"([^"]*)"|'([^']*)'|([^\]\s]+)))?\s*(i)?\s*\]/g
+      let found = false
+      let match: RegExpExecArray | null
+      while ((match = pattern.exec(rest))) {
+        found = true
+        const actual = element.getAttribute(match[1])
+        if (actual === null) return false
+        const operator = match[2]
+        if (!operator) continue
+        const insensitive = Boolean(match[6]) || match[1].toLowerCase() === "role"
+        const expected = match[3] ?? match[4] ?? match[5] ?? ""
+        const value = insensitive ? actual.toLowerCase() : actual
+        const wanted = insensitive ? expected.toLowerCase() : expected
+        if (operator === "=" && value !== wanted) return false
+        if (operator === "*=" && value.indexOf(wanted) < 0) return false
+        if (operator === "^=" && value.indexOf(wanted) !== 0) return false
+        if (operator === "$=" && value.slice(-wanted.length) !== wanted) return false
+      }
+      return found || rest.trim() === ""
+    }
+
+    const body = new FakeElement("body", {}, rect(0, 0, 1280, 720))
+    const player = new FakeElement("div", {}, rect(0, 0, 640, 360))
+    const video = new FakeElement("video", {}, rect(0, 0, 640, 360))
+    body.append(player)
+    player.append(video)
+
+    const menu = new FakeElement("div", { role: "menu" })
+    const qualityItem = new FakeElement("div", { role: "menuitem" })
+    // Facebook renders the row label and current value together.
+    qualityItem.textContent = "Quality Automatic 1080p"
+
+    const options = ["Automatic", "360p", "720p", "1080p60"].map((label) => {
+      const option = new FakeElement("div", { role: "menuitemradio" })
+      option.textContent = label
+      return option
+    })
+
+    const submenu = new FakeElement("div", { role: "menu" })
+    let menuOpen = false
+    let submenuOpen = false
+    let selected = ""
+    const settings = new FakeElement("div", { role: "button", "aria-label": "Settings" }, rect(600, 320, 24, 24))
+
+    settings.onclick = () => {
+      menuOpen = !menuOpen
+      if (menuOpen) player.append(menu)
+      else {
+        player.removeChild(menu)
+        if (submenuOpen) {
+          player.removeChild(submenu)
+          submenuOpen = false
+        }
+      }
+    }
+    qualityItem.onclick = () => {
+      if (submenuOpen) return
+      submenuOpen = true
+      player.append(submenu)
+    }
+    for (const option of options) {
+      option.onclick = () => {
+        selected = option.textContent
+        if (submenuOpen) player.removeChild(submenu)
+        submenuOpen = false
+        player.removeChild(menu)
+        menuOpen = false
+      }
+    }
+    player.append(settings)
+    menu.append(qualityItem)
+    for (const option of options) submenu.append(option)
+
+    const documentMock = {
+      body,
+      documentElement: new FakeElement("html"),
+      querySelectorAll: (selector: string) => body.querySelectorAll(selector),
+      querySelector: (selector: string) => body.querySelector(selector),
+      getElementById: () => null,
+      addEventListener: () => {},
+      dispatchEvent: () => true,
+    }
+
+    const windowMock = {
+      __zedVideoQualitySettings: { quality: "hd2160", fallback: "lower" },
+      location: { hostname: "www.facebook.com" },
+      innerWidth: 1280,
+      innerHeight: 720,
+      getComputedStyle: () => ({ display: "block", visibility: "visible", opacity: "1" }),
+      addEventListener: () => {},
+    }
+
+    const result = await runInNewContext(script("applyVideoQuality"), {
+      window: windowMock,
+      document: documentMock,
+      localStorage: { setItem: () => {}, removeItem: () => {} },
+      setTimeout,
+      clearTimeout,
+      Promise,
+      Date,
+    })
+
+    expect(result).toBe("1080p")
+    expect(selected).toBe("1080p60")
   })
 })

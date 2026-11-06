@@ -1,11 +1,23 @@
 # Extension Zed
 
-A personal Chrome Manifest V3 toolbox with a password generator, page colors, scrollbars, video speed, volume boost, inspect/design/Arabic RTL modes, and YouTube layout controls.
+![Status: Under development](https://img.shields.io/badge/status-under_development-orange)
+
+A personal Chrome Manifest V3 toolbox with a password generator, page colors, scrollbars, video speed, video quality, volume boost, inspect/design/Arabic RTL modes, and YouTube layout controls.
 
 - [Implemented features](FEATURES.md)
 - [Completed fixes, recommendations, and future features](RECOMMENDATIONS.md)
 - [Domain glossary](GLOSSARY.md)
 - [Performance measurements and reproduction](PERF.md)
+
+## Toolbox
+
+- Customize page text/background colors and scrollbar appearance.
+- Control playback speed, preferred video quality, and volume amplification.
+- Adjust YouTube focus/layout, markers, duration, and progress controls.
+- Use inspect, design, and Arabic RTL modes, page timestamp inspection, and password generation.
+- Save preferences locally and export/import settings.
+
+This is an unpacked extension under active development. Restricted browser pages cannot run page actions, and media behavior depends on the site/player. See [permissions](PERMISSIONS.md) and [Web Store release notes](CHROMEWEBSTORE.md).
 
 ## Build and load
 
@@ -19,7 +31,7 @@ pnpm check:build
 
 Load `dist/` as an unpacked extension at `chrome://extensions`. After rebuilding, reload the extension and refresh existing web pages to receive new content scripts. `pnpm dev` serves the popup for development; an ordinary browser page does not provide extension APIs.
 
-Stack: React 19, TypeScript 6, Vite 8, Tailwind 4, and Radix UI. Permissions: `scripting`, `activeTab`, and `storage`. Playback and Arabic RTL content scripts match HTTP(S) pages, including frames. No additional permissions were added by the architecture fixes.
+Stack: React 19, TypeScript 6, Vite 8, Tailwind 4, and Radix UI. Permissions: `scripting`, `activeTab`, and `storage`. Playback, Arabic RTL, and video-quality content scripts match HTTP(S) pages, including frames. No additional permissions were added by the architecture fixes.
 
 ## Structure and action flow
 

@@ -8,14 +8,18 @@ Current popup tabs: **Misc**, **YouTube**, and **Settings**.
 
 Implemented capabilities:
 
-- Page background and text color controls with reset flows
-- Main and all-scrollbar hide/reset controls
-- Playback-rate presets and persistence
-- Design mode and inspect mode
-- YouTube focus mode, progress-bar controls, and reset behavior
+- Keyboard shortcut (`Alt+Z`) to toggle the extension popup
+- Page background and text color controls with reset flows and curated presets (Dark, High Contrast, Sepia, Solarized)
+- Main, all-scrollbar, and custom non-layout-shifting scrollbar controls
+- Playback-rate presets, fine-stepping, and automatic site persistence
+- Design mode, inspect mode, and Arabic RTL mode
+- Page timestamp and publication age inspector
+- Video quality selector with fallback options (prefer higher / prefer lower quality)
+- YouTube focus mode, progress-bar controls, duration hiding, half-screen layout, and timestamp bookmarks/markers
 - Persistent dark theme, defaulting to dark
 - Success/error toast feedback for page actions
-- Settings export/import for all `chrome.storage.local` data
+- Settings schema versioning (v1), file size & JSON validation, export/import, and factory reset flow
+- Full Chrome Web Store metadata and permissions documentation (`CHROMEWEBSTORE.md`)
 
 ## Priority Order
 
@@ -60,11 +64,14 @@ Work through these groups in order. A task should move to Done only after implem
 Implemented:
 
 - Playback speed controls
+- Volume boost for page audio and video up to 2000%
+- Preferred video quality collapsible with automatic resolution matching and selectable fallback options:
+  1. Prefer higher quality
+  2. Prefer lower quality
 - Page colors
 - Scrollbar controls
 - Design mode
 - Inspect mode
-- Volume boost for page audio and video up to 2000%
 - Arabic RTL mode toggle
 
 Good next additions:
@@ -90,15 +97,15 @@ Implemented:
 - Focus reset behavior
 - Hide progress bar/time
 - Hide controls
+- Hide duration
+- Half-screen layout
+- Timestamp bookmarks/markers
 
 Good next additions:
 
 | Status | Task |
 |---|---|
 | [ ] | Reduce brittle YouTube selectors and document fallback behavior when YouTube changes. |
-| [ ] | Add hide-duration behavior as a deliberate extension of the progress controls. |
-| [ ] | Add lightweight markers/bookmarks with local storage and export. |
-| [ ] | Add optional half-screen layout after validating it across common YouTube layouts. |
 
 Defer until the basics are stable:
 
@@ -123,14 +130,6 @@ Implemented:
 ## Planned Product Areas
 
 These are valid future directions, but should not be started until P0/P1 work is stable.
-
-### Reading
-
-| Status | Task |
-|---|---|
-| [ ] | Build reader mode with width, font, line height, and color controls. |
-| [ ] | Add a local reading list only after deciding how pages are captured and restored. |
-| [ ] | Add typography presets. |
 
 ### Productivity
 

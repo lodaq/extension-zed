@@ -1,29 +1,31 @@
-import { useStoredValue } from "@/lib/useStoredValue"
-import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { cn } from "@/lib/utils"
+import { Switch } from "@/components/ui/switch"
 import { sendPageAction } from "@/lib/withActiveTab"
+import { useStoredValue } from "@/lib/useStoredValue"
 
 const ArabicRtlMode = () => {
   const [mode] = useStoredValue<string>("arabicRtlMode", "off")
   const on = mode.toLowerCase() === "on"
 
   const toggle = (checked: boolean) => {
-    void sendPageAction("arabicRtlMode", `Arabic RTL mode ${checked ? "on" : "off"}`, checked)
+    const next = checked ? "on" : "off"
+    void sendPageAction("arabicRtlMode", `Arabic RTL mode ${next}`, checked)
   }
 
   return (
-    <div className={cn("flex items-center justify-between gap-3 px-4 py-3")}>
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="arabic-rtl-mode" className="text-sm font-medium cursor-pointer">
-          Arabic RTL Mode
-        </Label>
-      </div>
+    <div
+      className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
+      onClick={() => toggle(!on)}
+    >
+      <Label className="cursor-pointer text-sm font-medium">
+        Arabic RTL mode
+      </Label>
       <Switch
         id="arabic-rtl-mode"
         checked={on}
+        onClick={(event) => event.stopPropagation()}
         onCheckedChange={toggle}
-        aria-label={`Arabic RTL Mode ${on ? "on" : "off"}`}
+        aria-label={`Arabic RTL mode ${on ? "on" : "off"}`}
       />
     </div>
   )

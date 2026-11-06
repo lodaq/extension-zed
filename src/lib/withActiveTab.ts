@@ -8,6 +8,12 @@ function report(message: string, tone: "success" | "error") {
   )
 }
 
+export async function withActiveTab<T>(callback: (tab: chrome.tabs.Tab) => Promise<T>): Promise<T> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab || tab.id === undefined) throw new Error("No active tab is available")
+  return callback(tab)
+}
+
 export async function sendPageAction(event: PageAction, successMessage = "Applied to this page", value?: PageActionRequest["value"]) {
   try {
     const response = (await chrome.runtime.sendMessage({ event, value })) as PageActionResult

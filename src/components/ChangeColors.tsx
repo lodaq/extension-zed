@@ -2,12 +2,19 @@ import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { popupControlRow } from "@/lib/popupLayout"
+import { popupControlRow, popupSubhead, popupDescription } from "@/lib/popupLayout"
 import { sendPageAction } from "@/lib/withActiveTab"
 import { isColor } from "@/lib/settings"
 
 const DEFAULT_BG = "#1a1a1a"
 const DEFAULT_FG = "#f5f5f5"
+
+const COLOR_PRESETS = [
+  { name: "Dark", bg: "#18181b", fg: "#f4f4f5" },
+  { name: "High Contrast", bg: "#000000", fg: "#ffffff" },
+  { name: "Sepia", bg: "#fbf0d9", fg: "#433422" },
+  { name: "Solarized", bg: "#002b36", fg: "#93a1a1" },
+] as const
 
 const ChangeColors = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
   const bgPickerRef = useRef<HTMLInputElement>(null)
@@ -37,6 +44,13 @@ const ChangeColors = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
   const applyTextColor = (hex: string) => {
     setFg(hex)
     void sendPageAction("changeColor", "Text color applied", hex)
+  }
+
+  const applyPreset = async (presetBg: string, presetFg: string, presetName: string) => {
+    setBg(presetBg)
+    setFg(presetFg)
+    await sendPageAction("changeBackgroundColor", `${presetName} background applied`, presetBg)
+    await sendPageAction("changeColor", `${presetName} text applied`, presetFg)
   }
 
   const resetBackgroundDefault = () => {
@@ -77,27 +91,54 @@ const ChangeColors = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
       />
 
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label className="text-sm font-medium text-foreground">Backgrounds</Label>
-          <div className={popupControlRow}>
-            <Button
-              type="button"
-              size="sm"
-              disabled={!storageKey}
-              className="min-h-9 flex-1 sm:flex-none"
-              onClick={() => bgPickerRef.current?.click()}
-            >
-              Change
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={!storageKey}
-              className="min-h-9 flex-1 sm:flex-none"
-              onClick={resetBackgroundDefault}
-            >
-              Reset
-            </Button>
+        <div>
+          <p className={popupSubhead}>Presets</p>
+          <p className={popupDescription}>Quick-apply curated color palettes to this website.</p>
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            {COLOR_PRESETS.map((preset) => (
+              <Button
+                key={preset.name}
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!storageKey}
+                className="flex items-center justify-start gap-2 text-xs"
+                onClick={() => void applyPreset(preset.bg, preset.fg, preset.name)}
+              >
+                <span
+                  className="h-3 w-3 shrink-0 rounded-full border border-border"
+                  style={{ backgroundColor: preset.bg, color: preset.fg }}
+                  title={`${preset.name} swatch`}
+                />
+                <span className="truncate">{preset.name}</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-border/70 pt-3">
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-sm font-medium text-foreground">Background</Label>
+            <div className={popupControlRow}>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!storageKey}
+                className="min-h-9 flex-1 sm:flex-none"
+                onClick={() => bgPickerRef.current?.click()}
+              >
+                Change
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!storageKey}
+                className="min-h-9 flex-1 sm:flex-none"
+                onClick={resetBackgroundDefault}
+              >
+                Reset
+              </Button>
+            </div>
           </div>
         </div>
 

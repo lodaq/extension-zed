@@ -5,7 +5,16 @@
     if (youtubeHideProgress !== true) return;
     const style = document.createElement("style");
     style.id = ID;
-    style.textContent = ".ytp-progress-bar-container, .ytp-time-display, .ytp-chapter-container { display: none !important; }";
+    // Resilient multi-variant selector list covering desktop, mobile web, theater, and player experiments
+    style.textContent = `
+      .ytp-progress-bar-container,
+      .ytp-progress-bar,
+      #progress-bar,
+      ytd-player .ytp-progress-bar-container,
+      .ytp-chapter-container {
+        display: none !important;
+      }
+    `;
     (document.head || document.documentElement).appendChild(style);
   });
 })();

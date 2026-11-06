@@ -11,8 +11,12 @@ export type ScriptAction =
   | "hideAllScrollBars"
   | "resetMainScrollBar"
   | "resetAllScrollBars"
+  | "applyCustomScrollbar"
+  | "resetCustomScrollbar"
   | "hideYoutubeProgressBar"
   | "hideYoutubeControls"
+  | "hideYoutubeDuration"
+  | "youtubeHalfScreen"
   | "volumeBoost"
   | "arabicRtlMode"
 
@@ -22,6 +26,7 @@ export type SpecialAction =
   | "playbackRateApply"
   | "playbackSlower"
   | "playbackFaster"
+  | "applyVideoQuality"
 
 export type PageAction = ScriptAction | SpecialAction
 
@@ -32,6 +37,8 @@ export type ModeAction =
   | "youtubeFocus"
   | "hideYoutubeProgressBar"
   | "hideYoutubeControls"
+  | "hideYoutubeDuration"
+  | "youtubeHalfScreen"
 
 export type ColorAction = "changeBackgroundColor" | "changeColor"
 export type ValueAction = "playbackRateApply" | "volumeBoost"
@@ -48,6 +55,7 @@ export type PageActionResult = { ok: boolean; saved: boolean; error?: string; ta
 export type ActionExecution =
   | { type: "script"; file: string; world?: "MAIN" | "ISOLATED"; allFrames?: boolean }
   | { type: "playback" }
+  | { type: "video_quality" }
   | {
       type: "flagged_mode"
       flagKey: string
@@ -68,6 +76,8 @@ export const BOOLEAN_KEYS: Record<string, string> = {
   youtubeFocus: "youtubeFocus",
   hideYoutubeProgressBar: "youtubeHideProgress",
   hideYoutubeControls: "youtubeHideControls",
+  hideYoutubeDuration: "youtubeHideDuration",
+  youtubeHalfScreen: "youtubeHalfScreen",
 }
 
 export const ACTION_REGISTRY: Record<PageAction, ActionExecution> = {
@@ -81,8 +91,12 @@ export const ACTION_REGISTRY: Record<PageAction, ActionExecution> = {
   hideAllScrollBars: { type: "script", file: "scripts/hideAllScrollBars.js", allFrames: true },
   resetMainScrollBar: { type: "script", file: "scripts/resetMainScrollBar.js", allFrames: true },
   resetAllScrollBars: { type: "script", file: "scripts/resetAllScrollBars.js", allFrames: true },
+  applyCustomScrollbar: { type: "script", file: "scripts/applyCustomScrollbar.js", allFrames: true },
+  resetCustomScrollbar: { type: "script", file: "scripts/resetCustomScrollbar.js", allFrames: true },
   hideYoutubeProgressBar: { type: "script", file: "scripts/youtubeProgressBar.js", allFrames: true },
   hideYoutubeControls: { type: "script", file: "scripts/youtubeControls.js", allFrames: true },
+  hideYoutubeDuration: { type: "script", file: "scripts/youtubeDuration.js", allFrames: true },
+  youtubeHalfScreen: { type: "script", file: "scripts/youtubeHalfScreen.js", allFrames: true },
   volumeBoost: { type: "script", file: "scripts/volumeBoost.js", allFrames: true },
   arabicRtlMode: { type: "script", file: "scripts/arabicRtlMode.js", allFrames: true },
   designMode: {
@@ -106,6 +120,7 @@ export const ACTION_REGISTRY: Record<PageAction, ActionExecution> = {
   playbackRateApply: { type: "playback" },
   playbackSlower: { type: "playback" },
   playbackFaster: { type: "playback" },
+  applyVideoQuality: { type: "video_quality" },
 }
 
 export function validateActionRequest(input: unknown): PageActionRequest {

@@ -49,6 +49,24 @@ async function apply(tabId: number, event: PageAction, settings: Record<string, 
       func: applyPlayback,
     }))
     if (!results.length) throw new Error("No accessible page frames")
+  } else if (definition.type === "video_quality") {
+    const targetQuality = typeof settings.videoQuality === "string" ? settings.videoQuality : "hd1080"
+    const fallback = settings.videoQualityFallback === "higher" ? "higher" : "lower"
+    const shareSettings = (q: string, fb: string) => {
+      Object.assign(window, { __zedVideoQualitySettings: { quality: q, fallback: fb } })
+    }
+    await chrome.scripting.executeScript({
+      target: { tabId, allFrames: true },
+      world: "MAIN",
+      func: shareSettings,
+      args: [targetQuality, fallback],
+    }).catch(() => chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: shareSettings,
+      args: [targetQuality, fallback],
+    }))
+    await inject(tabId, ["scripts/applyVideoQuality.js"], "MAIN")
   } else if (definition.type === "flagged_mode") {
     const { flagKey, world, file, allFrames, settingKey, onValue } = definition
     const enabled = settings[settingKey] === onValue

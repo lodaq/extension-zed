@@ -2,6 +2,7 @@ import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import DesignMode from "@/components/DesignMode"
 import InspectModeToggle from "@/components/InspectModeToggle"
 import ArabicRtlMode from "@/components/ArabicRtlMode"
+import PageTimestampInspector from "@/components/PageTimestampInspector"
 
 const ModesSection = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
   return (
@@ -10,6 +11,7 @@ const ModesSection = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
         <InspectModeToggle />
         <DesignMode />
         <ArabicRtlMode />
+        <PageTimestampInspector />
       </div>
     </MiscSection>
   )

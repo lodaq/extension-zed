@@ -13,26 +13,53 @@ const ScrollbarsSection = ({ dragHandle, open, onOpenChange }: MiscSectionProps)
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <div>
-            <p className={popupSubhead}>Main scrollbar</p>
-            <p className={popupDescription}>Only the document / viewport scrollbar.</p>
+            <p className={popupSubhead}>Custom style</p>
+            <p className={popupDescription}>Sleek, unobtrusive modern scrollbars without layout shifting.</p>
           </div>
           <div className={popupControlRow}>
             <Button
               type="button"
               size="sm"
               className="min-h-10 flex-1 sm:flex-none"
-              onClick={() => void sendPageAction("hideMainScrollBar", "Main scrollbar hidden")}
+              onClick={() => void sendPageAction("applyCustomScrollbar", "Custom scrollbar applied")}
             >
-              Hide
+              Apply
             </Button>
             <Button
               type="button"
               size="sm"
               className="min-h-10 flex-1 sm:flex-none"
-              onClick={() => void sendPageAction("resetMainScrollBar", "Main scrollbar reset")}
+              onClick={() => void sendPageAction("resetCustomScrollbar", "Custom scrollbar reset")}
             >
               Reset
             </Button>
+          </div>
+        </div>
+
+        <div className="border-t border-border/70 pt-4">
+          <div className="flex flex-col gap-2">
+            <div>
+              <p className={popupSubhead}>Main scrollbar</p>
+              <p className={popupDescription}>Only the document / viewport scrollbar.</p>
+            </div>
+            <div className={popupControlRow}>
+              <Button
+                type="button"
+                size="sm"
+                className="min-h-10 flex-1 sm:flex-none"
+                onClick={() => void sendPageAction("hideMainScrollBar", "Main scrollbar hidden")}
+              >
+                Hide
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="min-h-10 flex-1 sm:flex-none"
+                onClick={() => void sendPageAction("resetMainScrollBar", "Main scrollbar reset")}
+              >
+                Reset
+              </Button>
+            </div>
           </div>
         </div>
 

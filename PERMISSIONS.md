@@ -15,7 +15,7 @@ Extension Zed declares only 3 permissions in `manifest.json`:
 | Permission | Justification & Features Using It | Least-Privilege Verification |
 |---|---|---|
 | `activeTab` | Grants temporary, user-invoked execution access to the active tab when opening the action popup. | Does **not** grant background access to tabs. Access expires as soon as navigation occurs or the user switches tabs. |
-| `scripting` | Programmatically executes on-demand content actions (`chrome.scripting.executeScript`) when the user applies design mode, page colors, scrollbar toggles, focus mode, element inspector, or volume boost. | Only used on target tabs matching active user intent. Restricted Chrome internal URLs (`chrome://`, webstore, extensions gallery) are caught and protected with safe user messaging. |
+| `scripting` | Programmatically executes on-demand content actions (`chrome.scripting.executeScript`) when the user applies design mode, page colors, scrollbar toggles, focus mode, element inspector, volume boost, or video quality. | Only used on target tabs matching active user intent. Restricted Chrome internal URLs (`chrome://`, webstore, extensions gallery) are caught and protected with safe user messaging. |
 | `storage` | Persists user preferences (`chrome.storage.local`) such as dark theme, playback speed presets, custom page colors, section order, and mode toggles. | Synced locally only on the device; no remote transmission. Includes export/import validation. |
 
 ### Host Permissions Audit
@@ -37,6 +37,16 @@ Declared in `manifest.json`:
    - Runs at `document_idle` on `http://*/*` and `https://*/*`.
    - Purpose: Inspects first letters of text elements and applies RTL direction if Arabic script is detected (when enabled in settings).
    - Security: Runs in isolated world, uses WeakMap / reversible DOM direction attributes, zero eval or remote scripts.
+
+3. `scripts/applyVideoQuality.js`:
+   - Runs at `document_idle` on `http://*/*` and `https://*/*`, including frames, in the page's `MAIN` world.
+   - Purpose: Applies the saved video quality through YouTube's player API or the website's own player settings menu (for example Facebook, X, and Twitch), including newly started videos.
+   - Security: No remote code, eval, or data collection. It only calls player methods, writes YouTube's own quality preference key, and clicks the page's visible quality controls. It never reads or transmits page content beyond player menu labels.
+
+4. `scripts/videoQualityBridge.js`:
+   - Runs at `document_idle` on `http://*/*` and `https://*/*`, including frames, in the isolated world.
+   - Purpose: Reads the saved video-quality preference from `chrome.storage.local` and passes it to the main-world engine through a DOM attribute and custom event.
+   - Security: Only exposes the user's own quality preference to the page's main world; no page data is collected or sent anywhere.
 
 ## 3. High-Risk Capabilities Guardrails
 

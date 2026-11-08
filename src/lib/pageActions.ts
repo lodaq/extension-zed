@@ -8,6 +8,7 @@ import {
 } from "./actionRegistry"
 import { nearestPreset, stepPlayback } from "./playbackPresets"
 import { isColor, readSetting } from "./settings"
+import { QUALITY_OPTIONS } from "./videoQuality"
 
 export type { PageAction, PageActionRequest, PageActionResult } from "./actionRegistry"
 
@@ -30,6 +31,7 @@ async function inject(tabId: number, files: string[], world: "MAIN" | "ISOLATED"
   const results = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files, world: executionWorld })
     .catch(() => chrome.scripting.executeScript({ target: { tabId }, files, world: executionWorld }))
   if (!results.length) throw new Error("No accessible page frames")
+  return results
 }
 
 async function apply(tabId: number, event: PageAction, settings: Record<string, unknown>) {
@@ -66,7 +68,11 @@ async function apply(tabId: number, event: PageAction, settings: Record<string, 
       func: shareSettings,
       args: [targetQuality, fallback],
     }))
-    await inject(tabId, ["scripts/applyVideoQuality.js"], "MAIN")
+    const results = await inject(tabId, ["scripts/applyVideoQuality.js"], "MAIN")
+    const selected = [...new Set(results.map(result => result.result).filter((result): result is string => typeof result === "string" && result.length > 0))]
+    if (!selected.length) throw new Error("No controllable video is ready on this page. The saved quality will be retried when a supported player is ready.")
+    const labels = selected.map(quality => QUALITY_OPTIONS.find(option => option.id === quality)?.label || (quality === "auto" ? "Auto" : quality))
+    return `Player quality set to ${labels.join(", ")}`
   } else if (definition.type === "flagged_mode") {
     const { flagKey, world, file, allFrames, settingKey, onValue } = definition
     const enabled = settings[settingKey] === onValue
@@ -117,6 +123,7 @@ async function perform(input: unknown): Promise<PageActionResult> {
     if (tabId === undefined) throw new Error("No active tab is available")
     const { event, value } = request
     const stored = await chrome.storage.local.get(null)
+    if (event === "applyVideoQuality") saved = stored.videoQuality !== undefined
     const patch: Record<string, unknown> = {}
     if (Object.prototype.hasOwnProperty.call(MODE_KEYS, event)) {
       const key = MODE_KEYS[event]
@@ -152,8 +159,8 @@ async function perform(input: unknown): Promise<PageActionResult> {
       await chrome.storage.local.set(patch)
       saved = true
     }
-    await apply(tabId, event, { ...stored, ...patch })
-    return { ok: true, saved, tabId }
+    const message = await apply(tabId, event, { ...stored, ...patch })
+    return { ok: true, saved, tabId, ...(message ? { message } : {}) }
   } catch (error) {
     const message = normalizeTabError(error)
     return { ok: false, saved, tabId, error: saved ? `Preference saved, but not applied to this page: ${message}` : message }

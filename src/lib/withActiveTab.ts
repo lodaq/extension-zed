@@ -18,7 +18,7 @@ export async function sendPageAction(event: PageAction, successMessage = "Applie
   try {
     const response = (await chrome.runtime.sendMessage({ event, value })) as PageActionResult
     if (!response?.ok) throw new Error(response?.error || "Chrome could not modify this page")
-    report(successMessage, "success")
+    report(response.message || successMessage, "success")
     return true
   } catch (error) {
     const message = error instanceof Error ? error.message : "Chrome could not modify this page"

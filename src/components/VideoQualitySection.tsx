@@ -25,7 +25,7 @@ export default function VideoQualitySection({ dragHandle, open, onOpenChange }: 
     } catch {
       return
     }
-    void sendPageAction("applyVideoQuality", "Quality applied")
+    void sendPageAction("applyVideoQuality", "Quality preference saved")
   }
 
   return (
@@ -63,7 +63,7 @@ export default function VideoQualitySection({ dragHandle, open, onOpenChange }: 
         </div>
 
         <p className="text-xs leading-snug text-muted-foreground">
-          Applied automatically to new videos on every site, including Facebook, X, and YouTube.
+          Sets quality through supported player controllers, including Facebook, without opening menus. The result reports the selected quality or an unsupported player.
         </p>
 
         <div className="flex flex-col gap-1.5">

@@ -50,7 +50,7 @@ export type PageActionRequest = { tabId?: number } & (
   | { event: Exclude<PageAction, ModeAction | ColorAction | ValueAction>; value?: never }
 )
 
-export type PageActionResult = { ok: boolean; saved: boolean; error?: string; tabId?: number }
+export type PageActionResult = { ok: boolean; saved: boolean; error?: string; message?: string; tabId?: number }
 
 export type ActionExecution =
   | { type: "script"; file: string; world?: "MAIN" | "ISOLATED"; allFrames?: boolean }

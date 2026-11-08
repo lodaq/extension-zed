@@ -31,14 +31,14 @@ pnpm check:build
 
 Load `dist/` as an unpacked extension at `chrome://extensions`. After rebuilding, reload the extension and refresh existing web pages to receive new content scripts. `pnpm dev` serves the popup for development; an ordinary browser page does not provide extension APIs.
 
-Stack: React 19, TypeScript 6, Vite 8, Tailwind 4, and Radix UI. Permissions: `scripting`, `activeTab`, and `storage`. Playback, Arabic RTL, and video-quality content scripts match HTTP(S) pages, including frames. No additional permissions were added by the architecture fixes.
+Stack: React 19, TypeScript 6, Vite 8, Tailwind 4, and Radix UI. Permissions: `scripting`, `activeTab`, and `storage`. Playback, Arabic RTL, and video-quality content scripts match HTTP(S) pages and frames. Playback and quality also cover open shadow roots and HTTP(S)-origin blank, srcdoc, blob, and data frames. Quality uses player APIs, including Facebook’s native controller, and never operates the website’s menus. Facebook speed also uses that controller; other sites use native HTML video rates. Unsupported players retain their own quality selection; HTML video has no universal resolution setter. No additional permissions were added.
 
 ## Structure and action flow
 
 - `src/App.tsx` and `src/components/`: popup tabs and controls.
 - `src/lib/pageActions.ts`: typed/validated page actions; owns saving, targeting, execution worlds, and failures.
 - `src/background.ts`: Chrome message adapters and per-tab failure badges/tooltips.
-- `src/lib/playbackPresets.ts` and `src/lib/playback.ts`: shared speed policy and persistent media behavior; player overrides last for the current media item.
+- `src/lib/playbackPresets.ts` and `src/lib/playback.ts`: shared speed policy and persistent media behavior; speed reapplies at metadata loading and playback start; player speed changes are otherwise left alone.
 - `src/lib/settings.ts`: recognized preferences, runtime validation, and settings transfer. Imports merge and preserve omitted values.
 - `src/lib/bootCache.ts` and `public/boot.js`: a synchronous `localStorage` mirror of the active tab, theme, and Misc order used only for the popup's first frame. `chrome.storage.local` remains the source of truth.
 - `public/scripts/`: on-demand page scripts. Return asynchronous work so application can be awaited; preserve original page values when implementing reversible changes.

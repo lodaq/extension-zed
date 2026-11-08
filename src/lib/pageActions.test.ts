@@ -138,8 +138,20 @@ describe("page actions", () => {
   it("handles applyVideoQuality action", async () => {
     values.videoQuality = "hd1440"
     values.videoQualityFallback = "higher"
-    expect(await handlePageAction({ event: "applyVideoQuality" })).toMatchObject({ ok: true })
+    inject.mockResolvedValue([{ frameId: 0, result: "2160p" }])
+    expect(await handlePageAction({ event: "applyVideoQuality" })).toMatchObject({ ok: true, message: "Player quality set to 2160p" })
     expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/applyVideoQuality.js"] }))
+  })
+
+  it("reports unsupported quality instead of claiming the saved preference was applied", async () => {
+    values.videoQuality = "tiny"
+    inject.mockResolvedValue([{ frameId: 0, result: null }])
+    expect(await handlePageAction({ event: "applyVideoQuality" })).toMatchObject({ ok: false, saved: true, error: expect.stringContaining("No controllable video is ready") })
+  })
+
+  it("reports readable quality from a supported frame even when other frames are unsupported", async () => {
+    inject.mockResolvedValue([{ frameId: 0, result: null }, { frameId: 1, result: "hd720" }])
+    expect(await handlePageAction({ event: "applyVideoQuality" })).toMatchObject({ ok: true, message: "Player quality set to 720p" })
   })
 
   it("handles modes toggle and volume boost apply", async () => {

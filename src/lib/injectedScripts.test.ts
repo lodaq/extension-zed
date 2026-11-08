@@ -353,183 +353,26 @@ describe("injected script completion", () => {
     expect(JSON.parse(storedPayload).data).toBe("hd1080")
   })
 
-  it("opens a player settings menu and selects the closest lower quality on Facebook", async () => {
-    type Rect = { width: number; height: number; left: number; top: number; right: number; bottom: number }
-
-    function rect(left: number, top: number, width: number, height: number): Rect {
-      return { left, top, width, height, right: left + width, bottom: top + height }
-    }
-
-    class FakeElement {
-      tagName: string
-      attrs: Record<string, string> = {}
-      parentElement: FakeElement | null = null
-      children: FakeElement[] = []
-      text = ""
-      onclick: (() => void) | null = null
-      private box: Rect
-
-      constructor(tagName: string, attrs: Record<string, string> = {}, box: Rect = rect(0, 0, 100, 30)) {
-        this.tagName = tagName.toUpperCase()
-        this.box = box
-        for (const [name, value] of Object.entries(attrs)) this.attrs[name.toLowerCase()] = value
-      }
-
-      get textContent() { return this.text }
-      set textContent(value: string) { this.text = value }
-      getAttribute(name: string) {
-        const key = name.toLowerCase()
-        return Object.prototype.hasOwnProperty.call(this.attrs, key) ? this.attrs[key] : null
-      }
-      setAttribute(name: string, value: string) { this.attrs[name.toLowerCase()] = value }
-      getBoundingClientRect() { return this.box }
-      append(child: FakeElement) {
-        if (child.parentElement) child.parentElement.removeChild(child)
-        child.parentElement = this
-        this.children.push(child)
-      }
-      removeChild(child: FakeElement) {
-        const index = this.children.indexOf(child)
-        if (index >= 0) this.children.splice(index, 1)
-        child.parentElement = null
-      }
-      contains(node: FakeElement) {
-        let current: FakeElement | null = node
-        while (current) {
-          if (current === this) return true
-          current = current.parentElement
-        }
-        return false
-      }
-      querySelectorAll(selector: string) {
-        return descendants(this).filter((element) => matches(element, selector))
-      }
-      querySelector(selector: string) {
-        return this.querySelectorAll(selector)[0] ?? null
-      }
-      click() { if (this.onclick) this.onclick() }
-      dispatchEvent() { return true }
-    }
-
-    function descendants(root: FakeElement): FakeElement[] {
-      const result: FakeElement[] = []
-      for (const child of root.children) {
-        result.push(child, ...descendants(child))
-      }
-      return result
-    }
-
-    function matches(element: FakeElement, selector: string) {
-      return selector.split(",").some((part) => matchesSimple(element, part.trim()))
-    }
-
-    function matchesSimple(element: FakeElement, selector: string) {
-      const tag = selector.match(/^([a-zA-Z][\w-]*)/)
-      if (tag && element.tagName !== tag[1].toUpperCase()) return false
-      const rest = tag ? selector.slice(tag[0].length) : selector
-      const pattern = /\[\s*([\w-]+)\s*(?:([*^$]?=)\s*(?:"([^"]*)"|'([^']*)'|([^\]\s]+)))?\s*(i)?\s*\]/g
-      let found = false
-      let match: RegExpExecArray | null
-      while ((match = pattern.exec(rest))) {
-        found = true
-        const actual = element.getAttribute(match[1])
-        if (actual === null) return false
-        const operator = match[2]
-        if (!operator) continue
-        const insensitive = Boolean(match[6]) || match[1].toLowerCase() === "role"
-        const expected = match[3] ?? match[4] ?? match[5] ?? ""
-        const value = insensitive ? actual.toLowerCase() : actual
-        const wanted = insensitive ? expected.toLowerCase() : expected
-        if (operator === "=" && value !== wanted) return false
-        if (operator === "*=" && value.indexOf(wanted) < 0) return false
-        if (operator === "^=" && value.indexOf(wanted) !== 0) return false
-        if (operator === "$=" && value.slice(-wanted.length) !== wanted) return false
-      }
-      return found || rest.trim() === ""
-    }
-
-    const body = new FakeElement("body", {}, rect(0, 0, 1280, 720))
-    const player = new FakeElement("div", {}, rect(0, 0, 640, 360))
-    const video = new FakeElement("video", {}, rect(0, 0, 640, 360))
-    body.append(player)
-    player.append(video)
-
-    const menu = new FakeElement("div", { role: "menu" })
-    const qualityItem = new FakeElement("div", { role: "menuitem" })
-    // Facebook renders the row label and current value together.
-    qualityItem.textContent = "Quality Automatic 1080p"
-
-    const options = ["Automatic", "360p", "720p", "1080p60"].map((label) => {
-      const option = new FakeElement("div", { role: "menuitemradio" })
-      option.textContent = label
-      return option
-    })
-
-    const submenu = new FakeElement("div", { role: "menu" })
-    let menuOpen = false
-    let submenuOpen = false
-    let selected = ""
-    const settings = new FakeElement("div", { role: "button", "aria-label": "Settings" }, rect(600, 320, 24, 24))
-
-    settings.onclick = () => {
-      menuOpen = !menuOpen
-      if (menuOpen) player.append(menu)
-      else {
-        player.removeChild(menu)
-        if (submenuOpen) {
-          player.removeChild(submenu)
-          submenuOpen = false
-        }
-      }
-    }
-    qualityItem.onclick = () => {
-      if (submenuOpen) return
-      submenuOpen = true
-      player.append(submenu)
-    }
-    for (const option of options) {
-      option.onclick = () => {
-        selected = option.textContent
-        if (submenuOpen) player.removeChild(submenu)
-        submenuOpen = false
-        player.removeChild(menu)
-        menuOpen = false
-      }
-    }
-    player.append(settings)
-    menu.append(qualityItem)
-    for (const option of options) submenu.append(option)
-
-    const documentMock = {
-      body,
-      documentElement: new FakeElement("html"),
-      querySelectorAll: (selector: string) => body.querySelectorAll(selector),
-      querySelector: (selector: string) => body.querySelector(selector),
-      getElementById: () => null,
-      addEventListener: () => {},
-      dispatchEvent: () => true,
-    }
-
-    const windowMock = {
-      __zedVideoQualitySettings: { quality: "hd2160", fallback: "lower" },
+  it("never clicks Facebook controls or sends synthetic input", async () => {
+    const input = vi.fn()
+    const video = { tagName: "VIDEO", currentSrc: "blob:facebook", getBoundingClientRect: () => ({ left: 0, top: 0, right: 640, bottom: 360, width: 640, height: 360 }) }
+    const settings = { click: input, dispatchEvent: input, getAttribute: () => "Settings", getBoundingClientRect: video.getBoundingClientRect }
+    const win = {
+      __zedVideoQualitySettings: { quality: "hd1080", fallback: "lower" },
       location: { hostname: "www.facebook.com" },
-      innerWidth: 1280,
-      innerHeight: 720,
-      getComputedStyle: () => ({ display: "block", visibility: "visible", opacity: "1" }),
-      addEventListener: () => {},
+      innerWidth: 1280, innerHeight: 720, addEventListener: vi.fn(),
     }
-
-    const result = await runInNewContext(script("applyVideoQuality"), {
-      window: windowMock,
-      document: documentMock,
-      localStorage: { setItem: () => {}, removeItem: () => {} },
-      setTimeout,
-      clearTimeout,
-      Promise,
-      Date,
+    const result = runInNewContext(script("applyVideoQuality"), {
+      window: win,
+      document: {
+        getElementById: () => null,
+        querySelectorAll: (selector: string) => selector === "video" ? [video] : [settings],
+        addEventListener: vi.fn(), dispatchEvent: input,
+      },
+      setTimeout: vi.fn(), clearTimeout: vi.fn(),
+      MouseEvent: class {}, KeyboardEvent: class {},
     })
-
-    expect(result).toBe("1080p")
-    expect(selected).toBe("1080p60")
+    expect(input).not.toHaveBeenCalled()
+    await result
   })
 })

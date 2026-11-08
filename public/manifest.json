@@ -37,7 +37,9 @@
       "matches": ["https://*/*", "http://*/*"],
       "js": ["scripts/playbackRatePersist.js"],
       "run_at": "document_idle",
-      "all_frames": true
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
     },
     {
       "matches": ["https://*/*", "http://*/*"],
@@ -50,13 +52,17 @@
       "js": ["scripts/applyVideoQuality.js"],
       "run_at": "document_idle",
       "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true,
       "world": "MAIN"
     },
     {
       "matches": ["https://*/*", "http://*/*"],
       "js": ["scripts/videoQualityBridge.js"],
       "run_at": "document_idle",
-      "all_frames": true
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
     }
   ],
   "permissions": ["scripting", "activeTab", "storage"]

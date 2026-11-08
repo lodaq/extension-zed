@@ -98,142 +98,59 @@ function parseTextContent(toolResult) {
   return toolResult.content.map((c) => (c.type === "text" ? c.text : JSON.stringify(c))).join("\n");
 }
 
-// A Facebook-like player fixture. The engine has to open the gear menu, open
-// the Quality submenu (when present), and pick the right resolution - or the
-// requested fallback when the exact one is not offered.
-function playerPage({ variant = "standard", options = ["Automatic", "1080p", "720p", "360p"], label = "Video" }) {
-  const roleless = variant === "loose";
-  const directOptions = variant === "reels";
-  const role = (name) => (roleless ? "" : ` role="${name}"`);
-
-  const optionMarkup = options
-    .map(
-      (option) =>
-        `<div class="row option" data-quality="${option}"${role("menuitemradio")}>${option}</div>`
-    )
-    .join("");
-
-  const menuMarkup = directOptions
-    ? `<div id="menu" class="menu"${role("menu")} style="display:none">${optionMarkup}</div>`
-    : `<div id="menu" class="menu"${role("menu")} style="display:none">
-        <div id="qualityRow" class="row quality"${role("menuitem")}>Quality <span id="qualityValue">Automatic 1080p</span> <span class="chevron">›</span></div>
-      </div>
-      <div id="submenu" class="menu submenu"${role("menu")} style="display:none">${optionMarkup}</div>`;
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${label}</title>
-  <style>
-    html, body { margin: 0; padding: 0; background: #f0f2f5; font-family: sans-serif; }
-    #player { position: relative; width: 640px; height: 360px; margin: 40px; background: #000; overflow: hidden; }
-    ${variant === "reels" ? "#player { width: 100vw; height: 100vh; margin: 0; }" : ""}
-    #video { width: 100%; height: 100%; display: block; background: #111; }
-    #gear { position: absolute; right: 10px; bottom: 10px; width: 30px; height: 30px; background: #333; color: #fff; border: 0; border-radius: 4px; cursor: pointer; z-index: 20; }
-    .menu { position: absolute; left: 180px; top: 90px; min-width: 180px; background: #242526; color: #fff; padding: 6px; border-radius: 8px; z-index: 30; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
-    .submenu { left: 380px; top: 90px; }
-    .row { padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-    .row:hover { background: #3a3b3c; }
-    .quality { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
-    .chevron { opacity: .7; }
-  </style>
-</head>
-<body>
-  <div id="player">
-    <video id="video" playsinline muted></video>
-    <button id="gear" aria-label="Settings" title="Settings">⚙</button>
-    ${menuMarkup}
-  </div>
-  ${variant === "switch" ? '<button id="next-reel" style="margin:40px">Next reel</button>' : ""}
-  <script>
-    (function () {
-      window.__zedSelected = null;
-      window.__zedMenuOpened = 0;
-      window.__zedQualityClicks = 0;
-      window.__zedLastClick = null;
-      var menu = document.getElementById('menu');
-      var submenu = document.getElementById('submenu');
-      var gear = document.getElementById('gear');
-      var qualityRow = document.getElementById('qualityRow');
-      var qualityValue = document.getElementById('qualityValue');
-
-      document.addEventListener('click', function (event) {
-        var target = event.target;
-        window.__zedLastClick = {
-          id: target && target.id,
-          cls: target && target.className,
-          text: target && (target.textContent || '').slice(0, 40)
-        };
-      }, true);
-
-      function hideAll() {
-        menu.style.display = 'none';
-        if (submenu) submenu.style.display = 'none';
+// Player API fixtures deliberately leave controls in place as input traps.
+function playerPage(kind = "hls") {
+  return `<!doctype html><html><head><title>Programmatic media fixture</title></head><body>
+    <video id="video" controls playsinline muted></video>
+    <div id="component"></div>
+    <button aria-label="Settings" id="gear">Settings</button>
+    <div role="menu" hidden><div role="menuitemradio">1080p</div></div>
+    <iframe src="/frame" id="frame"></iframe>
+    <iframe srcdoc="&lt;video id=srcdoc-video&gt;&lt;/video&gt;" id="srcdoc"></iframe>
+    <script>
+      window.inputEvents = 0;
+      for (const type of ['click', 'keydown', 'pointerdown', 'pointermove', 'mousemove', 'mouseover']) {
+        document.addEventListener(type, () => window.inputEvents++, true);
       }
-
-      gear.addEventListener('click', function () {
-        window.__zedMenuOpened += 1;
-        if (menu.style.display === 'block') hideAll();
-        else {
-          menu.style.display = 'block';
-          if (submenu) submenu.style.display = 'none';
+      window.selected = null;
+      window.attachPlayer = function(video) {
+        if (${JSON.stringify(kind)} === 'hls') {
+          video.hls = {
+            media: video, levels: [{height:360}, {height:720}, {height:1080}],
+            set loadLevel(index) { window.selected = index < 0 ? 'auto' : this.levels[index].height + 'p'; this.media.dataset.quality = window.selected; }
+          };
         }
-      });
-
-      if (qualityRow) {
-        qualityRow.addEventListener('click', function () {
-          if (submenu) submenu.style.display = 'block';
-        });
-      }
-
-      Array.prototype.forEach.call(document.querySelectorAll('[data-quality]'), function (option) {
-        option.addEventListener('click', function () {
-          var value = option.getAttribute('data-quality');
-          window.__zedSelected = value;
-          if (qualityValue) qualityValue.textContent = value;
-          hideAll();
-        });
-      });
-    })();
-  </script>
-</body>
-</html>`;
+        if (${JSON.stringify(kind)} === 'videojs') {
+          const levels = [360,720,1080].map(height => ({height, enabled:true}));
+          window.videojs = {getPlayers: () => ({one: {currentSrc: () => 'fixture', qualityLevels: () => levels}})};
+          window.readSelection = () => levels.filter(level => level.enabled).map(level => level.height + 'p').join(',');
+        }
+        if (${JSON.stringify(kind)} === 'shaka') {
+          const tracks = [360,720,1080].map(height => ({id:height,height,language:'ar',audioId:1,active:height===360}));
+          const player = {
+            getVariantTracks: () => tracks,
+            configure: config => { if (config.abr.enabled) window.selected = 'auto'; },
+            selectVariantTrack: track => { window.selected = track.height + 'p'; }
+          };
+          video.ui = {getControls: () => ({getPlayer: () => player})};
+        }
+      };
+      window.attachPlayer(document.getElementById('video'));
+      const shadow = document.getElementById('component').attachShadow({mode:'open'});
+      const shadowVideo = document.createElement('video');
+      if (${JSON.stringify(kind)} === 'hls') window.attachPlayer(shadowVideo);
+      shadow.append(shadowVideo);
+    </script>
+  </body></html>`;
 }
 
 function startServer() {
   const server = http.createServer((req, res) => {
-    const url = new URL(req.url, "http://127.0.0.1");
-    let body;
-    switch (url.pathname) {
-      case "/standard":
-        body = playerPage({ variant: "standard", label: "Facebook video (ARIA menu)" });
-        break;
-      case "/loose":
-        body = playerPage({ variant: "loose", label: "Facebook video (no ARIA roles)" });
-        break;
-      case "/reels":
-        body = playerPage({ variant: "reels", label: "Facebook reel", options: ["Automatic", "1080p", "720p", "360p"] });
-        break;
-      case "/fallback-lower":
-        body = playerPage({ variant: "standard", label: "Fallback lower", options: ["Automatic", "720p", "360p"] });
-        break;
-      case "/fallback-higher":
-        body = playerPage({ variant: "standard", label: "Fallback higher", options: ["Automatic", "1080p", "480p"] });
-        break;
-      case "/switch":
-        body = playerPage({ variant: "switch", label: "Reel switch" });
-        break;
-      default:
-        body = playerPage({ label: "Facebook video" });
-    }
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end(body);
+    if (req.url === "/frame") res.end('<!doctype html><video id="frame-video"></video>');
+    else res.end(playerPage(req.url.slice(1) || "hls"));
   });
-
-  return new Promise((resolve) => {
-    server.listen(0, "127.0.0.1", () => resolve({ server, port: server.address().port }));
-  });
+  return new Promise(resolve => server.listen(0, "127.0.0.1", () => resolve({ server, port: server.address().port })));
 }
 
 async function evaluate(client, pageId, fn) {
@@ -268,131 +185,116 @@ async function findPageId(client, url) {
   return Number(match[1]);
 }
 
-async function waitForSelection(client, pageId, expected, timeoutMs = 10000) {
-  const deadline = Date.now() + timeoutMs;
-  let last = null;
-  while (Date.now() < deadline) {
-    last = await evaluate(
-      client,
-      pageId,
-      `() => ({
-        selected: window.__zedSelected,
-        opened: window.__zedMenuOpened,
-        row: document.getElementById('qualityValue') ? document.getElementById('qualityValue').textContent : null,
-        videos: document.querySelectorAll('video').length,
-        settings: window.__zedVideoQualityEngine ? window.__zedVideoQualityEngine.getSettings() : null,
-        engine: Boolean(window.__zedVideoQualityEngine),
-        menu: document.getElementById('menu') ? document.getElementById('menu').style.display : null,
-        submenu: document.getElementById('submenu') ? document.getElementById('submenu').style.display : null,
-        lastClick: window.__zedLastClick
-      })`
-    );
-    if (last && last.selected === expected) return last;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  return last;
+async function waitForState(client, pageId, expected) {
+  const deadline = Date.now() + 7000;
+  let state;
+  do {
+    state = await evaluate(client, pageId, `() => ({
+      selected: window.readSelection ? window.readSelection() : window.selected,
+      rate: document.querySelector('video').playbackRate,
+      frameRate: document.getElementById('frame').contentDocument.querySelector('video').playbackRate,
+      srcdocRate: document.getElementById('srcdoc').contentDocument.querySelector('video').playbackRate,
+      shadowRate: document.getElementById('component').shadowRoot.querySelector('video').playbackRate,
+      shadowQuality: document.getElementById('component').shadowRoot.querySelector('video').dataset.quality || null,
+      input: window.inputEvents,
+      menuHidden: document.querySelector('[role="menu"]').hidden,
+      paused: document.querySelector('video').paused,
+      time: document.querySelector('video').currentTime,
+      engine: Boolean(window.__zedVideoQualityEngine)
+    })`);
+    if (state && Object.entries(expected).every(([key, value]) => state[key] === value)) return state;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  } while (Date.now() < deadline);
+  throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(state)}`);
 }
 
 async function main() {
   const { server, port } = await startServer();
   const base = `http://127.0.0.1:${port}`;
   const client = new DevToolsClient();
-  const results = [];
-
-  function record(name, passed, detail = "") {
-    results.push({ name, passed });
-    console.log(`  ${passed ? "✓" : "✗"} ${name}${detail ? ` — ${detail}` : ""}`);
+  let passed = 0;
+  async function check(name, action) {
+    await action();
+    passed++;
+    console.log(`✓ ${name}`);
   }
-
   try {
     await client.start();
     const installed = await client.callTool("install_extension", { path: EXTENSION_DIST });
-    record("Install extension from dist/", !installed.isError, parseTextContent(installed).slice(0, 160));
-
-    const listText = parseTextContent(await client.callTool("list_extensions"));
-    const extensionId = (listText.match(/([a-p]{32})/) || [])[1];
-    record("Detect extension id", Boolean(extensionId), extensionId || "none");
-    if (!extensionId) throw new Error(`No extension id in: ${listText}`);
-
-    const popupUrl = `chrome-extension://${extensionId}/index.html`;
-    await client.callTool("navigate_page", { pageId: 1, url: popupUrl });
-    record("Open extension page", true, popupUrl);
-
-    // Scenario 1: standard ARIA menu, 1080p should be selected.
+    if (installed.isError) throw new Error(parseTextContent(installed));
+    const list = parseTextContent(await client.callTool("list_extensions"));
+    const extensionId = (list.match(/([a-p]{32})/) || [])[1];
+    if (!extensionId) throw new Error(list);
+    await client.callTool("navigate_page", { pageId: 1, url: `chrome-extension://${extensionId}/index.html` });
     await setQuality(client, 1, "hd1080", "lower");
-    await client.callTool("new_page", { url: `${base}/standard` });
-    const standardPage = await findPageId(client, `${base}/standard`);
-    await client.callTool("select_page", { pageId: standardPage });
-    let state = await waitForSelection(client, standardPage, "1080p");
-    record("Facebook video/ARIA menu applies saved 1080p", state?.selected === "1080p", JSON.stringify(state));
+    await evaluate(client, 1, `async () => { await chrome.storage.local.set({speed:'2'}); return true; }`);
+    await client.callTool("new_page", { url: `${base}/hls` });
+    const page = await findPageId(client, `${base}/hls`);
 
-    // Scenario 2: same menu with no ARIA roles or tabindex.
+    await check("HLS quality and speed, including iframe, without input or playback changes", () => waitForState(client, page, {
+      selected: "1080p", rate: 2, frameRate: 2, srcdocRate: 2, shadowRate: 2, shadowQuality: "1080p", input: 0, menuHidden: true, paused: true, time: 0,
+    }));
+    await check("Apply reports quality from the installed extension's actual script injection", async () => {
+      await client.callTool("select_page", { pageId: page });
+      const granted = await client.callTool("trigger_extension_action", { id: extensionId });
+      if (granted.isError) throw new Error(parseTextContent(granted));
+      const response = await evaluate(client, 1, `async () => chrome.runtime.sendMessage({event:'applyVideoQuality'})`);
+      if (!response?.ok || response.message !== "Player quality set to 1080p") throw new Error(JSON.stringify(response));
+    });
+    await check("Changed settings apply to existing videos and frames", async () => {
+      await evaluate(client, 1, `async () => { await chrome.storage.local.set({speed:'1.5'}); return true; }`);
+      await setQuality(client, 1, "hd1440", "lower");
+      await waitForState(client, page, { selected: "1080p", rate: 1.5, frameRate: 1.5, srcdocRate: 1.5, shadowRate: 1.5, input: 0 });
+    });
+    await check("Unavailable quality uses the selected fallback", async () => {
+      await setQuality(client, 1, "large", "higher");
+      await waitForState(client, page, { selected: "720p", input: 0 });
+    });
+    await check("Auto releases manual quality selection", async () => {
+      await setQuality(client, 1, "auto", "lower");
+      await waitForState(client, page, { selected: "auto", input: 0 });
+    });
     await setQuality(client, 1, "hd1080", "lower");
-    await client.callTool("navigate_page", { pageId: standardPage, url: `${base}/loose` });
-    state = await waitForSelection(client, standardPage, "1080p");
-    record("Facebook video without ARIA roles applies 1080p", state?.selected === "1080p", JSON.stringify(state));
-
-    // Scenario 3: Reels layout with a direct quality list (no Quality submenu).
-    await setQuality(client, 1, "hd1080", "lower");
-    await client.callTool("navigate_page", { pageId: standardPage, url: `${base}/reels` });
-    state = await waitForSelection(client, standardPage, "1080p");
-    record("Facebook reel applies 1080p", state?.selected === "1080p", JSON.stringify(state));
-
-    // Scenario 4: requested quality unavailable, lower fallback.
-    await setQuality(client, 1, "hd1080", "lower");
-    await client.callTool("navigate_page", { pageId: standardPage, url: `${base}/fallback-lower` });
-    state = await waitForSelection(client, standardPage, "720p");
-    record("Unavailable 1080p falls back to lower 720p", state?.selected === "720p", JSON.stringify(state));
-
-    // Scenario 5: requested quality unavailable, higher fallback.
-    await setQuality(client, 1, "hd720", "higher");
-    await client.callTool("navigate_page", { pageId: standardPage, url: `${base}/fallback-higher` });
-    state = await waitForSelection(client, standardPage, "1080p");
-    record("Unavailable 720p falls back to higher 1080p", state?.selected === "1080p", JSON.stringify(state));
-
-    // Scenario 6: reload keeps applying the saved quality.
-    await setQuality(client, 1, "hd1080", "lower");
-    await client.callTool("navigate_page", { pageId: standardPage, url: `${base}/standard` });
-    await waitForSelection(client, standardPage, "1080p");
-    await client.callTool("navigate_page", { pageId: standardPage, type: "reload" });
-    state = await waitForSelection(client, standardPage, "1080p");
-    record("Saved quality reapplies after reload", state?.selected === "1080p", JSON.stringify(state));
-
-    // Scenario 7: reel swaps to a new <video>; the new one gets applied too.
-    await setQuality(client, 1, "hd1080", "lower");
-    await client.callTool("navigate_page", { pageId: standardPage, url: `${base}/switch` });
-    await waitForSelection(client, standardPage, "1080p");
-    const switched = await evaluate(
-      client,
-      standardPage,
-      `() => {
-        window.__zedSelected = null;
-        const player = document.getElementById('player');
+    await check("Replaced reel videos get quality and saved speed without a play event", async () => {
+      await evaluate(client, page, `() => {
         const old = document.getElementById('video');
-        const next = document.createElement('video');
-        next.id = 'video';
-        next.muted = true;
-        next.setAttribute('playsinline', '');
-        next.style.width = '100%';
-        next.style.height = '100%';
-        player.replaceChild(next, old);
-        document.getElementById('gear').style.display = 'block';
-        next.dispatchEvent(new Event('play'));
-        return { swapped: true };
-      }`
-    );
-    state = await waitForSelection(client, standardPage, "1080p");
-    record("Quality reapplies when a reel swaps its video element", switched?.swapped === true && state?.selected === "1080p", JSON.stringify(state));
-  } catch (error) {
-    record("E2E run completed", false, error.message);
+        const next = document.createElement('video'); next.id = 'video';
+        window.selected = null; window.attachPlayer(next); old.replaceWith(next);
+        return true;
+      }`);
+      await waitForState(client, page, { selected: "1080p", rate: 1.5, input: 0, paused: true, time: 0 });
+    });
+    await check("Metadata reload and playback start restore speed without forcing ratechange", async () => {
+      const state = await evaluate(client, page, `async () => {
+        const video = document.querySelector('video');
+        video.playbackRate = 1;
+        await new Promise(resolve => setTimeout(resolve, 30));
+        const override = video.playbackRate;
+        video.dispatchEvent(new Event('loadedmetadata'));
+        const metadata = video.playbackRate;
+        video.playbackRate = 1;
+        video.dispatchEvent(new Event('play'));
+        return {override, metadata, resumed:video.playbackRate};
+      }`);
+      if (state?.override !== 1 || state?.metadata !== 1.5 || state?.resumed !== 1.5) throw new Error(JSON.stringify(state));
+    });
+    for (const kind of ["videojs", "shaka"]) {
+      await check(`${kind} player API quality without UI interaction`, async () => {
+        await client.callTool("navigate_page", { pageId: page, url: `${base}/${kind}` });
+        await waitForState(client, page, { selected: "1080p", rate: 1.5, input: 0, menuHidden: true, paused: true, time: 0 });
+      });
+    }
+    await check("Unsupported Facebook-style player stays untouched while speed works", async () => {
+      await client.callTool("navigate_page", { pageId: page, url: `${base}/unsupported` });
+      await waitForState(client, page, { engine: true, selected: null, rate: 1.5, input: 0, menuHidden: true });
+      await evaluate(client, page, `() => window.__zedVideoQualityEngine.apply()`);
+      await waitForState(client, page, { selected: null, rate: 1.5, input: 0, paused: true, time: 0 });
+    });
+    console.log(`Media E2E: ${passed} scenarios passed`);
   } finally {
     await client.close();
     server.close();
   }
-
-  const passed = results.filter((entry) => entry.passed).length;
-  console.log(`\n=== Video quality E2E: ${passed}/${results.length} passed ===`);
-  if (passed !== results.length) process.exit(1);
 }
 
-main();
+main().catch(error => { console.error(error); process.exitCode = 1; });

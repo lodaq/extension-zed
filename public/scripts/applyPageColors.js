@@ -10,7 +10,7 @@
   const MEDIA = "svg, img, video, canvas, picture, iframe, object, embed, math";
   const styles = new Map();
   const preserved = new WeakMap();
-  let colors = {};
+  let appliedColors = {};
   let rules = [];
   let customRules = new Map();
   let timer;
@@ -82,7 +82,7 @@
       if (mask) tokens.push("icon");
       else if (element.matches("html, body")) tokens.push("background");
       else if (colorAlpha(background) > 0) {
-        const target = colors.surface || colors.background;
+        const target = appliedColors.surface || appliedColors.background;
         if (target && colorAlpha(background) < 1) {
           const opacity = Math.round(colorAlpha(background) * 255).toString(16).padStart(2, "0");
           tokens.push(customRule(`background-color: ${target}${opacity} !important;`));
@@ -90,8 +90,8 @@
       }
       const link = element.closest("a");
       tokens.push(link ? "link" : "text");
-      if (colors.text && !link && !isNeutralColor(original.color)) {
-        tokens.push(customRule(`color: color-mix(in srgb, ${original.color} 40%, ${colors.text}) !important; -webkit-text-fill-color: currentColor !important;`));
+      if (appliedColors.text && !link && !isNeutralColor(original.color)) {
+        tokens.push(customRule(`color: color-mix(in srgb, ${original.color} 40%, ${appliedColors.text}) !important; -webkit-text-fill-color: currentColor !important;`));
       }
       if (isNeutralColor(original.borderTopColor)) tokens.push("border");
     }
@@ -200,13 +200,13 @@
     return rules;
   }
 
-  function render(settings) {
-    colors = settings;
+  function render(nextColors) {
+    appliedColors = nextColors;
     observer?.disconnect();
     clearTimeout(timer);
     timer = undefined;
     dirty.clear();
-    if (!hasColors(colors)) {
+    if (!hasColors(appliedColors)) {
       for (const [root, style] of styles) {
         style.remove();
         for (const element of root.querySelectorAll(`[${ATTRIBUTE}]`)) element.removeAttribute(ATTRIBUTE);
@@ -216,7 +216,7 @@
       return;
     }
 
-    rules = buildThemeRules(colors);
+    rules = buildThemeRules(appliedColors);
     stylesheet(document).textContent = rules.join("\n");
     flush(true);
   }
@@ -225,9 +225,11 @@
     const current = ++revision;
     const result = await chrome.storage.local.get([SITE_KEY, "pageColorsGlobal", "pageColorsAllSites"]);
     if (current !== revision) return;
-    const settings = result.pageColorsAllSites === true && hasColors(result.pageColorsGlobal) ? result.pageColorsGlobal : result[SITE_KEY];
-    const nextColors = Object.fromEntries(FIELDS.map(name => [name, color(settings && settings[name])]));
-    if (FIELDS.every(name => nextColors[name] === colors[name]) &&
+    const useGlobal = result.pageColorsAllSites === true && hasColors(result.pageColorsGlobal);
+    const storedColors = useGlobal ? result.pageColorsGlobal : result[SITE_KEY];
+    const nextColors = Object.fromEntries(FIELDS.map(name => [name, color(storedColors && storedColors[name])]));
+    const sameColors = FIELDS.every(name => nextColors[name] === appliedColors[name]);
+    if (sameColors &&
       Array.from(styles.values()).every(style => style.isConnected && style.media === "all")) return;
     render(nextColors);
   }
@@ -238,9 +240,9 @@
       void refresh().catch(() => {});
     }
   });
-  document.addEventListener?.("DOMContentLoaded", () => { if (hasColors(colors)) render(colors); }, { once: true });
+  document.addEventListener?.("DOMContentLoaded", () => { if (hasColors(appliedColors)) render(appliedColors); }, { once: true });
   document.addEventListener?.("load", (event) => {
-    if (hasColors(colors) && event.target.matches?.("link[rel=stylesheet]")) flush(true);
+    if (hasColors(appliedColors) && event.target.matches?.("link[rel=stylesheet]")) flush(true);
   }, true);
   return refresh();
 })();

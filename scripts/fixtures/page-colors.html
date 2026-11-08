@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Page theme compatibility</title>
+  <style>
+    body { background: #fff; color: #222; font: 16px sans-serif; }
+    .card { background: #eee; border: 1px solid #ccc; padding: 12px; }
+    .photo { background: #283a55 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='%23283a55' d='M0 0h10v10H0z'/%3E%3C/svg%3E"); color: white; }
+    .success { background: #157347; color: white; }
+    .sprite { display: inline-block; width: 20px; height: 20px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"); }
+    .mask { display: inline-block; width: 20px; height: 20px; background: #222; mask-image: linear-gradient(black, black); }
+    .gradient-text { background: linear-gradient(red, blue); background-clip: text; -webkit-text-fill-color: transparent; }
+    button, input, select, textarea { background: white; color: #222; border: 1px solid #aaa; }
+    .changed { background: #155724; color: white; }
+    .modern-status { background: oklch(55% 0.2 20); color: white; }
+    .p3-card { background: color(display-p3 0.5 0.5 0.5); }
+    .overlay { background: rgba(0, 0, 0, 0.45); }
+    .error { color: #c00; }
+  </style>
+</head>
+<body>
+  <h1>Article and dashboard fixture</h1>
+  <div class="card" id="card"><span id="transparent">Transparent text span</span> <a id="link" href="#">Link</a></div>
+  <div class="photo" id="photo"><span id="caption">Photo caption</span></div>
+  <div class="success" id="success"><span id="status">Success</span></div>
+  <div class="modern-status" id="modern-status">Modern CSS status color</div>
+  <div class="p3-card" id="p3-card">Wide gamut surface</div>
+  <div class="overlay" id="overlay">Translucent overlay</div>
+  <span class="error" id="error">Invalid value</span>
+  <span class="sprite" id="sprite"></span><span class="mask" id="mask"></span>
+  <span class="gradient-text" id="gradient">Gradient text</span>
+  <button id="button">Save <span id="button-label">changes</span></button>
+  <input id="input" placeholder="Name"><select id="select"><option>Option</option></select>
+  <input id="checkbox" type="checkbox" checked><textarea id="textarea">Text</textarea>
+  <svg id="svg" width="20" height="20"><path id="path" fill="#ff0000" d="M0 0h20v20H0z"/></svg>
+  <svg id="svg-icon" width="20" height="20" fill="currentColor"><path id="icon-path" d="M0 0h20v20H0z"/></svg>
+  <canvas id="canvas"></canvas><video id="video"></video>
+  <div id="shadow"></div><div id="dynamic"></div>
+  <script>
+    document.querySelector('#shadow').attachShadow({mode: 'open'}).innerHTML = '<style>:host {display:block} .panel {background:#eee;color:#222}</style><div class="panel">Shadow content</div>';
+    window.testPageColors = async function(source, palettes) {
+      const listeners = [];
+      let stored = {};
+      window.chrome = {storage: {local: {get: async () => stored}, onChanged: {addListener: fn => listeners.push(fn)}}};
+      const css = (selector, property, root = document) => getComputedStyle(root.querySelector(selector))[property];
+      const rgb = hex => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+      const pixel = document.createElement('canvas').getContext('2d', {willReadFrequently: true});
+      const luminance = color => {
+        pixel.fillStyle = color;
+        pixel.fillRect(0, 0, 1, 1);
+        return [...pixel.getImageData(0, 0, 1, 1).data].slice(0, 3).reduce((sum, value, i) => {
+          value /= 255;
+          return sum + [0.2126, 0.7152, 0.0722][i] * (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+        }, 0);
+      };
+      const contrast = (a, b) => {
+        const values = [luminance(a), luminance(b)].sort((a, b) => b - a);
+        return (values[0] + 0.05) / (values[1] + 0.05);
+      };
+      const check = (ok, message) => { if (!ok) throw new Error(message); };
+      const settle = () => new Promise(resolve => setTimeout(resolve, 120));
+      const original = {
+        image: css('#photo', 'backgroundImage'), sprite: css('#sprite', 'backgroundImage'),
+        caption: css('#caption', 'color'), status: css('#status', 'color'),
+        statusBackground: css('#success', 'backgroundColor'), fill: css('#path', 'fill'),
+        card: css('#card', 'backgroundColor'), text: css('#transparent', 'color'), modern: css('#modern-status', 'backgroundColor'),
+      };
+      const failures = [];
+      for (const palette of palettes) {
+        stored = {pageColorsAllSites: true, pageColorsGlobal: palette.colors};
+        await (0, eval)(source);
+        await settle();
+        try {
+          check(css('#photo', 'backgroundImage') === original.image, 'background photo was removed');
+          check(css('#sprite', 'backgroundImage') === original.sprite, 'sprite icon was removed');
+          check(css('#caption', 'color') === original.caption, 'photo caption lost its original contrast');
+          check(css('#success', 'backgroundColor') === original.statusBackground && css('#status', 'color') === original.status, 'status colors were destroyed');
+          check(css('#modern-status', 'backgroundColor') === original.modern, 'OKLCH status color was destroyed');
+          check(css('#transparent', 'backgroundColor') === 'rgba(0, 0, 0, 0)', 'transparent text span became opaque');
+          check(css('#path', 'fill') === original.fill, 'SVG artwork was recolored');
+          check(css('#icon-path', 'fill') === rgb(palette.colors.text), 'currentColor SVG icon became unreadable');
+          check(css('#gradient', 'webkitTextFillColor') === 'rgba(0, 0, 0, 0)', 'gradient text was overwritten');
+          check(css('body', 'backgroundColor') === rgb(palette.colors.background), 'page background not themed');
+          check(css('#card', 'backgroundColor') === rgb(palette.colors.surface), 'card lost its separate surface');
+          check(css('#p3-card', 'backgroundColor') === rgb(palette.colors.surface), 'wide gamut neutral surface not themed');
+          const overlay = css('#overlay', 'backgroundColor');
+          check(overlay.startsWith('rgba(') && Math.abs(parseFloat(overlay.split(',')[3]) - 0.45) < 0.01, 'overlay became opaque');
+          check(css('#error', 'color') !== rgb(palette.colors.text), 'error text lost its semantic color');
+          check(contrast(css('#error', 'color'), palette.colors.background) >= 4.5, 'error text contrast is too low');
+          check(contrast(palette.colors.text, palette.colors.background) >= 4.5, 'page text contrast is too low');
+          check(contrast(palette.colors.text, palette.colors.surface) >= 4.5, 'surface text contrast is too low');
+          check(contrast(palette.colors.accent, palette.colors.surface) >= 4.5, 'link contrast is too low');
+          check(contrast(palette.colors.accentText, palette.colors.accent) >= 4.5, 'selection contrast is too low');
+          check(css('#button', 'backgroundColor') === rgb(palette.colors.surface), 'button surface not themed');
+          check(css('#input', 'color') === rgb(palette.colors.text), 'input text not themed');
+          check(css('#link', 'color') === rgb(palette.colors.accent), 'link accent not themed');
+          check(css('#mask', 'backgroundColor') === rgb(palette.colors.text), 'mask icon disappeared into background');
+          check(css('.panel', 'backgroundColor', document.querySelector('#shadow').shadowRoot) === rgb(palette.colors.surface), 'open shadow DOM not themed');
+        } catch (error) { failures.push(`${palette.name}: ${error.message}`); }
+      }
+      const active = palettes[palettes.length - 1].colors;
+      document.querySelector('#dynamic').innerHTML = '<div class="card" id="added">New content</div>';
+      await settle();
+      try {
+        check(css('#added', 'backgroundColor') === rgb(active.surface), 'new SPA content not themed');
+        document.querySelector('#added').className = 'changed';
+        await settle();
+        check(css('#added', 'backgroundColor') === 'rgb(21, 87, 36)' && css('#added', 'color') === 'rgb(255, 255, 255)', 'dynamic status colors not preserved');
+        const dynamicStyles = document.createElement('style');
+        dynamicStyles.textContent = '#card {background: #155724; color: white}';
+        document.head.appendChild(dynamicStyles);
+        await settle();
+        check(css('#card', 'backgroundColor') === 'rgb(21, 87, 36)', 'new page CSS was ignored');
+        dynamicStyles.remove();
+        await settle();
+        check(css('#card', 'backgroundColor') === rgb(active.surface), 'removed page CSS was ignored');
+        const linkedStyles = document.createElement('link');
+        linkedStyles.rel = 'stylesheet';
+        linkedStyles.href = 'data:text/css,%23card%7Bbackground:%23155724;color:white%7D';
+        const loaded = new Promise(resolve => linkedStyles.onload = resolve);
+        document.head.appendChild(linkedStyles);
+        await loaded;
+        await settle();
+        check(css('#card', 'backgroundColor') === 'rgb(21, 87, 36)', 'loaded stylesheet was ignored');
+        linkedStyles.remove();
+        await settle();
+        check(listeners.length === 1, 'reapplying themes added duplicate storage listeners');
+        stored = {pageColorsAllSites: true, pageColorsGlobal: {text: active.text}};
+        await window.__zedPageColors.refresh();
+        check(css('#card', 'backgroundColor') === original.card, 'background reset left surface overrides behind');
+        stored = {pageColorsAllSites: true, pageColorsGlobal: {background: active.background}};
+        await window.__zedPageColors.refresh();
+        check(css('#transparent', 'color') === original.text, 'text reset left text overrides behind');
+        stored = {};
+        listeners.forEach(fn => fn({pageColorsGlobal: {}}, 'local'));
+        await settle();
+        check(css('#card', 'backgroundColor') === original.card && css('#transparent', 'color') === original.text, 'reset did not restore site styles');
+        check(!document.querySelector('[data-zed-page-colors]'), 'reset left theme attributes behind');
+        check(!document.querySelector('#shadow').shadowRoot.querySelector('#zed-page-colors'), 'reset left shadow styles behind');
+      } catch (error) { failures.push(error.message); }
+      return {passed: failures.length === 0, failures, presets: palettes.length};
+    };
+  </script>
+</body>
+</html>

@@ -4,10 +4,11 @@ This document audits all permissions requested by Extension Zed, maps each permi
 
 ## 1. Manifest Permissions Audit
 
-Extension Zed declares only 3 permissions in `manifest.json`:
+Extension Zed declares three required permissions and requests `management` only when the user chooses the Extensions tab:
 
 ```json
-"permissions": ["scripting", "activeTab", "storage"]
+"permissions": ["scripting", "activeTab", "storage"],
+"optional_permissions": ["management"]
 ```
 
 ### Permission Mapping
@@ -17,12 +18,14 @@ Extension Zed declares only 3 permissions in `manifest.json`:
 | `activeTab` | Grants temporary, user-invoked execution access to the active tab when opening the action popup. | Does **not** grant background access to tabs. Access expires as soon as navigation occurs or the user switches tabs. |
 | `scripting` | Programmatically executes on-demand content actions (`chrome.scripting.executeScript`) when the user applies design mode, page colors, scrollbar toggles, focus mode, element inspector, volume boost, or video quality. | Only used on target tabs matching active user intent. Restricted Chrome internal URLs (`chrome://`, webstore, extensions gallery) are caught and protected with safe user messaging. |
 | `storage` | Persists user preferences (`chrome.storage.local`) such as dark theme, playback speed presets, custom page colors, section order, and mode toggles. | Synced locally only on the device; no remote transmission. Includes export/import validation. |
+| `management` (optional) | Lists and manages installed extensions from the Extensions tab. | Requested only after the user presses **Allow access** in that tab. |
 
 ### Host Permissions Audit
 
-- **Requested Host Permissions**: **None**.
-- Broad host access patterns such as `<all_urls>` or `*://*/*` in `permissions` / `host_permissions` are **prohibited**.
-- The extension relies strictly on `activeTab` for ad-hoc user interactions, avoiding broad host access and extensive Chrome Web Store review delays.
+- **Explicit `host_permissions` field**: **None**.
+- The manifest's static content scripts match all HTTP and HTTPS pages. Those match patterns grant access to those sites even though they are declared under `content_scripts`, not `host_permissions`.
+- This broad access currently supports automatic playback-rate persistence, optional RTL mode, and saved video-quality preferences across sites. `activeTab` still scopes user-triggered page actions, but it does not limit these static content scripts.
+- This broad site access can show a significant Chrome permission warning and needs a clear Store justification. Narrow the patterns or move features to optional host access only if the product is willing to ask users for site access and/or limit automatic behavior.
 
 ## 2. Content Scripts Audit
 

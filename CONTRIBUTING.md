@@ -26,9 +26,9 @@ Follow these steps when adding a new action or injected script.
    ```
 
 ### Step 4: Verification & Quality Gates
-1. Run tests: `pnpm test`
-2. Run linter: `pnpm lint`
-3. Verify build: `pnpm build && pnpm check:build`
+1. Run tests: `bun run test`
+2. Run linter: `bun run lint`
+3. Verify build: `bun run build && bun run check:build`
 
 ---
 

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "extension-zed",
-  "description": "from a to z",
-  "version": "1.0.0",
+  "name": "Extension Zed",
+  "description": "Personalize web pages and control media playback, scrolling, and YouTube layout.",
+  "version": "2.0.0",
   "icons": {
     "16": "images/icon-16.png",
     "48": "images/icon-48.png",
@@ -65,5 +65,6 @@
       "match_origin_as_fallback": true
     }
   ],
-  "permissions": ["scripting", "activeTab", "storage"]
+  "permissions": ["scripting", "activeTab", "storage"],
+  "optional_permissions": ["management"]
 }

@@ -1,65 +1,114 @@
 # Extension Zed
 
-![Status: Under development](https://img.shields.io/badge/status-under_development-orange)
+![Status: under development](https://img.shields.io/badge/status-under_development-orange)
 
-A personal Chrome Manifest V3 toolbox with a password generator, page colors, scrollbars, video speed, video quality, volume boost, inspect/design/Arabic RTL modes, and YouTube layout controls.
+Extension Zed is a free browser toolbox for page appearance, video playback, YouTube layout, and extension management. It works in Chrome and Brave.
 
-- [Implemented features](FEATURES.md)
-- [Completed fixes, recommendations, and future features](RECOMMENDATIONS.md)
-- [Domain glossary](GLOSSARY.md)
-- [Performance measurements and reproduction](PERF.md)
+> **The Chrome Web Store listing is not available yet.** There is no ready-to-install public release archive at this time. The free way to try Extension Zed is to download its source from GitHub, build it once, and load it as an unpacked extension. Developer mode is required; the browser will show its usual warning for unpacked extensions.
 
-## Toolbox
+## Screenshots
 
-- Customize page text/background colors and scrollbar appearance.
-- Control playback speed, preferred video quality, and volume amplification.
-- Adjust YouTube focus/layout, markers, duration, and progress controls.
-- Use inspect, design, and Arabic RTL modes, page timestamp inspection, and password generation.
-- Save preferences locally and export/import settings.
+| Misc tools | Extension manager |
+| --- | --- |
+| ![Password generator and playback speed controls](docs/screenshots/misc.png) | ![Extension manager showing Extension Zed](docs/screenshots/extensions.png) |
 
-This is an unpacked extension under active development. Restricted browser pages cannot run page actions, and media behavior depends on the site/player. See [permissions](PERMISSIONS.md) and [Web Store release notes](CHROMEWEBSTORE.md).
+| YouTube tools | Settings and privacy |
+| --- | --- |
+| ![YouTube layout controls and video markers](docs/screenshots/youtube-controls.png) | ![Theme, settings backup, and privacy information](docs/screenshots/settings.png) |
 
-## Build and load
+The manager does not let Extension Zed modify or uninstall itself. Other installed extensions appear here when present.
 
-```sh
-pnpm install
-pnpm test
-pnpm lint
-pnpm build
-pnpm check:build
-```
+## Download and install for free
 
-Load `dist/` as an unpacked extension at `chrome://extensions`. After rebuilding, reload the extension and refresh existing web pages to receive new content scripts. `pnpm dev` serves the popup for development; an ordinary browser page does not provide extension APIs.
+You need Bun to build the extension from source. Install it from [bun.sh](https://bun.sh/), then follow these steps:
 
-Stack: React 19, TypeScript 6, Vite 8, Tailwind 4, and Radix UI. Permissions: `scripting`, `activeTab`, and `storage`. Playback, Arabic RTL, and video-quality content scripts match HTTP(S) pages and frames. Playback and quality also cover open shadow roots and HTTP(S)-origin blank, srcdoc, blob, and data frames. Quality uses player APIs, including Facebook and Instagram’s native controller and TikTok’s native player, and never operates the website’s menus. TikTok reloads the stream through its player while preserving position, pause state, speed, and volume, so switching may briefly buffer. Facebook speed also uses its native controller; other sites use native HTML video rates. Unsupported players retain their own quality selection; HTML video has no universal resolution setter. No additional permissions were added.
+1. Download the [Extension Zed source ZIP](https://github.com/lodaq/extension-zed/archive/refs/heads/main.zip) and extract it. Alternatively, clone the repository with Git:
 
-## Structure and action flow
+   ```sh
+   git clone https://github.com/lodaq/extension-zed.git
+   cd extension-zed
+   ```
 
-- `src/App.tsx` and `src/components/`: popup tabs and controls.
-- `src/lib/pageActions.ts`: typed/validated page actions; owns saving, targeting, execution worlds, and failures.
-- `src/background.ts`: Chrome message adapters and per-tab failure badges/tooltips.
-- `src/lib/playbackPresets.ts` and `src/lib/playback.ts`: shared speed policy and persistent media behavior; speed reapplies at metadata loading and playback start; player speed changes are otherwise left alone.
-- `src/lib/settings.ts`: recognized preferences, runtime validation, and settings transfer. Imports merge and preserve omitted values.
-- `src/lib/bootCache.ts` and `public/boot.js`: a synchronous `localStorage` mirror of the active tab, theme, and Misc order used only for the popup's first frame. `chrome.storage.local` remains the source of truth.
-- `public/scripts/`: on-demand page scripts. Return asynchronous work so application can be awaited; preserve original page values when implementing reversible changes.
+2. Open a terminal in the extracted `extension-zed-main` folder (or the cloned `extension-zed` folder) and build the extension:
 
-Vite bundles the popup and ES-module background worker together. A second build (`vite.content.config.ts`) emits playback as a standalone classic script. Do not add generated worker/playback copies to `public/`. Manifest paths remain `background.js` and `scripts/playbackRatePersist.js`. `pnpm check:build` verifies packaged assets, worker imports, injection paths, and classic-script syntax.
+   ```sh
+   bun install
+   bun run build
+   ```
 
-To add an action, extend the typed request/runtime validation, keep saving and execution inside the background module, connect its popup control, and test through the action interface. `@/` resolves to `src/`.
+3. Open the extensions page in your browser:
+   - Chrome: enter `chrome://extensions` in the address bar.
+   - Brave: enter `brave://extensions` in the address bar.
 
-Application failure retains saved preferences and reports that they were not applied. Storage failure prevents application. Existing storage keys and version-1 backups are retained.
+4. Turn on **Developer mode**, choose **Load unpacked**, and select the `dist` folder inside the project folder.
+5. Optionally pin Extension Zed from the browser's Extensions menu so it is easy to open.
 
-## Manual verification
+Keep the selected `dist` folder where it is. To install an update, download the newer source, run `bun install` and `bun run build` again, click **Reload** on Extension Zed's card, and refresh any web pages that were already open.
 
-1. On HTTP(S) pages with frames/video, check speed, player overrides, new videos/sources, and repeated same-speed Zed actions.
-2. Apply/reset text and background colors without losing site inline styles; exercise both independent scrollbar styles.
-3. Toggle inspect/design/Arabic RTL; check Escape and mixed Arabic/Latin content.
-4. Check amplification/reset with same-origin and cross-origin media and inspect console errors.
-5. On YouTube, test focus, visibility controls, repeated toggles, navigation, and fullscreen transitions.
-6. On a restricted page, check popup failure toasts and badges. A later successful action on that tab clears failure feedback.
-7. Export/import settings, merge only a speed while preserving theme, and reject invalid known settings without partial writes.
-8. In Misc, test password length/character options, regenerate, and copy. Disable every character type and check the inline error and disabled copy control.
-9. Open the toolbar popup, expand a Misc section, close and reopen the popup, and verify that it remains expanded. Collapse it and verify that state persists too. Drag a section by its left handle, then close and reopen the popup; check that dropping keeps the popup open and that the order persists. Test keyboard reordering and a drag returned to its starting point.
-10. Reopen the toolbar popup after closing it. It should appear at its full 400 × 600 size with the tab bar and section headers on the first frame; no `…` placeholder or later resize should be visible.
+To create a portable build ZIP yourself, run `bun run package:store`. It creates `artifacts/extension-zed-v2.0.0.zip`; extract that ZIP and use its folder with **Load unpacked**. This command creates a file on your computer, but does not publish or upload it.
 
-`node scripts/check-popup-reorder.mjs http://127.0.0.1:<debugging-port>` automates the toolbar-popup drop and reopen regression check using Chrome's debugging interface. Use an isolated Chrome profile on a separate virtual display (such as Xvfb), with `dist/` loaded and its extension URL open in a regular tab. The check focuses its own window and resets that profile's Misc order and active tab. Testing only the popup URL in a tab does not cover Chrome's toolbar-popup lifetime.
+## How to use it
+
+- Open Extension Zed by clicking its toolbar icon, or press **Alt+Z**. The tab strip scrolls horizontally with the mouse wheel. Misc sections can be collapsed, expanded, and reordered.
+- **Misc** contains page and media tools. Open a section to use it; changes that are saved as preferences are stored in this browser profile.
+- **Extensions** asks for optional management access the first time you use it. Choose **Allow access** and confirm the browser prompt to list and manage other extensions. You can decline and grant it later.
+- **YouTube** tools are intended for use while watching a YouTube video. Video markers become available when a video is open.
+- **Settings** controls the theme and lets you export, import, or reset preferences.
+
+## Features
+
+### Popup
+
+- Opens from the toolbar or with **Alt+Z**. The 400 × 600 popup remembers the selected tab and supports mouse-wheel scrolling across its tab strip.
+- Page actions show success or error notifications. A failed action also marks its browser tab with an error badge and tooltip; a later successful action clears the warning.
+
+### Misc
+
+- **Password generator:** create 4–128 character passwords using any combination of uppercase letters, lowercase letters, numbers, and symbols. It uses cryptographic randomness. Copying is always a separate action; generated passwords and generator options are not saved or included in backups.
+- **Playback speed:** set video speed from 0.1× to 10×, or use slower, faster, normal, and 2× controls. The preference is saved and reapplied to new videos, when media reloads, and when playback starts.
+- **Volume boost:** amplify audio and video from 100% to 2000%. High amplification can distort sound.
+- **Video quality:** choose Auto or a preferred resolution from 144p to 4320p, with an option to prefer higher or lower available quality when the exact resolution is unavailable. Uses supported player APIs, including YouTube, Video.js, Shaka, exposed Hls.js players, and native Facebook, Instagram, and TikTok players. Unsupported players keep their own quality setting. A change may briefly buffer.
+- **Page colors:** choose text and background colors per website. Background overrides also hide page background images. Each color can be reset independently.
+- **Scrollbars:** hide the document scrollbar, or hide scrollbars throughout the page; the two options can be reset separately.
+- **Inspect mode:** hover over page elements to view their identity, position, size, box model, colors, layout, and typography. Press **Escape** to exit an active inspect overlay.
+- **Design mode:** temporarily make page content editable. Turning the mode off does not undo edits; reloading the page restores the website.
+- **Arabic RTL mode:** adjust Arabic-leading text to read right-to-left, including newly inserted content. Turning it off restores alignment changes made by the extension.
+- **Section organization:** collapse sections, drag them into a new order, or focus a section's reorder handle and press Up/Down. The open state and order are saved and included in settings backups.
+
+### YouTube
+
+- Expand the player with **Focus mode** or use a **Half-screen layout**.
+- Hide the progress bar and chapters, time and duration, or player controls independently.
+- Save labeled timestamp markers, jump back to a marker, and export or import markers.
+
+YouTube layout and marker preferences are saved in the browser. A YouTube player is needed for the layout controls, and a video must be open to save markers.
+
+### Extensions
+
+- View installed extensions by name, icon, and version; apps and themes are not listed.
+- Click an extension row or use its switch to turn it on or off.
+- Reload an extension, or uninstall it through Chrome's confirmation dialog.
+- Extension Zed and extensions controlled by browser policy cannot be changed here.
+
+The **Reload** action restarts an extension. It can apply an update Chrome has already downloaded, but it does not check for updates itself.
+
+### Settings
+
+- Switch between dark and light themes.
+- Export preferences and per-site colors to a JSON backup, import a backup, or reset preferences.
+- Import merges recognized settings; values not present in the backup are left unchanged.
+
+## Privacy and permissions
+
+Preferences stay in the local browser profile. Extension Zed has no account or cloud sync and does not send telemetry, browsing history, or personal data to an external server. Exported backups include saved website origins along with preferences, so keep backup files private.
+
+The extension needs `scripting`, `activeTab`, and `storage` for page actions and local preferences. Its automatic playback and Arabic text features run on HTTP and HTTPS pages, so the browser may show a broad site-access warning. **Management** is optional and is requested only when you choose to use the Extensions tab. Browser-internal and other protected pages generally do not allow page actions. Read [Permissions](PERMISSIONS.md) for details.
+
+Media features depend on the site's player. Some sites may change their player APIs, inaccessible frames may remain unchanged, and unsupported players may not accept speed or quality changes.
+
+## More information
+
+- [Full implemented feature inventory](FEATURES.md)
+- [Permissions and access rationale](PERMISSIONS.md)
+- [Chrome Web Store release status and process](CHROMEWEBSTORE.md)
+- [Development and contribution notes](CONTRIBUTING.md)

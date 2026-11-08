@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Extension Zed
 
-> Last Updated: 2026-11-02
+> Last Updated: 2026-11-08
 
 ## Store Listing
 
@@ -69,6 +69,7 @@ English
 | `storage` | permissions | Needed to persist user preferences such as playback speed presets, theme mode, and site-specific color customizations locally on the user's browser. |
 | `activeTab` | permissions | Needed to access the current active page only when the user invokes an action from the popup, such as applying colors, scrollbar styles, or YouTube modes. |
 | `scripting` | permissions | Needed to dynamically apply and reset CSS styling rules, playback rate updates, and element inspection on the active tab upon user request. |
+| `management` | optional_permissions | Requested only when the user opens the Extensions tab; needed to list installed extensions and let the user enable, disable, reload, or uninstall them. |
 | `content_scripts` (`https://*/*`, `http://*/*`) | host_permissions | Required to persist user-selected playback speeds, optional RTL text direction, and the preferred video quality across page reloads and navigations on visited web pages. |
 
 ## Privacy & Data Use
@@ -87,7 +88,7 @@ Extension Zed does not collect, log, or transmit any personally identifiable inf
 ## Privacy Policy
 
 **Privacy Policy URL** [REQUIRED]
-`https://github.com/sebaq/extension-zed/blob/main/PRIVACY.md`
+`https://github.com/lodaq/extension-zed/blob/main/PRIVACY.md`
 
 ## Distribution
 
@@ -103,13 +104,40 @@ Extension Zed Team
 support@extension-zed.dev
 
 **Homepage URL** [RECOMMENDED]
-`https://github.com/sebaq/extension-zed`
+`https://github.com/lodaq/extension-zed`
 
 ## Version History
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
+| 2.0.0 | 2026-11-08 | First Chrome Web Store submission, including the Extensions manager and updated popup navigation. | Draft |
 | 1.0.0 | 2026-11-02 | Initial release with Misc controls, YouTube focus mode & markers, theme presets, Alt+Z popup toggle, and export/import settings. | Draft |
+
+## Publishing
+
+### First release
+
+1. Register a developer account in the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole). Google requires a one-time registration fee and two-step verification.
+2. Run `bun install`, `bun run test`, `bun run lint`, and `bun run package:store`. The ZIP is written to `artifacts/extension-zed-v2.0.0.zip`, with `manifest.json` at its root.
+3. In the dashboard, choose **Add new item** and upload that ZIP.
+4. Complete the Store Listing, Privacy, and Distribution sections. Add store screenshots and verify the single-purpose, permission, and data-use disclosures.
+5. Submit the item for review. Google reviews it before it becomes available in the Store.
+
+Review the uploaded manifest before the first submission. The Store listing draft in this file still needs final screenshots and a verified support contact before submission.
+
+### Later updates
+
+The GitHub Actions workflow runs tests, lint, and packaging on `main`. Once CWS publishing is configured, it compares the manifest version with the published Store version and submits only a newer version.
+
+The first submission must be uploaded and submitted from the dashboard. After the item exists in the dashboard, enable the Chrome Web Store API, create OAuth credentials and a refresh token for the publishing Google account, then copy `.env.cws.example` to the ignored `.env.local` and fill in the five values. Check the target repository before uploading secrets:
+
+```sh
+bun scripts/upload-cws-secrets.mjs --dry-run
+bun scripts/upload-cws-secrets.mjs
+bun run cws:status -- --env-file .env.local
+```
+
+The second command requires `gh auth login`. Never commit `.env.local` or paste its secret values into chat. The workflow skips its publish step until the CWS client ID is configured.
 
 ## Review Notes
 

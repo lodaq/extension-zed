@@ -1,7 +1,8 @@
 {
   "name": "extension-zed",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "packageManager": "bun@1.4.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +12,8 @@
     "test:e2e": "node scripts/test-extension-e2e.mjs",
     "test:e2e:video-quality": "node scripts/test-video-quality-e2e.mjs",
     "check:build": "node scripts/check-build.mjs",
+    "package:store": "bun run build && bun run check:build && bun scripts/package-extension.mjs",
+    "cws:status": "bun scripts/chrome-web-store-status.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -41,6 +44,7 @@
     "eslint": "^10.10.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.6",
+    "fflate": "^0.8.3",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",

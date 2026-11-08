@@ -1,0 +1,55 @@
+name: Publish Chrome Web Store update
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "public/**"
+      - "src/**"
+      - "index.html"
+      - "scripts/**"
+      - "vite*.ts"
+      - ".github/workflows/chrome-web-store.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chrome-web-store-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - run: bun run test
+      - run: bun run lint
+      - run: bun run package:store
+      - name: Check CWS setup
+        id: cws
+        env:
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+        run: |
+          if [ -n "$CWS_CLIENT_ID" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Chrome Web Store publishing is not configured yet; build checks passed."
+          fi
+      - name: Upload changed version and submit for review
+        if: steps.cws.outputs.configured == 'true'
+        run: bun scripts/chrome-web-store-release.mjs
+        env:
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}

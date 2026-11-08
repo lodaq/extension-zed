@@ -8,13 +8,14 @@ import { PAGE_ACTION_FEEDBACK_EVENT } from "@/lib/withActiveTab"
 import { Cross1Icon, ExclamationTriangleIcon } from "@radix-ui/react-icons"
 import { Suspense, lazy, useCallback, useEffect, useState } from "react"
 import { readBootState, updateBootState } from "@/lib/bootCache"
-import { readSetting } from "@/lib/settings"
+import { POPUP_TABS, readSetting } from "@/lib/settings"
 
+const ExtensionsTab = lazy(() => import("@/components/ExtensionsTab"))
 const YoutubeTab = lazy(() => import("@/components/YoutubeTab"))
 const SettingsTab = lazy(() => import("@/components/SettingsTab"))
 
 const TAB_KEY = "popupActiveTab"
-const TAB_VALUES = ["misc", "youtube", "settings"] as const
+const TAB_VALUES = POPUP_TABS
 type TabValue = (typeof TAB_VALUES)[number]
 
 function isTabValue(v: string): v is TabValue {
@@ -23,6 +24,8 @@ function isTabValue(v: string): v is TabValue {
 
 const tabPanelClass =
   "col-start-1 row-start-1 mt-0 overflow-visible outline-none data-[state=inactive]:pointer-events-none data-[state=inactive]:invisible data-[state=active]:relative data-[state=active]:z-[1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+const tabTriggerClass =
+  "shrink-0 rounded-md px-2 text-xs transition-all hover:bg-background/50 hover:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/70"
 
 function App() {
   const [tab, setTab] = useState<TabValue>(() => readBootState().tab ?? "misc")
@@ -122,17 +125,34 @@ function App() {
       className="flex h-[600px] w-[400px] flex-col overflow-hidden rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm select-none"
     >
       <div className="sticky top-0 z-10 shrink-0 bg-card pb-1">
-        <TabsList className="grid w-full grid-cols-3 gap-1 overflow-visible">
-          <TabsTrigger value="misc" className="px-2 py-2 text-xs">
-            Misc
-          </TabsTrigger>
-          <TabsTrigger value="youtube" className="px-2 py-2 text-xs">
-            Youtube
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="px-2 py-2 text-xs">
-            Settings
-          </TabsTrigger>
-        </TabsList>
+        <div
+          className="popup-scrollbar -mx-1 overflow-x-auto overscroll-x-contain px-1"
+          onWheel={(event) => {
+            const strip = event.currentTarget
+            if (
+              strip.scrollWidth > strip.clientWidth &&
+              Math.abs(event.deltaY) > Math.abs(event.deltaX)
+            ) {
+              strip.scrollLeft += event.deltaY
+              event.preventDefault()
+            }
+          }}
+        >
+          <TabsList className="flex h-9 w-max min-w-full justify-start gap-0.5 rounded-lg border border-border/70 bg-muted/50 p-0.5">
+            <TabsTrigger value="misc" className={tabTriggerClass}>
+              Misc
+            </TabsTrigger>
+            <TabsTrigger value="extensions" className={tabTriggerClass}>
+              Extensions
+            </TabsTrigger>
+            <TabsTrigger value="youtube" className={tabTriggerClass}>
+              Youtube
+            </TabsTrigger>
+            <TabsTrigger value="settings" className={tabTriggerClass}>
+              Settings
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {storageError && (
           <div
@@ -172,6 +192,11 @@ function App() {
       >
         <TabsContent value="misc" className={tabPanelClass}>
           <MiscTab />
+        </TabsContent>
+        <TabsContent value="extensions" className={tabPanelClass}>
+          <Suspense fallback={null}>
+            <ExtensionsTab />
+          </Suspense>
         </TabsContent>
         <TabsContent value="youtube" className={tabPanelClass}>
           <Suspense fallback={null}>

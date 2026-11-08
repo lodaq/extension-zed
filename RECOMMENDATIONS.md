@@ -7,7 +7,7 @@
 | Area | Implemented | Verification |
 | --- | --- | --- |
 | Playback module | Shared normalization/stepping, persistent application owner, player overrides, no one-shot script or URL polling | Off-grid rates, limits, new media/videos, explicit actions, repeated initialization, cleanup tests |
-| Packaging | ES-module background worker and classic playback script with stable manifest filenames | Type check, build, `pnpm check:build` |
+| Packaging | ES-module background worker and classic playback script with stable manifest filenames | Type check, build, `bun run check:build` |
 | Page-action module | Background owns validation, saving, targeting, execution, and errors; popup and background share the interface | Caller parity, failures, invalid inputs, missing tabs, color resets, deferred completion tests |
 | Failure semantics | Application failures retain saved preferences and report failure; storage failure stops application; popup feedback | Handler tests; browser-specific feedback still needs loaded-extension coverage |
 | Settings-transfer module | Validated version-1 merge, recognized-only export, unknown-key filtering, safe reader defaults | Round trips, partial imports/theme preservation, invalid values/versions, no writes on rejection |
@@ -69,8 +69,8 @@ Treat the old “all features from ReVanced” idea as inspiration, not an actio
 
 ## Verification of this change
 
-- `pnpm test`: 52 tests passed across eight files, including password generation, unbiased random-sample handling, and RTL read/write batching/restoration.
-- `pnpm lint`, `pnpm build`, `pnpm check:build`, and `git diff --check`: passed.
+- `bun run test`: 52 tests passed across eight files, including password generation, unbiased random-sample handling, and RTL read/write batching/restoration.
+- `bun run lint`, `bun run build`, `bun run check:build`, and `git diff --check`: passed.
 - Browser smoke: Chrome listed the unpacked extension and the popup rendered. Reloading during the rebuilt-extension check produced `ERR_BLOCKED_BY_CLIENT`; subsequent action checks did not complete reliably.
 - Not verified in a loaded browser: final-build page effects, cross-frame behavior, real media/audio, restricted-page feedback, and YouTube/fullscreen. Use the README manual checklist before treating those as confirmed.
 - Password generator browser checks passed for a 38-character numbers-only password, regeneration with uppercase only, copy feedback, no horizontal overflow, and clearing/disabling output when all character types are unchecked. No browser errors were reported.

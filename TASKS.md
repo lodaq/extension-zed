@@ -49,9 +49,9 @@ Work through these groups in order. A task should move to Done only after implem
 | Status | Task |
 |---|---|
 | [x] | Refactor background action routing into a typed event registry. |
-| [x] | Choose npm or pnpm as the single package manager and keep only its lockfile. |
-| [x] | Keep `pnpm lint` passing with zero warnings. |
-| [x] | Keep `pnpm build` passing before loading `dist/` into Chrome. |
+| [x] | Use Bun as the single package manager and keep only its lockfile. |
+| [x] | Keep `bun run lint` passing with zero warnings. |
+| [x] | Keep `bun run build` passing before loading `dist/` into Chrome. |
 | [x] | Add focused unit tests for playback presets, storage helpers, and import/export validation. |
 | [x] | Add a documented manual injection smoke-test checklist. |
 | [x] | Remove or merge the unused legacy `src/index.css`. |

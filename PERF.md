@@ -49,7 +49,7 @@ Reproduction artifacts (temporary, not committed): `/tmp/opencode/popup-baseline
 ## Reproduce and guard
 
 ```sh
-pnpm build
+bun run build
 node scripts/prepare-performance-fixture.mjs
 ```
 
@@ -68,7 +68,7 @@ A separate five-sample browser run passed this budget after the fix (`/tmp/zed-r
 
 `src/lib/arabicRtlMode.test.ts` provides the deterministic CI guard: rendered-text reads must finish before writes for both initial application and mutation batches. It also verifies explicit directions and alignment restoration. The manual browser budget checks the actual latency; there is no browser-performance CI infrastructure or field monitor in this repository.
 
-The preparation script writes only ignored `dist/perf/` artifacts and checks its application hook. The fixture asserts unchanged behavior during every sample. A normal `pnpm build` removes these diagnostic files; they are not part of the production source or manifest.
+The preparation script writes only ignored `dist/perf/` artifacts and checks its application hook. The fixture asserts unchanged behavior during every sample. A normal `bun run build` removes these diagnostic files; they are not part of the production source or manifest.
 
 ## Experiment ledger
 

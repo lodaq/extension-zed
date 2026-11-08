@@ -4,7 +4,7 @@ import { QUALITY_LEVEL_MAP } from "./videoQuality"
 export const CURRENT_SETTINGS_SCHEMA_VERSION = 1
 export const MAX_SETTINGS_FILE_SIZE = 512 * 1024 // 512 KB
 
-export const POPUP_TABS = ["misc", "youtube", "settings"] as const
+export const POPUP_TABS = ["misc", "extensions", "youtube", "settings"] as const
 export type PopupTab = (typeof POPUP_TABS)[number]
 export const MISC_SECTION_ORDER = ["password", "playback", "volume", "quality", "colors", "scrollbars", "modes"] as const
 export type MiscSectionId = (typeof MISC_SECTION_ORDER)[number]

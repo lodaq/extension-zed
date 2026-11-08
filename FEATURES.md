@@ -5,13 +5,27 @@ This inventory describes implemented capabilities. See [RECOMMENDATIONS.md](RECO
 ## Popup
 
 - Keyboard shortcut `Alt+Z` immediately toggles the popup control panel from anywhere in Chrome.
-- Misc, YouTube, and Settings tabs; the last selected tab is saved locally.
+- Misc, Extensions, YouTube, and Settings tabs; the last selected tab is saved locally.
 - Scrollable 400 × 600 layout with saved dark/light appearance; dark is the default.
 - The first HTML frame already contains the tab bar and collapsed Misc section headers at the final 400 × 600 size, so the popup does not show a placeholder or resize while settings load.
 - Page actions show success/error toasts. Action failures show a per-tab `!` badge and error tooltip; a successful action clears them.
 - Saved preferences differ from applied page state. Application failure retains the preference and reports the failure. Storage failure prevents application.
 
 Sources: `src/App.tsx`, `src/background.ts`, `src/lib/withActiveTab.ts`, `public/manifest.json`.
+
+## Extensions tab
+
+| Control | Behavior |
+| --- | --- |
+| Extension row | Lists every installed extension alphabetically, with icon, name, and version. Apps and themes are excluded. Clicking the row toggles the extension. Disabled extensions are dimmed. |
+| On/off switch | Enables or disables the extension through `chrome.management.setEnabled`. Chrome may show its own confirmation when re-enabling an extension with escalated permissions. |
+| Reload | Disables and immediately re-enables the extension. Unpacked extensions re-read their code from disk; store extensions apply an update Chrome has already downloaded. Chrome has no public API to force an update check for another extension. |
+| Uninstall | Calls `chrome.management.uninstall`. Chrome always shows its own confirmation dialog when one extension uninstalls another; a dismissed dialog is treated as a cancellation, not an error. |
+| Guarded rows | Zed itself, policy-managed extensions (`mayDisable: false`), and disabled extensions that Chrome will not re-enable show disabled controls and, where relevant, a policy label. |
+
+The list refreshes after every action and subscribes to `chrome.management` install/enable/disable/uninstall events while the popup is open. Failures use the same success/error toast pattern as page actions. No update check is faked: the reload control only restarts the extension.
+
+Sources: `src/components/ExtensionsTab.tsx`, `src/lib/extensionManager.ts`, `public/manifest.json`.
 
 ## Misc tab
 
@@ -65,7 +79,7 @@ Sources: `src/lib/settings.ts`, `src/components/SettingsTab.tsx`, `src/lib/useSt
 
 ## Permissions and limitations
 
-- Manifest V3; existing `scripting`, `activeTab`, and `storage` permissions. No new permissions or backend.
+- Manifest V3; required `scripting`, `activeTab`, and `storage` permissions. Optional `management` permission is requested only when the Extensions tab is used. No new host permissions or backend.
 - Playback and RTL content scripts match HTTP(S) pages and all frames. The video-quality engine and its settings bridge also match HTTP(S) pages and all frames. On-demand actions attempt all frames where appropriate, with main-frame fallback. Inaccessible frames may remain unchanged.
 - Chrome internal pages, the Chrome Web Store, and other protected documents generally reject injection.
 - Preferences are local; no account or cloud sync. Exported per-origin colors reveal saved website origins, so backups are personal data.

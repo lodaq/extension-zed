@@ -87,6 +87,7 @@ YouTube layout and marker preferences are saved in the browser. A YouTube player
 
 - View installed extensions by name, icon, and version; apps and themes are not listed.
 - Click an extension row or use its switch to turn it on or off.
+- Open an extension's settings directly using the gear button.
 - Reload an extension, or uninstall it through Chrome's confirmation dialog.
 - Extension Zed and extensions controlled by browser policy cannot be changed here.
 

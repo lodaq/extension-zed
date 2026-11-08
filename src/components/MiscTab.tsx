@@ -1,6 +1,7 @@
 import { popupSectionStack } from "@/lib/popupLayout"
 import { cn } from "@/lib/utils"
-import { lazy, useEffect, useId, useRef, useState, type ComponentType } from "react"
+import MiscSection from "@/components/MiscSection"
+import { Suspense, lazy, useEffect, useId, useRef, useState, type ComponentType } from "react"
 import { DragHandleDots2Icon } from "@radix-ui/react-icons"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
@@ -151,6 +152,7 @@ export default function MiscTab() {
     }
     const rect = targetElement.getBoundingClientRect()
     const after = event.clientY > rect.top + rect.height / 2
+    if (active.target?.id === targetId && active.target.after === after) return
     active.target = { id: targetId, after }
     setDropTarget(active.target)
   }
@@ -208,6 +210,47 @@ export default function MiscTab() {
           const isDragged = dragging === id
           const { Component } = item
 
+          const dragHandle = (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 touch-none select-none cursor-grab text-muted-foreground active:cursor-grabbing"
+              aria-label={`Reorder ${item.title}`}
+              aria-describedby={instructionsId}
+              aria-disabled={saving}
+              title={`Drag to reorder ${item.title}; use the arrow keys to move`}
+              draggable={false}
+              onClick={(event) => event.preventDefault()}
+              onDragStart={(event) => event.preventDefault()}
+              onPointerDown={(event) => onPointerDown(id, event)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  cancelDrag()
+                  return
+                }
+                if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
+                event.preventDefault()
+                const handle = event.currentTarget
+                void move(index, index + (event.key === "ArrowUp" ? -1 : 1))
+                  .then(() => requestAnimationFrame(() => handle.focus()))
+              }}
+            >
+              <DragHandleDots2Icon aria-hidden="true" className="h-4 w-4" />
+            </Button>
+          )
+          const placeholder = (
+            <MiscSection
+              title={item.title}
+              id={`zed-${id}-heading`}
+              open={isOpen}
+              onOpenChange={(next) => setSectionOpen(id, next)}
+              dragHandle={dragHandle}
+            >
+              {null}
+            </MiscSection>
+          )
+
           return (
             <div
               key={id}
@@ -219,40 +262,15 @@ export default function MiscTab() {
                 isDrop && dropTarget?.after && "border-b-2 border-primary"
               )}
             >
-              <Component
-                open={isOpen}
-                onOpenChange={(next) => setSectionOpen(id, next)}
-                dragHandle={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0 touch-none select-none cursor-grab text-muted-foreground active:cursor-grabbing"
-                    aria-label={`Reorder ${item.title}`}
-                    aria-describedby={instructionsId}
-                    aria-disabled={saving}
-                    title={`Drag to reorder ${item.title}; use the arrow keys to move`}
-                    draggable={false}
-                    onClick={(event) => event.preventDefault()}
-                    onDragStart={(event) => event.preventDefault()}
-                    onPointerDown={(event) => onPointerDown(id, event)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        cancelDrag()
-                        return
-                      }
-                      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
-                      event.preventDefault()
-                      const handle = event.currentTarget
-                      void move(index, index + (event.key === "ArrowUp" ? -1 : 1))
-                        .then(() => requestAnimationFrame(() => handle.focus()))
-                    }}
-                  >
-                    <DragHandleDots2Icon aria-hidden="true" className="h-4 w-4" />
-                  </Button>
-                }
-              />
-              {!isRendered && null}
+              <Suspense fallback={placeholder}>
+                {isRendered ? (
+                  <Component
+                    open={isOpen}
+                    onOpenChange={(next) => setSectionOpen(id, next)}
+                    dragHandle={dragHandle}
+                  />
+                ) : placeholder}
+              </Suspense>
             </div>
           )
         })}

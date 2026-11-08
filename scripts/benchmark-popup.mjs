@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import assert from 'node:assert/strict'
 import { rmSync, mkdirSync } from 'node:fs'
 
 const PORT = 38999
@@ -106,7 +107,7 @@ async function run() {
       await pause(5)
     }
 
-    if (!target) continue
+    assert.ok(target, 'Toolbar popup did not open')
     const popup = connect(target.webSocketDebuggerUrl)
     await popup.ready
 
@@ -114,7 +115,7 @@ async function run() {
     for (let j = 0; j < 200; j++) {
       state = await popup.evaluate(`(() => {
         const paints = Object.fromEntries(performance.getEntriesByType('paint').map(e => [e.name, +e.startTime.toFixed(1)]));
-        const ready = document.querySelectorAll('[role="tab"]').length === 4 && document.querySelectorAll('details').length === 6;
+        const ready = document.querySelectorAll('[role="tab"]').length === 4 && document.querySelectorAll('details').length === 7;
         const nav = performance.getEntriesByType('navigation')[0];
         const marks = Object.fromEntries(performance.getEntriesByType('mark').map(m => [m.name, +m.startTime.toFixed(1)]));
         return {
@@ -130,6 +131,17 @@ async function run() {
       if (state?.ready && state.fcp) break
       await pause(5)
     }
+    assert.ok(state?.ready && state.fcp, 'Toolbar popup did not become ready')
+    // Buffered entries include paints before CDP attached; allow late candidates.
+    state.lcp = await popup.evaluate(`new Promise(resolve => {
+      let latest = null;
+      const observer = new PerformanceObserver(list => {
+        latest = list.getEntries().at(-1).startTime;
+      });
+      observer.observe({type: 'largest-contentful-paint', buffered: true});
+      setTimeout(() => { observer.disconnect(); resolve(latest); }, 1000);
+    })`)
+    assert.ok(Number.isFinite(state.lcp) && state.lcp > 0, 'Missing popup LCP measurement')
     samples.push(state)
     popup.ws.close()
   }
@@ -137,6 +149,10 @@ async function run() {
   tab.ws.close()
   await cleanup()
   console.log(JSON.stringify(samples, null, 2))
+  const values = samples.map(sample => sample.lcp).sort((a, b) => a - b)
+  const median = values[1]
+  console.log(`Toolbar popup LCP: median ${median} ms; range ${values[0]}–${values[2]} ms`)
+  assert.ok(median < 1000, `Popup LCP budget exceeded: ${median} ms (must be below 1000 ms)`)
 }
 
 run().catch((e) => {

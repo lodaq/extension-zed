@@ -18,6 +18,7 @@ Sources: `src/App.tsx`, `src/background.ts`, `src/lib/withActiveTab.ts`, `public
 | Control | Behavior |
 | --- | --- |
 | Extension row | Lists every installed extension alphabetically, with icon, name, and version. Apps and themes are excluded. Clicking the row toggles the extension. Disabled extensions are dimmed. |
+| Settings | Opens the extension's dedicated options page (`optionsUrl`) directly in a new tab when available and enabled, or opens Chrome's extension details page (`chrome://extensions/?id=...`). For Extension Zed itself, activates the built-in Settings tab. |
 | On/off switch | Enables or disables the extension through `chrome.management.setEnabled`. Chrome may show its own confirmation when re-enabling an extension with escalated permissions. |
 | Reload | Disables and immediately re-enables the extension. Unpacked extensions re-read their code from disk; store extensions apply an update Chrome has already downloaded. Chrome has no public API to force an update check for another extension. |
 | Uninstall | Calls `chrome.management.uninstall`. Chrome always shows its own confirmation dialog when one extension uninstalls another; a dismissed dialog is treated as a cancellation, not an error. |

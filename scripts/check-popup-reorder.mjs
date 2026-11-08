@@ -103,12 +103,31 @@ try {
   assert.deepEqual(await until(() => tab.evaluate('(async () => (await chrome.storage.local.get("miscSectionOrder")).miscSectionOrder)()'), value => value.join(",") === "password,playback,volume,quality,colors,scrollbars,modes"), ["password", "playback", "volume", "quality", "colors", "scrollbars", "modes"])
   // Dragging forward reorders and saves storage.
   const expected = ["playback", "volume", "quality", "password", "colors", "scrollbars", "modes"]
+  await pause()
   await popup.send("Input.dispatchMouseEvent", { type: "mousePressed", x: points.x, y: points.y, button: "left", clickCount: 1 })
   await popup.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: points.x, y: points.endY, buttons: 1 })
+  // Repeated movement within the same insertion target must preserve the drop.
+  await popup.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: points.x, y: points.endY - 1, buttons: 1 })
+  await pause()
   await popup.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: points.x, y: points.endY, button: "left", clickCount: 1 })
   const stored = await until(() => tab.evaluate('(async () => (await chrome.storage.local.get("miscSectionOrder")).miscSectionOrder)()'), value => JSON.stringify(value) === JSON.stringify(expected))
   assert.deepEqual(stored, expected)
-  console.log("popup drag reorder: ok")
+  // Collapsed sections should not mount controls or load their feature code.
+  assert.equal(await popup.evaluate(`document.querySelector('[aria-label="Generated password"]') !== null`), false)
+  const passwordSummary = '[data-misc-section-id="password"] summary'
+  await popup.evaluate(`document.querySelector('${passwordSummary}').click()`)
+  const password = await until(() => popup.evaluate(`document.querySelector('[aria-label="Generated password"]')?.value`), Boolean)
+  await popup.evaluate(`document.querySelector('${passwordSummary}').click()`)
+  await until(() => popup.evaluate(`document.querySelector('[data-misc-section-id="password"] details').open`), value => !value)
+  await until(() => tab.evaluate('(async () => (await chrome.storage.local.get("miscExpandedSections")).miscExpandedSections)()'), value => Array.isArray(value) && !value.includes("password"))
+  await popup.evaluate(`document.querySelector('${passwordSummary}').click()`)
+  assert.equal(await popup.evaluate(`document.querySelector('[aria-label="Generated password"]').value`), password, "Closing a section preserves its state")
+  await until(() => tab.evaluate('(async () => (await chrome.storage.local.get("miscExpandedSections")).miscExpandedSections)()'), value => value?.includes("password"))
+  await tab.evaluate('chrome.extension.getViews({type:"popup"}).forEach(view => view.close())')
+  const reopened = await openPopup()
+  await until(() => reopened.evaluate(`document.querySelector('[aria-label="Generated password"]')?.value`), Boolean)
+  assert.equal(await reopened.evaluate(`document.querySelector('[data-misc-section-id="password"] details').open`), true, "Saved expanded sections load on startup")
+  console.log("popup drag reorder and lazy sections: ok")
 } finally {
   for (const socket of sockets) {
     try { socket.close() } catch {}

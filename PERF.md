@@ -1,5 +1,122 @@
 # Performance evidence
 
+## Performance optimization budget guard
+
+The stricter keep/revert review found no new measured bottleneck and does not
+claim an LCP speedup from the earlier sequential samples. No additional popup
+optimization was attempted. Instead, the existing toolbar benchmark now enforces
+the requested **median LCP < 1,000 ms** budget across three openings. It fails
+on missing popups, incomplete readiness, or absent LCP entries rather than
+silently accepting partial evidence. A buffered observer includes paints before
+the debugger attaches and continues observing for one second after readiness.
+
+Run `bun run build && node scripts/benchmark-popup.mjs` locally with Brave
+installed. The existing harness opens an isolated browser profile and an
+extension tab, then measures three toolbar popups. This warms shared assets;
+there is no cache disabling, network emulation, or CPU throttling in this guard.
+It is a local guard, not a CI job or a field monitor. The harness retains its
+existing machine-specific extension path, extension ID, and browser dependency.
+
+Validation on Chromium 155: LCP samples **84, 52, 52 ms**, median **52 ms**,
+range **52–84 ms**. These toolbar measurements use different conditions from
+the cold-page measurements below and are not evidence of a further speedup.
+Output: `/tmp/zed-lcp-budget.json`.
+The failure path was verified with a temporary copy using a zero-ms limit:
+it exited with status 1 at the LCP-budget assertion. Script syntax and whitespace
+checks passed. Application code was unchanged, so the unit suite and build were
+not repeated during this guard-only change. Field monitoring remains unavailable;
+no telemetry collection was introduced.
+
+## Performance skill follow-up
+
+Recorded a fresh Chrome DevTools Protocol startup trace of the installed
+extension using the same Chromium 155, 400 × 600 viewport, disabled cache,
+and 4× CPU slowdown described below. No DevTools MCP trace tool was available;
+the local CDP harness recorded the browser's timeline directly.
+
+- Trace LCP: 340 ms; CLS: 0. This single traced navigation is diagnostic,
+  not a replacement for the five-sample untraced measurements below.
+- Initial requests contain the popup, shared runtime/settings, and notification
+  chunks. None of the seven collapsed Misc feature chunks is requested.
+- Initial JavaScript: 298,570 bytes raw / 95,892 bytes gzip. Inline CSS:
+  39,795 bytes raw / 7,889 bytes gzip. Gzip sizes are bundle comparisons;
+  installed extensions read local assets rather than downloading them over HTTP.
+- Popup main-thread tasks over 50 ms: 79.2 and 152.9 ms. The largest React
+  scheduler function call accounts for 150.0 ms; a subsequent scheduler call
+  takes 6.8 ms. This trace does not isolate notification rendering. These include trace
+  overhead and CPU emulation; they are not field INP measurements.
+
+No additional production code change is justified by this trace. The notification
+chunk loads at startup, but the trace does not establish it as a dominant cost.
+Delaying it would add subscription and loading behavior to maintain. CDN settings, HTTP
+compression, preconnects, remote font preloads, and speculative navigation do not
+address this locally packaged popup. Existing RTL batching is retained.
+
+Local diagnostic artifacts: `/tmp/zed-trace.mjs`,
+`/tmp/zed-startup-trace.json`, and `/tmp/zed-startup-summary.json`.
+
+A separate untraced interaction check clicked Extensions → Youtube → Settings
+→ Misc twice using trusted CDP mouse input, with 300 ms between clicks, at 4×
+CPU slowdown. Event Timing entries with nonzero interaction IDs had durations
+of 16–32 ms; no recorded interaction exceeded 32 ms. The observer used a 16 ms
+threshold, so shorter events are omitted. The selected tab ended on Misc with
+no error boundary. This checks input-to-next-paint latency, not completion of
+asynchronous panel loading, and is not field INP. Artifacts:
+`/tmp/zed-interactions.mjs` and `/tmp/zed-interactions.json`.
+
+Only this evidence document changed during the performance skill follow-up.
+Production code and the previously passing build/tests were not changed or
+rerun. No field data or representative real-site content-script trace was
+collected in this pass.
+
+## 2026-11-08 popup follow-up
+
+The earlier audit quoted **2,105 ms simulated mobile LCP** from
+`artifacts/lighthouse-perfect.report.json` at `http://127.0.0.1:4173/`.
+That report's observed LCP was **179 ms**. Its simulation includes mobile
+network latency and 4× CPU slowdown; it is not an installed-extension timing.
+TBT is a startup blocking metric, not a measurement of INP. `document_idle`
+also does not guarantee that content scripts cannot affect a host page's LCP.
+
+Fixed a regression in Misc startup: every lazy section component was rendered
+even while collapsed, and the calculated `isRendered` flag was unused. Closed
+sections now use the existing shared header until first opened. A per-section
+Suspense boundary keeps headers visible while controls load. Once opened,
+controls stay mounted on collapse to preserve entered values. The boot script
+now executes synchronously in the head, before the body can paint with a stale
+theme or without its active-tab attribute. No dependencies were added.
+
+Five fresh `chrome-extension://<id>/index.html` pages with the built extension
+loaded in isolated headless Brave/Chromium 155.0.8059.85, a 400 × 600 viewport,
+DPR 1, cache disabled, no network throttling, and **4× CPU slowdown** recorded
+LCP samples of **316, 292, 156, 200, 252 ms**: median **252 ms**, range
+**156–316 ms**. Buffered PerformanceObservers collected LCP and layout shifts
+for 1.5 seconds per page without interactions. All seven section headers were
+present, no error boundary appeared, and CLS was **0** in all five samples.
+These are extension-page lab observations, not toolbar-window timings or field
+data. They meet the sub-second goal under these conditions; they do not prove
+the same result on every machine or with every saved tab/expanded section.
+
+A separate five-page run without CPU slowdown recorded 144, 220, 96, 168,
+144 ms (median 144 ms; range 96–220 ms), also with zero CLS. These sequential
+runs do not establish a speedup over the already sub-second installed baseline.
+The production build, all 158 unit tests, lint, build-asset checks, and browser
+drag/lazy-section checks passed. The browser test waits for the saved closed
+state before reopening, because native toggle events are asynchronous.
+
+The measurement harness and raw output are local temporary artifacts:
+`/tmp/zed-lcp.mjs` and `/tmp/zed-lcp-cpu4.json`. Run
+`CPU=4 node /tmp/zed-lcp.mjs` after `bun run build` to repeat locally.
+The harness uses the same isolated-browser/CDP approach as
+`scripts/benchmark-popup.mjs`. `scripts/check-popup-reorder.mjs` additionally
+checks deferred password controls, preserved state across collapse/reopen,
+and saved expanded sections on the next popup opening.
+
+The RTL `innerText` semantics remain unchanged: hidden text can make a
+`textContent` shortcut choose a different first letter. The existing batched
+reads already avoid repeated read/write layout passes. Further vendor-chunk
+splitting was not justified by a measured bottleneck in the installed popup.
+
 Measured on 2026-11-02 against the working tree including the architecture fixes, password generator, popup startup work, and lazy section loading. Field data is unavailable: this is a local Chrome extension with no RUM collection or eligible public CrUX URL. These are lab observations, not field INP/LCP claims.
 
 ## Evidence

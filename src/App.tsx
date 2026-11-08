@@ -25,7 +25,7 @@ function isTabValue(v: string): v is TabValue {
 const tabPanelClass =
   "col-start-1 row-start-1 mt-0 overflow-visible outline-none data-[state=inactive]:pointer-events-none data-[state=inactive]:invisible data-[state=active]:relative data-[state=active]:z-[1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 const tabTriggerClass =
-  "shrink-0 rounded-md px-2 text-xs font-medium text-foreground/75 transition-all hover:bg-background/50 hover:text-foreground data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/70"
+  "shrink-0 rounded-md px-2 text-xs font-medium text-foreground/75 transition-colors hover:bg-background/50 hover:text-foreground data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/70"
 
 function App() {
   const [tab, setTab] = useState<TabValue>(() => readBootState().tab ?? "misc")
@@ -195,7 +195,7 @@ function App() {
         </TabsContent>
         <TabsContent value="extensions" className={tabPanelClass}>
           <Suspense fallback={null}>
-            <ExtensionsTab />
+            <ExtensionsTab onOpenSelfSettings={() => commitTab("settings")} />
           </Suspense>
         </TabsContent>
         <TabsContent value="youtube" className={tabPanelClass}>

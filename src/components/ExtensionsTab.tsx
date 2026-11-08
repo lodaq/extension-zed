@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { LockClosedIcon, ReloadIcon, TrashIcon } from "@radix-ui/react-icons"
+import { GearIcon, LockClosedIcon, ReloadIcon, TrashIcon } from "@radix-ui/react-icons"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
@@ -9,6 +9,7 @@ import {
   isManagementCancellation,
   listExtensions,
   managementErrorMessage,
+  openExtensionSettings,
   reloadExtension,
   setExtensionEnabled,
   subscribeToManagementEvents,
@@ -16,10 +17,6 @@ import {
   type ExtensionAction,
   type ManagedExtension,
 } from "@/lib/extensionManager"
-
-function currentExtensionId(): string {
-  return typeof chrome === "undefined" ? "" : chrome.runtime?.id ?? ""
-}
 
 function ExtensionIcon({ extension }: { extension: ManagedExtension }) {
   const [failed, setFailed] = useState(false)
@@ -47,7 +44,11 @@ function ExtensionIcon({ extension }: { extension: ManagedExtension }) {
   )
 }
 
-export default function ExtensionsTab() {
+export interface ExtensionsTabProps {
+  onOpenSelfSettings?: () => void
+}
+
+export default function ExtensionsTab({ onOpenSelfSettings }: ExtensionsTabProps = {}) {
   const permissionsAvailable =
     typeof chrome !== "undefined" && Boolean(chrome.permissions)
   const [extensions, setExtensions] = useState<ManagedExtension[] | null>(null)
@@ -64,7 +65,7 @@ export default function ExtensionsTab() {
 
   const load = useCallback(async () => {
     try {
-      const next = await listExtensions(currentExtensionId())
+      const next = await listExtensions()
       if (!alive.current) return
       setExtensions(next)
       setError(null)
@@ -187,6 +188,21 @@ export default function ExtensionsTab() {
     void perform(extension, "uninstall", () => uninstallExtension(extension.id), `Uninstalled ${extension.name}`)
   }
 
+  const openSettings = useCallback(
+    (extension: ManagedExtension) => {
+      void openExtensionSettings(extension, {
+        onOpenSelf: onOpenSelfSettings,
+      }).catch((settingsError: unknown) => {
+        toast({
+          title: `Could not open settings for ${extension.name}`,
+          description: managementErrorMessage(settingsError),
+          variant: "destructive",
+        })
+      })
+    },
+    [onOpenSelfSettings]
+  )
+
   const enabledCount = extensions?.filter((extension) => extension.enabled).length ?? 0
   const disabledCount = extensions ? extensions.length - enabledCount : 0
 
@@ -257,7 +273,7 @@ export default function ExtensionsTab() {
       )}
 
       {extensions && extensions.length > 0 && (
-        <ul className="space-y-1.5">
+        <ul className="space-y-1">
           {extensions.map((extension) => {
             const busy = pending[extension.id]
             const locked = !extension.isSelf && !extension.canToggle && !extension.canUninstall
@@ -274,7 +290,7 @@ export default function ExtensionsTab() {
                   if (extension.canToggle && !busy) setEnabled(extension, !extension.enabled)
                 }}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md border border-border/70 bg-card px-2 py-1.5 transition-colors",
+                  "flex items-center gap-1.5 rounded-md border border-border/70 bg-card px-2 py-1 transition-colors",
                   extension.canToggle && !busy && "cursor-pointer hover:bg-muted/60",
                   !extension.enabled && "opacity-60"
                 )}
@@ -297,49 +313,67 @@ export default function ExtensionsTab() {
                   />
                 )}
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
-                  aria-label={`Reload ${extension.name}`}
-                  title="Reload (applies an update Chrome has already downloaded)"
-                  disabled={!extension.canReload || Boolean(busy)}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    reload(extension)
-                  }}
-                >
-                  <ReloadIcon
-                    aria-hidden="true"
-                    className={cn("h-3.5 w-3.5", busy === "reload" && "animate-spin")}
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 shrink-0 rounded text-muted-foreground hover:text-foreground"
+                    aria-label={`Open settings for ${extension.name}`}
+                    title="Settings"
+                    disabled={Boolean(busy)}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openSettings(extension)
+                    }}
+                  >
+                    <GearIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 shrink-0 rounded text-muted-foreground hover:text-foreground"
+                    aria-label={`Reload ${extension.name}`}
+                    title="Reload (applies an update Chrome has already downloaded)"
+                    disabled={!extension.canReload || Boolean(busy)}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      reload(extension)
+                    }}
+                  >
+                    <ReloadIcon
+                      aria-hidden="true"
+                      className={cn("h-3.5 w-3.5", busy === "reload" && "animate-spin")}
+                    />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 shrink-0 rounded text-muted-foreground hover:text-destructive"
+                    aria-label={`Uninstall ${extension.name}`}
+                    title="Uninstall"
+                    disabled={!extension.canUninstall || Boolean(busy)}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      uninstall(extension)
+                    }}
+                  >
+                    <TrashIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                  </Button>
+
+                  <Switch
+                    checked={extension.enabled}
+                    disabled={!extension.canToggle || Boolean(busy)}
+                    aria-label={`Turn ${extension.name} ${extension.enabled ? "off" : "on"}`}
+                    className="ml-0.5"
+                    onClick={(event) => event.stopPropagation()}
+                    onCheckedChange={(checked) => setEnabled(extension, checked)}
                   />
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
-                  aria-label={`Uninstall ${extension.name}`}
-                  title="Uninstall"
-                  disabled={!extension.canUninstall || Boolean(busy)}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    uninstall(extension)
-                  }}
-                >
-                  <TrashIcon aria-hidden="true" className="h-3.5 w-3.5" />
-                </Button>
-
-                <Switch
-                  checked={extension.enabled}
-                  disabled={!extension.canToggle || Boolean(busy)}
-                  aria-label={`Turn ${extension.name} ${extension.enabled ? "off" : "on"}`}
-                  className="ml-0.5"
-                  onClick={(event) => event.stopPropagation()}
-                  onCheckedChange={(checked) => setEnabled(extension, checked)}
-                />
+                </div>
               </li>
             )
           })}

@@ -10,6 +10,7 @@ export type ManagedExtension = {
   canReload: boolean
   canUninstall: boolean
   iconUrl: string | null
+  optionsUrl: string
 }
 
 type ManagementEvent = {
@@ -69,12 +70,17 @@ export function toManagedExtensions(
         canReload: canToggle && info.enabled,
         canUninstall: !isSelf && info.mayDisable,
         iconUrl: pickIconUrl(info),
+        optionsUrl: info.optionsUrl || "",
       }
     })
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
 }
 
-export async function listExtensions(selfId: string): Promise<ManagedExtension[]> {
+export function currentExtensionId(): string {
+  return typeof chrome === "undefined" ? "" : chrome.runtime?.id ?? ""
+}
+
+export async function listExtensions(selfId: string = currentExtensionId()): Promise<ManagedExtension[]> {
   const api = getManagement()
   if (typeof api.getAll !== "function") throw new Error(MANAGEMENT_UNAVAILABLE)
   const infos = await api.getAll()
@@ -98,6 +104,68 @@ export async function reloadExtension(id: string): Promise<void> {
 
 export async function uninstallExtension(id: string): Promise<void> {
   await getManagement().uninstall(id)
+}
+
+export function getExtensionSettingsUrl(extension: {
+  id: string
+  optionsUrl?: string | null
+  enabled?: boolean
+}): string {
+  if (extension.enabled && extension.optionsUrl) {
+    return extension.optionsUrl
+  }
+  return `chrome://extensions/?id=${extension.id}`
+}
+
+export async function openTab(url: string): Promise<void> {
+  const tabs = typeof chrome === "undefined" ? undefined : chrome.tabs
+  if (tabs && typeof tabs.create === "function") {
+    await new Promise<void>((resolve, reject) => {
+      try {
+        const result: unknown = tabs.create({ url }, () => {
+          const lastError = chrome.runtime?.lastError
+          if (lastError) reject(new Error(lastError.message))
+          else resolve()
+        })
+        if (result && typeof (result as Promise<unknown>).then === "function") {
+          ;(result as Promise<unknown>).then(() => resolve(), reject)
+        }
+      } catch (err) {
+        reject(err)
+      }
+    })
+    return
+  }
+
+  if (typeof window !== "undefined" && typeof window.open === "function") {
+    window.open(url, "_blank", "noopener,noreferrer")
+    return
+  }
+
+  throw new Error("Cannot open new tab: browser tab API is unavailable.")
+}
+
+export async function openExtensionSettings(
+  extension: ManagedExtension,
+  options?: { onOpenSelf?: () => void }
+): Promise<void> {
+  if (extension.isSelf && options?.onOpenSelf) {
+    options.onOpenSelf()
+    return
+  }
+
+  const primaryUrl = getExtensionSettingsUrl(extension)
+  const fallbackUrl = `chrome://extensions/?id=${extension.id}`
+
+  try {
+    await openTab(primaryUrl)
+  } catch (primaryError) {
+    if (primaryUrl !== fallbackUrl) {
+      await openTab(fallbackUrl)
+      return
+    }
+    throw primaryError
+  }
 }
 
 function errorText(error: unknown): string {

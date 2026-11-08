@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  currentExtensionId,
+  getExtensionSettingsUrl,
   isManagementCancellation,
   listExtensions,
   managementErrorMessage,
+  openExtensionSettings,
+  openTab,
   reloadExtension,
   setExtensionEnabled,
   subscribeToManagementEvents,
@@ -105,12 +109,21 @@ describe("management actions", () => {
     expect(onEnabled.removeListener).toHaveBeenCalledWith(refresh)
   })
 
-  it("loads every extension through the management API", async () => {
-    const getAll = vi.fn(async () => [info({ id: "a", name: "Alpha" })])
-    vi.stubGlobal("chrome", { management: { getAll } })
+  it("loads every extension through the management API with default selfId", async () => {
+    const getAll = vi.fn(async () => [info({ id: "my-id", name: "Alpha" })])
+    vi.stubGlobal("chrome", {
+      management: { getAll },
+      runtime: { id: "my-id" },
+    })
 
-    await expect(listExtensions("self")).resolves.toMatchObject([{ id: "a", enabled: true }])
+    expect(currentExtensionId()).toBe("my-id")
+    await expect(listExtensions()).resolves.toMatchObject([{ id: "my-id", isSelf: true }])
     expect(getAll).toHaveBeenCalledOnce()
+  })
+
+  it("returns an empty string from currentExtensionId when chrome.runtime is missing", () => {
+    vi.stubGlobal("chrome", {})
+    expect(currentExtensionId()).toBe("")
   })
 
   it("forwards enable and disable requests", async () => {
@@ -162,5 +175,106 @@ describe("management errors", () => {
     expect(managementErrorMessage(new Error("User cannot modify settings"))).toMatch(/policy/i)
     expect(managementErrorMessage(new Error("Something else"))).toBe("Something else")
     expect(managementErrorMessage(undefined)).toBe("Chrome rejected the request.")
+  })
+})
+
+describe("extension settings navigation", () => {
+  it("extracts optionsUrl when present in ExtensionInfo", () => {
+    const [row] = toManagedExtensions(
+      [info({ id: "custom", name: "Custom", optionsUrl: "chrome-extension://custom/options.html" })],
+      "self"
+    )
+    expect(row.optionsUrl).toBe("chrome-extension://custom/options.html")
+  })
+
+  it("determines settings URL prioritizing optionsUrl for enabled extensions", () => {
+    expect(
+      getExtensionSettingsUrl({
+        id: "ext1",
+        optionsUrl: "chrome-extension://ext1/options.html",
+        enabled: true,
+      })
+    ).toBe("chrome-extension://ext1/options.html")
+
+    expect(
+      getExtensionSettingsUrl({
+        id: "ext1",
+        optionsUrl: "chrome-extension://ext1/options.html",
+        enabled: false,
+      })
+    ).toBe("chrome://extensions/?id=ext1")
+
+    expect(
+      getExtensionSettingsUrl({
+        id: "ext2",
+        optionsUrl: "",
+        enabled: true,
+      })
+    ).toBe("chrome://extensions/?id=ext2")
+  })
+
+  it("opens extension settings tab via chrome.tabs.create", async () => {
+    const create = vi.fn((_opts, cb) => {
+      if (cb) cb({ id: 10 })
+      return Promise.resolve({ id: 10 })
+    })
+    vi.stubGlobal("chrome", { tabs: { create } })
+
+    const [ext] = toManagedExtensions(
+      [info({ id: "target", name: "Target", optionsUrl: "chrome-extension://target/options.html" })],
+      "self"
+    )
+
+    await openExtensionSettings(ext)
+    expect(create).toHaveBeenCalledWith(
+      { url: "chrome-extension://target/options.html" },
+      expect.any(Function)
+    )
+  })
+
+  it("falls back to chrome://extensions details page if optionsUrl fails to open", async () => {
+    let callCount = 0
+    const create = vi.fn((_opts, cb) => {
+      callCount++
+      if (callCount === 1) {
+        throw new Error("Cannot open chrome-extension URL")
+      }
+      if (cb) cb({ id: 20 })
+      return Promise.resolve({ id: 20 })
+    })
+    vi.stubGlobal("chrome", { tabs: { create } })
+
+    const [ext] = toManagedExtensions(
+      [info({ id: "target", name: "Target", optionsUrl: "chrome-extension://target/options.html" })],
+      "self"
+    )
+
+    await openExtensionSettings(ext)
+    expect(create).toHaveBeenCalledTimes(2)
+    expect(create).toHaveBeenLastCalledWith(
+      { url: "chrome://extensions/?id=target" },
+      expect.any(Function)
+    )
+  })
+
+  it("triggers onOpenSelf callback for the host extension without opening a new tab", async () => {
+    const create = vi.fn()
+    vi.stubGlobal("chrome", { tabs: { create } })
+    const onOpenSelf = vi.fn()
+
+    const [self] = toManagedExtensions([info({ id: "self", name: "Zed" })], "self")
+    await openExtensionSettings(self, { onOpenSelf })
+
+    expect(onOpenSelf).toHaveBeenCalledOnce()
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it("falls back to window.open when chrome.tabs is unavailable", async () => {
+    vi.stubGlobal("chrome", {})
+    const openMock = vi.fn()
+    vi.stubGlobal("window", { open: openMock })
+
+    await openTab("https://example.com")
+    expect(openMock).toHaveBeenCalledWith("https://example.com", "_blank", "noopener,noreferrer")
   })
 })

@@ -4,7 +4,7 @@ Prioritized backlog for the Chrome extension. Keep this file focused on work tha
 
 ## Current Product
 
-Current popup tabs: **Misc**, **YouTube**, and **Settings**.
+Current popup tabs: **Misc**, **Extensions**, **YouTube**, and **Settings**.
 
 Implemented capabilities:
 
@@ -15,6 +15,7 @@ Implemented capabilities:
 - Design mode, inspect mode, and Arabic RTL mode
 - Page timestamp and publication age inspector
 - Video quality selector with fallback options (prefer higher / prefer lower quality)
+- Installed extensions management tab with search, status toggles, reload, and uninstall flows
 - YouTube focus mode, progress-bar controls, duration hiding, half-screen layout, and timestamp bookmarks/markers
 - Persistent dark theme, defaulting to dark
 - Success/error toast feedback for page actions
@@ -74,20 +75,29 @@ Implemented:
 - Inspect mode
 - Arabic RTL mode toggle
 
-Good next additions:
+Completed additions:
 
 | Status | Task |
 |---|---|
-| [ ] | Add custom scrollbar styling without changing page layout unexpectedly. |
-| [ ] | Add saved page-theme presets for dark, grayscale, and custom colors. |
+| [x] | Add custom scrollbar styling without changing page layout unexpectedly. |
+| [x] | Add saved page-theme presets for dark, grayscale, and custom colors. |
 | [x] | Add volume boost for page audio and video with a capped 20× gain and safety warning. |
-| [ ] | Define a useful timestamp/age feature before implementation. |
+| [x] | Define a useful timestamp/age feature before implementation. |
 
 Defer until there is a clear product and permission design:
 
 - Ad blocking
 - Clearing cookies, local storage, cache, or other site data
-- Disabling or managing other extensions
+
+### Extensions
+
+Implemented:
+
+- Extension search and filtering
+- Enable/disable toggles with instant rollback on failure
+- Reload unpacked/installed extensions
+- Uninstall confirmation flow
+- Self-extension detection with direct navigation to Settings
 
 ### YouTube
 
@@ -121,12 +131,14 @@ Implemented:
 - Persistent dark theme, defaulting to dark
 - JSON export/import of all `chrome.storage.local` settings
 
+Completed additions:
+
 | Status | Task |
 |---|---|
-| [ ] | Add an export schema version migration strategy before changing stored data shapes. |
-| [ ] | Show import/export errors for file size, invalid JSON, unsupported versions, and storage failures. |
-| [ ] | Add a reset-settings action with confirmation and a documented list of reset keys. |
-| [ ] | Add first-run permission and privacy explanation. |
+| [x] | Add an export schema version migration strategy before changing stored data shapes. |
+| [x] | Show import/export errors for file size, invalid JSON, unsupported versions, and storage failures. |
+| [x] | Add a reset-settings action with confirmation and a documented list of reset keys. |
+| [x] | Add first-run permission and privacy explanation. |
 
 ## Planned Product Areas
 

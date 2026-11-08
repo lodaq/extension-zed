@@ -18,9 +18,12 @@
   const dirty = new Set();
   const color = (value) => typeof value === "string" && /^#[\da-f]{6}$/i.test(value) ? value : "";
   const hasColors = (settings) => FIELDS.some((name) => color(settings && settings[name]));
-  const channels = (value) => (value.replace(/^[^(]*\(/, "").replace(/^[a-z][\w-]*\s+/i, "").match(/[-\d.]+/g) || []).map(Number);
-  const neutral = (value) => {
-    const rgb = channels(value).slice(0, 3);
+  function colorChannels(value) {
+    const components = value.replace(/^[^(]*\(/, "").replace(/^[a-z][\w-]*\s+/i, "");
+    return (components.match(/[-\d.]+/g) || []).map(Number);
+  }
+  const isNeutralColor = (value) => {
+    const rgb = colorChannels(value).slice(0, 3);
     if (/^oklch\(/.test(value)) return rgb[1] < 0.04;
     if (/^oklab\(/.test(value)) return Math.hypot(rgb[1], rgb[2]) < 0.04;
     if (/^lch\(/.test(value)) return rgb[1] < 12;
@@ -28,7 +31,10 @@
     if (/^color\(/.test(value)) return Math.max(...rgb) - Math.min(...rgb) < 0.16;
     return rgb.length === 3 && Math.max(...rgb) - Math.min(...rgb) < 40;
   };
-  const alpha = (value) => channels(value)[3] ?? (channels(value).length === 3 ? 1 : 0);
+  function colorAlpha(value) {
+    const components = colorChannels(value);
+    return components[3] ?? (components.length === 3 ? 1 : 0);
+  }
   const marked = (token) => `[${ATTRIBUTE}~="${token}"]`;
 
   function customRule(declaration) {
@@ -56,6 +62,42 @@
     return style;
   }
 
+  function classifyElement(element, inheritedKeep) {
+    const original = getComputedStyle(element);
+    const background = original.backgroundColor;
+    const image = original.backgroundImage !== "none";
+    const mask = (original.maskImage && original.maskImage !== "none") ||
+      (original.webkitMaskImage && original.webkitMaskImage !== "none");
+    const svgIcon = element.matches("svg") && (element.matches('[fill="currentColor"], [stroke="currentColor"]') ||
+      element.querySelector('[fill="currentColor"], [stroke="currentColor"]'));
+    const keep = inheritedKeep || (element.matches(MEDIA) && !svgIcon) || image ||
+      original.backgroundClip === "text" || (colorAlpha(background) > 0 && !isNeutralColor(background) && !mask);
+    preserved.set(element, keep);
+    const tokens = [];
+    if (keep) {
+      // Freeze inherited text too: a preserved colored panel can inherit the page's old foreground.
+      const declaration = `color: ${original.color} !important; -webkit-text-fill-color: ${original.webkitTextFillColor || original.color} !important;`;
+      tokens.push(customRule(declaration));
+    } else {
+      if (mask) tokens.push("icon");
+      else if (element.matches("html, body")) tokens.push("background");
+      else if (colorAlpha(background) > 0) {
+        const target = colors.surface || colors.background;
+        if (target && colorAlpha(background) < 1) {
+          const opacity = Math.round(colorAlpha(background) * 255).toString(16).padStart(2, "0");
+          tokens.push(customRule(`background-color: ${target}${opacity} !important;`));
+        } else tokens.push("surface");
+      }
+      const link = element.closest("a");
+      tokens.push(link ? "link" : "text");
+      if (colors.text && !link && !isNeutralColor(original.color)) {
+        tokens.push(customRule(`color: color-mix(in srgb, ${original.color} 40%, ${colors.text}) !important; -webkit-text-fill-color: currentColor !important;`));
+      }
+      if (isNeutralColor(original.borderTopColor)) tokens.push("border");
+    }
+    return { keep, tokens: tokens.join(" ") };
+  }
+
   function scan(start) {
     if (!start) return;
     const parent = start.parentElement || start.getRootNode().host;
@@ -64,39 +106,8 @@
     for (let index = 0; index < queue.length; index++) {
       const [element, inheritedKeep] = queue[index];
       if (element.id === STYLE_ID || element.matches("script, style, link, meta, title, head")) continue;
-      const original = getComputedStyle(element);
-      const background = original.backgroundColor;
-      const image = original.backgroundImage !== "none";
-      const mask = (original.maskImage && original.maskImage !== "none") ||
-        (original.webkitMaskImage && original.webkitMaskImage !== "none");
-      const svgIcon = element.matches("svg") && (element.matches('[fill="currentColor"], [stroke="currentColor"]') ||
-        element.querySelector('[fill="currentColor"], [stroke="currentColor"]'));
-      const keep = inheritedKeep || (element.matches(MEDIA) && !svgIcon) || image ||
-        original.backgroundClip === "text" || (alpha(background) > 0 && !neutral(background) && !mask);
-      preserved.set(element, keep);
-      const tokens = [];
-      if (keep) {
-        // Freeze inherited text too: a preserved colored panel can inherit the page's old foreground.
-        const declaration = `color: ${original.color} !important; -webkit-text-fill-color: ${original.webkitTextFillColor || original.color} !important;`;
-        tokens.push(customRule(declaration));
-      } else {
-        if (mask) tokens.push("icon");
-        else if (element.matches("html, body")) tokens.push("background");
-        else if (alpha(background) > 0) {
-          const target = colors.surface || colors.background;
-          if (target && alpha(background) < 1) {
-            const opacity = Math.round(alpha(background) * 255).toString(16).padStart(2, "0");
-            tokens.push(customRule(`background-color: ${target}${opacity} !important;`));
-          } else tokens.push("surface");
-        }
-        const link = element.closest("a");
-        tokens.push(link ? "link" : "text");
-        if (colors.text && !link && !neutral(original.color)) {
-          tokens.push(customRule(`color: color-mix(in srgb, ${original.color} 40%, ${colors.text}) !important; -webkit-text-fill-color: currentColor !important;`));
-        }
-        if (neutral(original.borderTopColor)) tokens.push("border");
-      }
-      changes.push([element, tokens.join(" ")]);
+      const { keep, tokens } = classifyElement(element, inheritedKeep);
+      changes.push([element, tokens]);
       if (element.shadowRoot) {
         stylesheet(element.shadowRoot);
         for (const child of element.shadowRoot.children) queue.push([child, keep]);
@@ -166,24 +177,8 @@
     }
   });
 
-  function render(settings) {
-    colors = Object.fromEntries(FIELDS.map(name => [name, color(settings && settings[name])]));
-    observer?.disconnect();
-    clearTimeout(timer);
-    timer = undefined;
-    dirty.clear();
-    if (!hasColors(colors)) {
-      for (const [root, style] of styles) {
-        style.remove();
-        for (const element of root.querySelectorAll(`[${ATTRIBUTE}]`)) element.removeAttribute(ATTRIBUTE);
-      }
-      document.getElementById(STYLE_ID)?.remove();
-      styles.clear();
-      return;
-    }
-
-    const { background, text, surface, accent, accentText, border } = colors;
-    rules = [];
+  function buildThemeRules({ background, text, surface, accent, accentText, border }) {
+    const rules = [];
     if (background) {
       const rgb = [1, 3, 5].map(index => parseInt(background.slice(index, index + 2), 16) / 255);
       const light = rgb.reduce((sum, channel, index) => sum + [0.2126, 0.7152, 0.0722][index] * channel, 0) >= 0.5;
@@ -202,6 +197,26 @@
       rules.push(`:focus-visible { outline-color: ${accent} !important; }`);
       rules.push(`::selection { background-color: ${accent} !important; color: ${accentText || text || background} !important; -webkit-text-fill-color: currentColor !important; }`);
     }
+    return rules;
+  }
+
+  function render(settings) {
+    colors = Object.fromEntries(FIELDS.map(name => [name, color(settings && settings[name])]));
+    observer?.disconnect();
+    clearTimeout(timer);
+    timer = undefined;
+    dirty.clear();
+    if (!hasColors(colors)) {
+      for (const [root, style] of styles) {
+        style.remove();
+        for (const element of root.querySelectorAll(`[${ATTRIBUTE}]`)) element.removeAttribute(ATTRIBUTE);
+      }
+      document.getElementById(STYLE_ID)?.remove();
+      styles.clear();
+      return;
+    }
+
+    rules = buildThemeRules(colors);
     stylesheet(document).textContent = rules.join("\n");
     flush(true);
   }

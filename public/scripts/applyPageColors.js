@@ -201,7 +201,7 @@
   }
 
   function render(settings) {
-    colors = Object.fromEntries(FIELDS.map(name => [name, color(settings && settings[name])]));
+    colors = settings;
     observer?.disconnect();
     clearTimeout(timer);
     timer = undefined;
@@ -225,7 +225,11 @@
     const current = ++revision;
     const result = await chrome.storage.local.get([SITE_KEY, "pageColorsGlobal", "pageColorsAllSites"]);
     if (current !== revision) return;
-    render(result.pageColorsAllSites === true && hasColors(result.pageColorsGlobal) ? result.pageColorsGlobal : result[SITE_KEY]);
+    const settings = result.pageColorsAllSites === true && hasColors(result.pageColorsGlobal) ? result.pageColorsGlobal : result[SITE_KEY];
+    const nextColors = Object.fromEntries(FIELDS.map(name => [name, color(settings && settings[name])]));
+    if (FIELDS.every(name => nextColors[name] === colors[name]) &&
+      Array.from(styles.values()).every(style => style.isConnected && style.media === "all")) return;
+    render(nextColors);
   }
 
   scope[STATE] = { refresh };

@@ -70,8 +70,20 @@
       for (const palette of palettes) {
         stored = {pageColorsAllSites: true, pageColorsGlobal: palette.colors};
         await (0, eval)(source);
-        await settle();
         try {
+          if (palette === palettes[0]) {
+            const readyCard = document.createElement('div');
+            readyCard.className = 'card';
+            document.body.appendChild(readyCard);
+            document.dispatchEvent(new Event('DOMContentLoaded'));
+            check(getComputedStyle(readyCard).backgroundColor === rgb(palette.colors.surface), 'document readiness skipped the initial content scan');
+          }
+          await settle();
+          let reads = 0;
+          const readStyle = window.getComputedStyle;
+          window.getComputedStyle = (...args) => { reads++; return readStyle(...args); };
+          try { await (0, eval)(source); } finally { window.getComputedStyle = readStyle; }
+          check(reads === 0, 'unchanged palette rescanned the page');
           check(css('#photo', 'backgroundImage') === original.image, 'background photo was removed');
           check(css('#sprite', 'backgroundImage') === original.sprite, 'sprite icon was removed');
           check(css('#caption', 'color') === original.caption, 'photo caption lost its original contrast');
@@ -100,6 +112,14 @@
         } catch (error) { failures.push(`${palette.name}: ${error.message}`); }
       }
       const active = palettes[palettes.length - 1].colors;
+      document.querySelector('#zed-page-colors').remove();
+      await (0, eval)(source);
+      await settle();
+      check(css('#card', 'backgroundColor') === rgb(active.surface), 'reapplying did not restore a removed stylesheet');
+      document.querySelector('#shadow').shadowRoot.querySelector('#zed-page-colors').remove();
+      await (0, eval)(source);
+      await settle();
+      check(css('.panel', 'backgroundColor', document.querySelector('#shadow').shadowRoot) === rgb(active.surface), 'reapplying did not restore a removed shadow stylesheet');
       document.querySelector('#dynamic').innerHTML = '<div class="card" id="added">New content</div>';
       await settle();
       try {

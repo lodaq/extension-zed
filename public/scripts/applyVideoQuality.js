@@ -8,7 +8,9 @@
   const SETTINGS_ATTRIBUTE = "data-zed-video-quality";
   const SPEED_ATTRIBUTE = "data-zed-playback-speed";
   const isFacebook = /(^|\.)facebook\.com$/i.test(window.location && window.location.hostname || "");
-  const facebookControllers = new WeakMap();
+  const isMeta = isFacebook || /(^|\.)instagram\.com$/i.test(window.location && window.location.hostname || "");
+  const isTikTok = /(^|\.)tiktok\.com$/i.test(window.location && window.location.hostname || "");
+  const metaControllers = new WeakMap();
   let speed = null;
   let settings = null;
   let applied = new WeakMap();
@@ -135,13 +137,13 @@
     }, force);
   }
 
-  function facebookController(video) {
+  function metaController(video) {
     function match(value) {
       if (value && typeof value.selectVideoQuality === "function" && typeof value.getCurrentState === "function" &&
           typeof value.internal_getVideoElement === "function" && value.internal_getVideoElement() === video) return value;
       return null;
     }
-    const cached = match(facebookControllers.get(video));
+    const cached = match(metaControllers.get(video));
     if (cached) return cached;
     const key = Object.getOwnPropertyNames(video).find(function (key) { return key.startsWith("__reactFiber$"); });
     let fiber = key && video[key];
@@ -154,7 +156,7 @@
           root = container.stateNode && container.stateNode.current || container;
         }
       }
-      // Some Facebook builds keep host fibers only in the root tree; bound the fallback scan.
+      // Some Meta builds keep host fibers only in the root tree; bound the fallback scan.
       const pending = root ? [root] : [];
       const seen = new Set();
       for (let visited = 0; pending.length && visited < 20000; visited++) {
@@ -166,7 +168,7 @@
         if (candidate.child) pending.push(candidate.child);
       }
     }
-    // shortcut: Facebook exposes this controller through React refs; revisit if its player internals change.
+    // shortcut: Meta exposes this controller through React refs; revisit if its player internals change.
     for (let depth = 0; fiber && depth < 40; fiber = fiber.return, depth++) {
       let controller = match(fiber.memoizedProps && fiber.memoizedProps.value);
       for (let hook = fiber.memoizedState, count = 0; !controller && hook && count < 100; hook = hook.next, count++) {
@@ -176,13 +178,13 @@
       }
       for (let context = fiber.dependencies && fiber.dependencies.firstContext, count = 0;
            !controller && context && count < 20; context = context.next, count++) controller = match(context.memoizedValue);
-      if (controller) { facebookControllers.set(video, controller); return controller; }
+      if (controller) { metaControllers.set(video, controller); return controller; }
     }
     return null;
   }
 
-  function applyFacebook(video, force) {
-    const controller = facebookController(video);
+  function applyMeta(video, force) {
+    const controller = metaController(video);
     if (!controller || typeof controller.isFrozen === "function" && controller.isFrozen()) return null;
     const state = controller.getCurrentState();
     if (speed !== null && typeof controller.setPlaybackRate === "function" && state.targetPlaybackRate !== speed) controller.setPlaybackRate(speed);
@@ -195,6 +197,43 @@
       const chosen = auto ? "auto" : levels.find(function (level) { return level.height === height; }).id;
       if (state.selectedVideoQuality !== chosen) controller.selectVideoQuality(chosen);
       return chosen;
+    }, force);
+  }
+
+  function applyTikTok(video, force) {
+    let fiber = null;
+    for (let element = video; element && !fiber; element = element.parentElement) {
+      const key = Object.getOwnPropertyNames(element).find(function (key) { return key.startsWith("__reactFiber$"); });
+      if (key) fiber = element[key];
+    }
+    // shortcut: TikTok keeps its native player in React refs; revisit if its player internals change.
+    let player = null;
+    for (let depth = 0; fiber && !player && depth < 40; fiber = fiber.return, depth++) {
+      for (let hook = fiber.memoizedState, count = 0; hook && count < 100; hook = hook.next, count++) {
+        const candidate = hook.memoizedState && hook.memoizedState.current;
+        if (candidate && candidate.element === video && typeof candidate.changeVideo === "function" &&
+            candidate.config && candidate.config.strategyConfig && candidate.resolutionInfo &&
+            Array.isArray(candidate.resolutionInfo.resolutionList)) { player = candidate; break; }
+      }
+    }
+    if (!player) return null;
+    const levels = player.resolutionInfo.resolutionList.map(function (level) {
+      const match = typeof level.resolution === "string" && level.resolution.match(/^(\d{3,4})P$/i);
+      return { id: level.resolution, height: match ? Number(match[1]) : 0 };
+    });
+    return update(player, player.vid, levels, function (height, auto) {
+      const chosen = auto ? "auto" : levels.find(function (level) { return level.height === height; }).id;
+      const config = player.config;
+      if (!config.strategyConfig.bitrateAdapter || config.strategyConfig.bitrateAdapter.userSelectResolution !== chosen) {
+        // changeResolution only updates a label in TikTok's new player; reload through its native API.
+        player.changeVideo({ ...config,
+          playerConfig: { ...config.playerConfig, startTime: video.currentTime, autoplay: !video.paused,
+            volume: video.volume, muted: video.muted, playbackRate: video.playbackRate },
+          strategyConfig: { ...config.strategyConfig,
+            bitrateAdapter: { ...config.strategyConfig.bitrateAdapter, userSelectResolution: chosen } },
+        }, player.state, true);
+      }
+      return auto ? "auto" : height + "p";
     }, force);
   }
 
@@ -220,8 +259,17 @@
       if (player) youtubePlayers.add(player);
     }
     for (const player of youtubePlayers) attempt(function () { return applyYouTube(player, force); });
-    for (const video of queryAll("video")) {
-      if (isFacebook) attempt(function () { return applyFacebook(video, force); }, video.paused === false);
+    const videos = queryAll("video");
+    if (isTikTok) {
+      const active = videos.find(function (video) { return video.paused === false; }) || videos.find(function (video) {
+        if (typeof video.getBoundingClientRect !== "function") return true;
+        const rect = video.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight;
+      });
+      if (active) attempt(function () { return applyTikTok(active, force); }, true);
+    }
+    for (const video of videos) {
+      if (isMeta) attempt(function () { return applyMeta(video, force); }, video.paused === false);
       attempt(function () { return applyHls(video, force); });
       attempt(function () { return applyShaka(video, force); });
     }
@@ -260,13 +308,13 @@
   }
 
   if (window.__zedVideoQualityEngine) {
-    if (window.__zedVideoQualityEngine.version !== 6) {
+    if (window.__zedVideoQualityEngine.version !== 7) {
       window.__zedVideoQualityEngine.setSettings({ quality: "auto", fallback: "lower" }, { apply: false });
       throw new Error("Refresh this tab to replace the old video quality handler.");
     }
     return window.__zedVideoQualityEngine.apply(normalize(window.__zedVideoQualitySettings) || undefined);
   }
-  window.__zedVideoQualityEngine = { apply, applyAll, setSettings, getSettings: function () { return settings; }, version: 6 };
+  window.__zedVideoQualityEngine = { apply, applyAll, setSettings, getSettings: function () { return settings; }, version: 7 };
 
   function onMedia(event) {
     if (!event.target || event.target.tagName !== "VIDEO") return;

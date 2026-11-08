@@ -63,7 +63,7 @@ export default function VideoQualitySection({ dragHandle, open, onOpenChange }: 
         </div>
 
         <p className="text-xs leading-snug text-muted-foreground">
-          Sets quality through supported player controllers, including Facebook, without opening menus. The result reports the selected quality or an unsupported player.
+          Sets quality through supported player controllers, including Facebook, Instagram, and TikTok, without opening menus. The result reports the selected quality or an unsupported player.
         </p>
 
         <div className="flex flex-col gap-1.5">

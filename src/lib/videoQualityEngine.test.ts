@@ -38,6 +38,22 @@ describe("programmatic video quality", () => {
     expect(selectVideoQuality).toHaveBeenCalledTimes(1)
   })
 
+  it("selects Instagram Reel quality and restores Auto through its native controller", async () => {
+    const state = { availableVideoQualities: ["360p", "720p"], selectedVideoQuality: "auto" }
+    const video = { tagName: "VIDEO", paused: false, __reactFiber$test: {} }
+    const selectVideoQuality = vi.fn((quality: string) => { state.selectedVideoQuality = quality })
+    video.__reactFiber$test = { memoizedState: { memoizedState: { current: { value: { implementationController: {
+      getCurrentState: () => state, internal_getVideoElement: () => video, selectVideoQuality,
+    } } } } } }
+    const p = page([video], { location: { hostname: "www.instagram.com" }, __zedVideoQualitySettings: { quality: "tiny", fallback: "lower" } })
+    expect(await p.run()).toBe("360p")
+    p.event("playing", video)
+    expect(selectVideoQuality).toHaveBeenCalledTimes(1)
+    p.win.__zedVideoQualitySettings = { quality: "auto", fallback: "lower" }
+    expect(await p.run()).toBe("auto")
+    expect(state.selectedVideoQuality).toBe("auto")
+  })
+
   it("reports the playing Reel's quality instead of the preloaded next Reel", async () => {
     const activeState = { availableVideoQualities: ["240p", "720p"], selectedVideoQuality: "auto" }
     const nextState = { availableVideoQualities: ["540p", "1080p"], selectedVideoQuality: "auto" }
@@ -96,6 +112,65 @@ describe("programmatic video quality", () => {
     p.event("playing", video)
     expect(setPlaybackRate).toHaveBeenCalledTimes(1)
     expect(selectVideoQuality).toHaveBeenCalledTimes(1)
+  })
+
+  it("switches TikTok streams through its native player while preserving playback state", async () => {
+    const video = { tagName: "VIDEO", currentTime: 12.5, paused: true, volume: 0.4, muted: true, playbackRate: 1.5,
+      parentElement: { __reactFiber$test: {} } }
+    const nextVideo = { tagName: "VIDEO", paused: true, parentElement: { __reactFiber$test: {} } }
+    const config = { playerConfig: { loop: true }, strategyConfig: { bitrateAdapter: { userSelectResolution: "auto", quality: 20 } } }
+    const changeVideo = vi.fn((next: typeof config) => { controller.config = next })
+    const controller = { element: video, vid: "tiktok-one", state: "ACTIVE", config, changeVideo,
+      resolutionInfo: { resolutionList: [{ resolution: "540P" }, { resolution: "720P" }] } }
+    video.parentElement.__reactFiber$test = { memoizedState: { memoizedState: { current: controller } } }
+    const preload = { ...controller, element: nextVideo, changeVideo: vi.fn() }
+    nextVideo.parentElement.__reactFiber$test = { memoizedState: { memoizedState: { current: preload } } }
+    const p = page([video, nextVideo], { location: { hostname: "www.tiktok.com" }, __zedVideoQualitySettings: { quality: "tiny", fallback: "lower" } })
+    expect(await p.run()).toBe("540p")
+    expect(changeVideo).toHaveBeenCalledWith({
+      playerConfig: { loop: true, startTime: 12.5, autoplay: false, volume: 0.4, muted: true, playbackRate: 1.5 },
+      strategyConfig: { bitrateAdapter: { userSelectResolution: "540P", quality: 20 } },
+    }, "ACTIVE", true)
+    expect(config.strategyConfig.bitrateAdapter.userSelectResolution).toBe("auto")
+    expect(preload.changeVideo).not.toHaveBeenCalled()
+    p.event("loadstart", video)
+    p.event("canplay", video)
+    expect(changeVideo).toHaveBeenCalledTimes(1)
+    p.win.__zedVideoQualitySettings = { quality: "hd720", fallback: "lower" }
+    expect(await p.run()).toBe("720p")
+    expect(controller.config.strategyConfig.bitrateAdapter.userSelectResolution).toBe("720P")
+    p.win.__zedVideoQualitySettings = { quality: "auto", fallback: "lower" }
+    expect(await p.run()).toBe("auto")
+    expect(controller.config.strategyConfig.bitrateAdapter.userSelectResolution).toBe("auto")
+  })
+
+  it("applies TikTok quality to the playing video after navigation, leaving preload players alone", async () => {
+    const preload = { tagName: "VIDEO", paused: true }
+    const video = { tagName: "VIDEO", paused: false, __reactFiber$test: {} }
+    const config = { playerConfig: {}, strategyConfig: { bitrateAdapter: { userSelectResolution: "auto" } } }
+    const changeVideo = vi.fn((next: typeof config) => { controller.config = next })
+    const controller = { element: video, vid: "one", state: "ACTIVE", config, changeVideo,
+      resolutionInfo: { resolutionList: [{ resolution: "540P" }, { resolution: "720P" }] } }
+    video.__reactFiber$test = { memoizedState: { memoizedState: { current: controller } } }
+    const p = page([preload, video], { location: { hostname: "www.tiktok.com" }, __zedVideoQualitySettings: { quality: "large", fallback: "higher" } })
+    expect(await p.run()).toBe("540p")
+    controller.vid = "two"
+    controller.config = config
+    controller.resolutionInfo.resolutionList = [{ resolution: "720P" }]
+    p.event("loadstart", video)
+    p.event("playing", video)
+    expect(controller.config.strategyConfig.bitrateAdapter.userSelectResolution).toBe("720P")
+    expect(changeVideo).toHaveBeenCalledTimes(2)
+  })
+
+  it("ignores TikTok controllers belonging to another video", async () => {
+    const changeVideo = vi.fn()
+    const video = { tagName: "VIDEO", __reactFiber$test: { memoizedState: { memoizedState: { current: {
+      element: {}, changeVideo, config: {}, resolutionInfo: { resolutionList: [{ resolution: "720P" }] },
+    } } } } }
+    const p = page([video], { location: { hostname: "www.tiktok.com" } })
+    expect(await p.run()).toBeNull()
+    expect(changeVideo).not.toHaveBeenCalled()
   })
 
   it("requires a refresh instead of invoking an old menu automation engine", () => {

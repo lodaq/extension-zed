@@ -145,16 +145,18 @@ export async function openTab(url: string): Promise<void> {
   throw new Error("Cannot open new tab: browser tab API is unavailable.")
 }
 
-export async function openExtensionSettings(
-  extension: ManagedExtension,
-  options?: { onOpenSelf?: () => void }
-): Promise<void> {
-  if (extension.isSelf && options?.onOpenSelf) {
-    options.onOpenSelf()
-    return
+export async function openBraveExtensionsTab(): Promise<void> {
+  try {
+    await openTab("brave://extensions/")
+  } catch {
+    await openTab("chrome://extensions/")
   }
+}
 
-  const primaryUrl = getExtensionSettingsUrl(extension)
+export async function openExtensionSettings(
+  extension: ManagedExtension
+): Promise<void> {
+  const primaryUrl = extension.isSelf ? `chrome://extensions/?id=${extension.id}` : getExtensionSettingsUrl(extension)
   const fallbackUrl = `chrome://extensions/?id=${extension.id}`
 
   try {

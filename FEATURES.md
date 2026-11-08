@@ -17,8 +17,9 @@ Sources: `src/App.tsx`, `src/background.ts`, `src/lib/withActiveTab.ts`, `public
 
 | Control | Behavior |
 | --- | --- |
+| Open extensions page | Opens a new tab for `brave://extensions/` (with fallback to `chrome://extensions/` outside Brave). |
 | Extension row | Lists every installed extension alphabetically, with icon, name, and version. Apps and themes are excluded. Clicking the row toggles the extension. Disabled extensions are dimmed. |
-| Settings | Opens the extension's dedicated options page (`optionsUrl`) directly in a new tab when available and enabled, or opens Chrome's extension details page (`chrome://extensions/?id=...`). For Extension Zed itself, activates the built-in Settings tab. |
+| Settings | Opens the extension's dedicated options page (`optionsUrl`) directly in a new tab when available and enabled, or opens Chrome's extension details page (`chrome://extensions/?id=...`). For Extension Zed itself, always opens the browser’s extension details/settings page. |
 | On/off switch | Enables or disables the extension through `chrome.management.setEnabled`. Chrome may show its own confirmation when re-enabling an extension with escalated permissions. |
 | Reload | Disables and immediately re-enables the extension. Unpacked extensions re-read their code from disk; store extensions apply an update Chrome has already downloaded. Chrome has no public API to force an update check for another extension. |
 | Uninstall | Calls `chrome.management.uninstall`. Chrome always shows its own confirmation dialog when one extension uninstalls another; a dismissed dialog is treated as a cancellation, not an error. |
@@ -39,8 +40,6 @@ Each section can be expanded or collapsed with its heading using the mouse, Ente
 | Player overrides | Website player speed changes remain until playback starts again or metadata reloads | Do not change saved speed; metadata reloads, playback starts, new media, or explicit Zed actions restore saved speed, including repeated same-speed actions |
 | Volume boost | Audio/video gain from 100% to 2000%, in steps of 10% | Global preference; activated on the current page and then newly inserted media. Reset changes gain to 100%, not the Web Audio routing |
 | Video quality | Preferred video resolution (Auto, 4320p down to 144p). If preferred resolution is unavailable for the current video, two selectable fallback options: (1) Prefer higher quality, or (2) Prefer lower quality. Concise single-panel controls | Global preference; saved across sessions and applied through player APIs: Facebook and Instagram’s native React player controller, TikTok’s native player, YouTube, Video.js quality levels, Shaka UI, and Hls.js instances exposed as video.hls. Auto restores adaptive selection. No clicks, pointer events, keyboard input, or menu automation. TikTok switches through its native stream reload API, preserving playback position, pause state, speed, and volume; switching may briefly buffer. Unsupported players keep the site’s quality selection and Apply reports that no controllable player is ready. Apply reports the selected quality, including a fallback such as 270p when a Reel does not offer 144p. Facebook, Instagram, and TikTok controller discovery uses private React refs, with a bounded root-tree lookup on Facebook and Instagram when video elements have no direct refs, and may need updating if those sites change them. Apply prefers the playing video over a preloaded next video; TikTok applies only to the active or visible paused video |
-| Background colors | Color picker overrides backgrounds and suppresses background images | Saved per HTTP(S) origin; applied on command, not automatically after reload; independent reset |
-| Text colors | Color picker overrides page text | Saved per origin; independent reset and combined color reset |
 | Main scrollbar | Hide/reset the document scrollbar | Page-local injected style |
 | All scrollbars | Hide/reset document and nested scrollbars | Separate page-local style; reset both if both were applied |
 | Inspect mode | Hover overlay shows element identity, position, dimensions, box model, colors, layout, and typography | Global preference, applied on command; Escape disables active inspect overlays listening for that change |
@@ -70,9 +69,9 @@ Sources: `src/components/YoutubeFocusMode.tsx`, `src/components/YoutubeMarkers.t
 
 ## Settings transfer
 
-- Export recognized preferences and per-origin colors to a dated version-1 JSON backup.
+- Export recognized preferences to a dated version-1 JSON backup.
 - Import version-1 JSON by merging recognized values; omitted settings remain unchanged, unknown keys are ignored.
-- Reject unsupported versions and invalid recognized modes, booleans, ranges, tabs, origins, or colors before writing. Colors must be empty reset values or six-digit hex colors.
+- Reject unsupported versions and invalid recognized modes, booleans, ranges, or tabs before writing.
 - Import updates preferences, not every page's applied state. Changed speed and quality reach running media scripts; use page controls to apply other imported preferences.
 - Affected readers safely default malformed stored values. Export reports invalid recognized stored values instead of producing an unusable backup.
 
@@ -83,6 +82,6 @@ Sources: `src/lib/settings.ts`, `src/components/SettingsTab.tsx`, `src/lib/useSt
 - Manifest V3; required `scripting`, `activeTab`, and `storage` permissions. Optional `management` permission is requested only when the Extensions tab is used. No new host permissions or backend.
 - Playback and RTL content scripts match HTTP(S) pages and all frames. The video-quality engine and its settings bridge also match HTTP(S) pages and all frames. On-demand actions attempt all frames where appropriate, with main-frame fallback. Inaccessible frames may remain unchanged.
 - Chrome internal pages, the Chrome Web Store, and other protected documents generally reject injection.
-- Preferences are local; no account or cloud sync. Exported per-origin colors reveal saved website origins, so backups are personal data.
+- Preferences are local; no account or cloud sync.
 - Closed shadow roots and unusual media pipelines may need site-specific support. Reused MediaSource URLs without normal loading events can hide a media-item change.
 - Web Audio amplification can fail for cross-origin or already-connected media and autoplay restrictions. High gain can distort audio.

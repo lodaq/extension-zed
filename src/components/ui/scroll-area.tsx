@@ -99,6 +99,8 @@ export const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(
         userScrolledRef.current = false
         if (target > 0) {
           applyRestore(target)
+        } else if (internalRef.current) {
+          internalRef.current.scrollTop = 0
         }
       },
       [getPosition, applyRestore]
@@ -227,7 +229,7 @@ export const ScrollBar = React.forwardRef<HTMLDivElement, ScrollBarProps>(
       ref={ref}
       aria-hidden="true"
       className={cn(
-        "flex touch-none select-none transition-colors",
+        "flex touch-none select-none",
         orientation === "vertical" && "h-full w-2 border-l border-l-transparent p-[1px]",
         orientation === "horizontal" && "h-2 flex-col border-t border-t-transparent p-[1px]",
         className

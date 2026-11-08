@@ -6,8 +6,9 @@ const hooks = vi.hoisted(() => ({
   effect: undefined as undefined | (() => void | (() => void)),
 }))
 vi.mock("react", () => ({
-  useState: (initial: unknown) => [initial, hooks.setValue],
+  useState: (initial: unknown) => [typeof initial === "function" ? (initial as () => unknown)() : initial, hooks.setValue],
   useEffect: (effect: () => void | (() => void)) => { hooks.effect = effect },
+  useRef: (initial: unknown) => ({ current: initial }),
 }))
 
 function deferred<T>() {
@@ -118,4 +119,11 @@ it("does not update state when a save completes after cleanup", async () => {
   write.resolve()
   await pending
   expect(hooks.setValue).not.toHaveBeenCalled()
+})
+
+it("initializes synchronously from functional initial value", () => {
+  const getter = vi.fn(() => false)
+  const [val] = useStoredValue("customKey", getter)
+  expect(val).toBe(false)
+  expect(getter).toHaveBeenCalledOnce()
 })

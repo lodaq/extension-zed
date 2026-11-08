@@ -5,6 +5,7 @@ import {
   isManagementCancellation,
   listExtensions,
   managementErrorMessage,
+  openBraveExtensionsTab,
   openExtensionSettings,
   openTab,
   reloadExtension,
@@ -50,7 +51,7 @@ describe("managed extension list", () => {
   })
 
   it("marks the current extension and disables its destructive actions", () => {
-    const [self] = toManagedExtensions([info({ id: "self", name: "Zed" })], "self")
+    const [self] = toManagedExtensions([info({ id: "self", name: "Zed", optionsUrl: "chrome-extension://self/options.html" })], "self")
 
     expect(self.isSelf).toBe(true)
     expect(self.canToggle).toBe(false)
@@ -257,16 +258,20 @@ describe("extension settings navigation", () => {
     )
   })
 
-  it("triggers onOpenSelf callback for the host extension without opening a new tab", async () => {
-    const create = vi.fn()
+  it("opens browser settings for the host extension even when it has app options", async () => {
+    const create = vi.fn((_opts, cb) => {
+      cb({ id: 10 })
+      return Promise.resolve({ id: 10 })
+    })
     vi.stubGlobal("chrome", { tabs: { create } })
-    const onOpenSelf = vi.fn()
 
-    const [self] = toManagedExtensions([info({ id: "self", name: "Zed" })], "self")
-    await openExtensionSettings(self, { onOpenSelf })
+    const [self] = toManagedExtensions([info({ id: "self", name: "Zed", optionsUrl: "chrome-extension://self/options.html" })], "self")
+    await openExtensionSettings(self)
 
-    expect(onOpenSelf).toHaveBeenCalledOnce()
-    expect(create).not.toHaveBeenCalled()
+    expect(create).toHaveBeenCalledWith(
+      { url: "chrome://extensions/?id=self" },
+      expect.any(Function)
+    )
   })
 
   it("falls back to window.open when chrome.tabs is unavailable", async () => {
@@ -276,5 +281,39 @@ describe("extension settings navigation", () => {
 
     await openTab("https://example.com")
     expect(openMock).toHaveBeenCalledWith("https://example.com", "_blank", "noopener,noreferrer")
+  })
+
+  it("opens brave://extensions/ via openBraveExtensionsTab", async () => {
+    const create = vi.fn((_opts, cb) => {
+      if (cb) cb({ id: 30 })
+      return Promise.resolve({ id: 30 })
+    })
+    vi.stubGlobal("chrome", { tabs: { create } })
+
+    await openBraveExtensionsTab()
+    expect(create).toHaveBeenCalledWith(
+      { url: "brave://extensions/" },
+      expect.any(Function)
+    )
+  })
+
+  it("falls back to chrome://extensions/ if brave://extensions/ fails", async () => {
+    let callCount = 0
+    const create = vi.fn((_opts, cb) => {
+      callCount++
+      if (callCount === 1) {
+        throw new Error("Cannot open brave:// URL")
+      }
+      if (cb) cb({ id: 31 })
+      return Promise.resolve({ id: 31 })
+    })
+    vi.stubGlobal("chrome", { tabs: { create } })
+
+    await openBraveExtensionsTab()
+    expect(create).toHaveBeenCalledTimes(2)
+    expect(create).toHaveBeenLastCalledWith(
+      { url: "chrome://extensions/" },
+      expect.any(Function)
+    )
   })
 })

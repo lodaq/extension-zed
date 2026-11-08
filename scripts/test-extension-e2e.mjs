@@ -269,12 +269,26 @@ async function run() {
     const pwGenText = parseTextContent(pwGenEval);
     record("Password Generator click & update", pwGenText.includes('"hasValue":true'), pwGenText);
 
+    // Switch to Extensions tab using CDP click tool
+    console.log("\n8. Testing Tab switching to Extensions via click tool...");
+    const extMatch = snapshotText.match(/uid=([^\s]+)\s+tab\s+"Extensions"/);
+    if (extMatch) {
+      await client.callTool("click", { pageId: 1, uid: extMatch[1] });
+      await new Promise(r => setTimeout(r, 200));
+      const extSnap = await client.callTool("take_snapshot", { pageId: 1 });
+      const extSnapText = parseTextContent(extSnap);
+      const hasBraveBtn = extSnapText.includes("brave://extensions");
+      record("Extensions tab brave://extensions button present", hasBraveBtn, extSnapText.slice(0, 300));
+    } else {
+      record("Extensions tab brave://extensions button present", false, "Could not find Extensions tab UID");
+    }
+
     // Switch to YouTube tab using CDP click tool
-    console.log("\n8. Testing Tab switching to YouTube via click tool...");
+    console.log("\n8b. Testing Tab switching to YouTube via click tool...");
     const ytMatch = snapshotText.match(/uid=([^\s]+)\s+tab\s+"Youtube"/);
     if (ytMatch) {
       await client.callTool("click", { pageId: 1, uid: ytMatch[1] });
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 200));
       const ytSnap = await client.callTool("take_snapshot", { pageId: 1 });
       const ytSnapText = parseTextContent(ytSnap);
       const ytActive = ytSnapText.includes('tabpanel "Youtube"');

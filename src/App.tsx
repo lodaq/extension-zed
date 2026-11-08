@@ -1,18 +1,17 @@
+import ExtensionsTab from "@/components/ExtensionsTab"
 import MiscTab from "@/components/MiscTab"
+import SettingsTab from "@/components/SettingsTab"
+import YoutubeTab from "@/components/YoutubeTab"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Toaster } from "@/components/ui/toast"
 import { toast } from "@/components/ui/use-toast"
 import { PAGE_ACTION_FEEDBACK_EVENT } from "@/lib/withActiveTab"
 import { Cross1Icon, ExclamationTriangleIcon } from "@radix-ui/react-icons"
-import { Suspense, lazy, useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { readBootState, updateBootState } from "@/lib/bootCache"
 import { POPUP_TABS, readSetting } from "@/lib/settings"
-
-const Toaster = lazy(() => import("@/components/ui/toast").then((m) => ({ default: m.Toaster })))
-const ExtensionsTab = lazy(() => import("@/components/ExtensionsTab"))
-const YoutubeTab = lazy(() => import("@/components/YoutubeTab"))
-const SettingsTab = lazy(() => import("@/components/SettingsTab"))
 
 const TAB_KEY = "popupActiveTab"
 const TAB_VALUES = POPUP_TABS
@@ -23,9 +22,9 @@ function isTabValue(v: string): v is TabValue {
 }
 
 const tabPanelClass =
-  "col-start-1 row-start-1 mt-0 overflow-visible outline-none data-[state=inactive]:pointer-events-none data-[state=inactive]:invisible data-[state=active]:relative data-[state=active]:z-[1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+  "mt-0 overflow-visible outline-none data-[state=inactive]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 const tabTriggerClass =
-  "shrink-0 rounded-md px-2 text-xs font-medium text-foreground/75 transition-colors hover:bg-background/50 hover:text-foreground data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/70"
+  "shrink-0 rounded-md px-2 text-xs font-medium text-foreground/75 hover:bg-background/50 hover:text-foreground data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/70"
 
 function App() {
   const [tab, setTab] = useState<TabValue>(() => readBootState().tab ?? "misc")
@@ -190,28 +189,20 @@ function App() {
         preserveScroll
         className="mt-2 min-h-0 flex-1 pr-1"
       >
-        <TabsContent value="misc" className={tabPanelClass}>
+        <TabsContent value="misc" forceMount className={tabPanelClass}>
           <MiscTab />
         </TabsContent>
-        <TabsContent value="extensions" className={tabPanelClass}>
-          <Suspense fallback={null}>
-            <ExtensionsTab onOpenSelfSettings={() => commitTab("settings")} />
-          </Suspense>
+        <TabsContent value="extensions" forceMount className={tabPanelClass}>
+          <ExtensionsTab />
         </TabsContent>
-        <TabsContent value="youtube" className={tabPanelClass}>
-          <Suspense fallback={null}>
-            <YoutubeTab />
-          </Suspense>
+        <TabsContent value="youtube" forceMount className={tabPanelClass}>
+          <YoutubeTab />
         </TabsContent>
-        <TabsContent value="settings" className={tabPanelClass}>
-          <Suspense fallback={null}>
-            <SettingsTab />
-          </Suspense>
+        <TabsContent value="settings" forceMount className={tabPanelClass}>
+          <SettingsTab />
         </TabsContent>
       </ScrollArea>
-      <Suspense fallback={null}>
-        <Toaster />
-      </Suspense>
+      <Toaster />
     </Tabs>
   )
 }

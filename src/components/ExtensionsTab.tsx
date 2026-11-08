@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { GearIcon, LockClosedIcon, ReloadIcon, TrashIcon } from "@radix-ui/react-icons"
+import { ExternalLinkIcon, GearIcon, LockClosedIcon, ReloadIcon, TrashIcon } from "@radix-ui/react-icons"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
@@ -9,6 +9,7 @@ import {
   isManagementCancellation,
   listExtensions,
   managementErrorMessage,
+  openBraveExtensionsTab,
   openExtensionSettings,
   reloadExtension,
   setExtensionEnabled,
@@ -44,11 +45,7 @@ function ExtensionIcon({ extension }: { extension: ManagedExtension }) {
   )
 }
 
-export interface ExtensionsTabProps {
-  onOpenSelfSettings?: () => void
-}
-
-export default function ExtensionsTab({ onOpenSelfSettings }: ExtensionsTabProps = {}) {
+export default function ExtensionsTab() {
   const permissionsAvailable =
     typeof chrome !== "undefined" && Boolean(chrome.permissions)
   const [extensions, setExtensions] = useState<ManagedExtension[] | null>(null)
@@ -190,9 +187,7 @@ export default function ExtensionsTab({ onOpenSelfSettings }: ExtensionsTabProps
 
   const openSettings = useCallback(
     (extension: ManagedExtension) => {
-      void openExtensionSettings(extension, {
-        onOpenSelf: onOpenSelfSettings,
-      }).catch((settingsError: unknown) => {
+      void openExtensionSettings(extension).catch((settingsError: unknown) => {
         toast({
           title: `Could not open settings for ${extension.name}`,
           description: managementErrorMessage(settingsError),
@@ -200,16 +195,39 @@ export default function ExtensionsTab({ onOpenSelfSettings }: ExtensionsTabProps
         })
       })
     },
-    [onOpenSelfSettings]
+    []
   )
+
+  const handleOpenBraveExtensions = async () => {
+    try {
+      await openBraveExtensionsTab()
+    } catch (openError: unknown) {
+      toast({
+        title: "Could not open extensions tab",
+        description: managementErrorMessage(openError),
+        variant: "destructive",
+      })
+    }
+  }
 
   const enabledCount = extensions?.filter((extension) => extension.enabled).length ?? 0
   const disabledCount = extensions ? extensions.length - enabledCount : 0
 
   return (
     <div className={cn(popupSectionStack, "px-0.5 pb-2 pt-3")}>
-      <div className="flex items-baseline justify-between gap-2 px-1">
-        <p className={popupDescription}>Click an extension to turn it on or off.</p>
+      <div className="flex items-center justify-between gap-1.5 px-1">
+        <div className="flex items-center gap-1 min-w-0">
+          <p className={popupDescription}>Click an extension to turn it on or off.</p>
+          <button
+            type="button"
+            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            onClick={() => void handleOpenBraveExtensions()}
+            aria-label="Open brave://extensions/ in a new tab"
+            title="Open brave://extensions/ in a new tab"
+          >
+            <ExternalLinkIcon className="h-3 w-3" />
+          </button>
+        </div>
         {extensions && extensions.length > 0 && (
           <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
             {enabledCount} on · {disabledCount} off
@@ -290,7 +308,7 @@ export default function ExtensionsTab({ onOpenSelfSettings }: ExtensionsTabProps
                   if (extension.canToggle && !busy) setEnabled(extension, !extension.enabled)
                 }}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md border border-border/70 bg-card px-2 py-1 transition-colors",
+                  "flex items-center gap-1.5 rounded-md border border-border/70 bg-card px-2 py-1",
                   extension.canToggle && !busy && "cursor-pointer hover:bg-muted/60",
                   !extension.enabled && "opacity-60"
                 )}
@@ -345,7 +363,7 @@ export default function ExtensionsTab({ onOpenSelfSettings }: ExtensionsTabProps
                   >
                     <ReloadIcon
                       aria-hidden="true"
-                      className={cn("h-3.5 w-3.5", busy === "reload" && "animate-spin")}
+                      className="h-3.5 w-3.5"
                     />
                   </Button>
 

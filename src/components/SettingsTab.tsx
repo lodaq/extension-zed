@@ -4,6 +4,7 @@ import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLay
 import { cn } from "@/lib/utils"
 import { toast } from "@/components/ui/use-toast"
 import { ChangeEvent, useEffect, useRef, useState } from "react"
+import { readBootState, updateBootState } from "@/lib/bootCache"
 import {
   exportSettings,
   importSettings,
@@ -26,7 +27,14 @@ function downloadSettings(backup: Awaited<ReturnType<typeof exportSettings>>) {
 }
 
 export default function SettingsTab() {
-  const [dark, setDark] = useStoredValue("darkTheme", true)
+  const [dark, setDark] = useStoredValue<boolean>("darkTheme", () => {
+    const boot = readBootState()
+    if (typeof boot.dark === "boolean") return boot.dark
+    if (typeof document !== "undefined" && document.documentElement) {
+      return document.documentElement.classList.contains("dark")
+    }
+    return true
+  })
   const [busy, setBusy] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [showPrivacy, setShowPrivacy] = useState(false)
@@ -44,6 +52,8 @@ export default function SettingsTab() {
   }, [])
 
   const toggle = (enabled: boolean) => {
+    document.documentElement.classList.toggle("dark", enabled)
+    updateBootState({ dark: enabled })
     void setDark(enabled).catch((error) =>
       toast({ title: "Theme could not be saved", description: String(error), variant: "destructive" })
     )
@@ -118,7 +128,7 @@ export default function SettingsTab() {
       await resetSettings()
       toast({
         title: "Settings reset",
-        description: "All preferences and customized site colors were reset to defaults.",
+        description: "All preferences were reset to defaults.",
       })
     } catch (error) {
       toast({
@@ -173,7 +183,7 @@ export default function SettingsTab() {
           type="button"
           disabled={busy}
           className={cn(
-            "w-full rounded-md border px-3 py-2 text-sm transition-colors",
+            "w-full rounded-md border px-3 py-2 text-sm",
             confirmReset
               ? "border-destructive bg-destructive/10 text-destructive font-medium hover:bg-destructive/20"
               : "border-input text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -209,7 +219,7 @@ export default function SettingsTab() {
             </p>
             <ul className="list-disc pl-3.5 space-y-1 pt-1">
               <li>
-                <strong className="text-foreground">storage:</strong> stores your theme, playback preferences, and site colors locally on this device.
+                <strong className="text-foreground">storage:</strong> stores your theme and playback preferences locally on this device.
               </li>
               <li>
                 <strong className="text-foreground">activeTab & scripting:</strong> injects styling and controls only into the active tab upon your direct request.

@@ -25,7 +25,12 @@ Follow these steps when adding a new action or injected script.
    await sendPageAction("myAction", "My feature applied")
    ```
 
-### Step 4: Verification & Quality Gates
+### Step 4: UI Performance & Animation Rules
+1. **Never add animations or transitions**: The app must be as fast and instantaneous as possible.
+2. All state changes, toggles, tab switches, dialogs, and popups must render immediately with 0 ms transition and 0 ms animation duration.
+3. Do not add CSS `transition` or `animation` classes or introduce external motion libraries.
+
+### Step 5: Verification & Quality Gates
 1. Run tests: `bun run test`
 2. Run linter: `bun run lint`
 3. Verify build: `bun run build && bun run check:build`
@@ -38,8 +43,6 @@ Before cutting a release or loading `dist/` into Chrome, execute this manual che
 
 ### 1. Standard Web Pages (`https://en.wikipedia.org` or similar)
 - [ ] **Popup Launch**: Click extension icon; popup opens with dark theme and active tab.
-- [ ] **Page Colors**: Pick background & text colors. Page styling updates immediately without breaking layout.
-- [ ] **Color Reset**: Click Reset; all custom page colors clear and original page appearance restores.
 - [ ] **Scrollbars**: Toggle "Hide Main Scrollbar" and "Hide All Scrollbars"; scrollbars vanish. Toggle off; scrollbars return.
 - [ ] **Design Mode**: Toggle Design Mode on; text can be edited directly. Toggle off; editing ends.
 - [ ] **Inspect Mode**: Toggle Inspect Mode on; hover over elements to see highlight box and computed styles. Toggle off; overlay cleanly removes.

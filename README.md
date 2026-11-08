@@ -68,7 +68,6 @@ To create a portable build ZIP yourself, run `bun run package:store`. It creates
 - **Playback speed:** set video speed from 0.1× to 10×, or use slower, faster, normal, and 2× controls. The preference is saved and reapplied to new videos, when media reloads, and when playback starts.
 - **Volume boost:** amplify audio and video from 100% to 2000%. High amplification can distort sound.
 - **Video quality:** choose Auto or a preferred resolution from 144p to 4320p, with an option to prefer higher or lower available quality when the exact resolution is unavailable. Uses supported player APIs, including YouTube, Video.js, Shaka, exposed Hls.js players, and native Facebook, Instagram, and TikTok players. Unsupported players keep their own quality setting. A change may briefly buffer.
-- **Page colors:** choose text and background colors per website. Background overrides also hide page background images. Each color can be reset independently.
 - **Scrollbars:** hide the document scrollbar, or hide scrollbars throughout the page; the two options can be reset separately.
 - **Inspect mode:** hover over page elements to view their identity, position, size, box model, colors, layout, and typography. Press **Escape** to exit an active inspect overlay.
 - **Design mode:** temporarily make page content editable. Turning the mode off does not undo edits; reloading the page restores the website.
@@ -85,6 +84,7 @@ YouTube layout and marker preferences are saved in the browser. A YouTube player
 
 ### Extensions
 
+- Open `brave://extensions/` (with fallback to `chrome://extensions/`) in a new tab.
 - View installed extensions by name, icon, and version; apps and themes are not listed.
 - Click an extension row or use its switch to turn it on or off.
 - Open an extension's settings directly using the gear button.
@@ -96,7 +96,7 @@ The **Reload** action restarts an extension. It can apply an update Chrome has a
 ### Settings
 
 - Switch between dark and light themes.
-- Export preferences and per-site colors to a JSON backup, import a backup, or reset preferences.
+- Export preferences to a JSON backup, import a backup, or reset preferences.
 - Import merges recognized settings; values not present in the backup are left unchanged.
 
 ## Privacy and permissions

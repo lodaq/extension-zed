@@ -65,7 +65,6 @@ describe("page actions", () => {
       { event: "designMode", value: "yes" },
       { event: "volumeBoost", value: 9999 },
       { event: "volumeBoost", value: 50 },
-      { event: "changeBackgroundColor", value: "not-a-color" },
       { event: "designMode", tabId: -1 },
     ]) {
       expect(await handlePageAction(request)).toMatchObject({ ok: false })
@@ -73,26 +72,6 @@ describe("page actions", () => {
     chrome.tabs.query = vi.fn(async () => [])
     expect(await handlePageAction({ event: "designMode", value: true })).toMatchObject({ ok: false })
     expect(set).not.toHaveBeenCalled()
-  })
-
-  it("applies and resets page colors on valid URLs and blocks non-HTTP pages", async () => {
-    expect(await handlePageAction({ event: "changeBackgroundColor", value: "#123456" })).toMatchObject({ ok: true })
-    expect(values["pageColors:https://example.com"]).toMatchObject({ background: "#123456" })
-
-    expect(await handlePageAction({ event: "changeColor", value: "#abcdef" })).toMatchObject({ ok: true })
-    expect(values["pageColors:https://example.com"]).toEqual({ background: "#123456", text: "#abcdef" })
-
-    await handlePageAction({ event: "resetTextColorOnly" })
-    expect(values["pageColors:https://example.com"]).toEqual({ background: "#123456", text: "" })
-
-    await handlePageAction({ event: "resetBackgroundOnly" })
-    expect(values["pageColors:https://example.com"]).toEqual({ background: "", text: "" })
-
-    // Non-HTTP page
-    chrome.tabs.get = vi.fn(async () => ({ url: "chrome://extensions" } as unknown as chrome.tabs.Tab))
-    const nonHttpResult = await handlePageAction({ event: "changeBackgroundColor", value: "#111111" })
-    expect(nonHttpResult.ok).toBe(false)
-    expect(nonHttpResult.error).toContain("Page colors require an HTTP or HTTPS page")
   })
 
   it("handles scrollbar toggle, custom style, and reset actions", async () => {

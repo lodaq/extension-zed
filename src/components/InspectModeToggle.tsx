@@ -1,5 +1,4 @@
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
+import { ToggleRow } from "@/components/ToggleRow"
 import { sendPageAction } from "@/lib/withActiveTab"
 import { useStoredValue } from "@/lib/useStoredValue"
 
@@ -13,21 +12,13 @@ const InspectModeToggle = () => {
   }
 
   return (
-    <div
-      className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
-      onClick={() => toggle(!on)}
-    >
-      <Label className="cursor-pointer text-sm font-medium">
-        Inspect mode
-      </Label>
-      <Switch
-        id="inspect-mode"
-        checked={on}
-        onClick={(event) => event.stopPropagation()}
-        onCheckedChange={toggle}
-        aria-label={`Inspect mode ${on ? "on" : "off"}`}
-      />
-    </div>
+    <ToggleRow
+      id="inspect-mode"
+      label="Inspect mode"
+      checked={on}
+      ariaLabel={`Inspect mode ${on ? "on" : "off"}`}
+      onToggle={toggle}
+    />
   )
 }
 

@@ -1,4 +1,3 @@
-import ChangeColors from "./ChangeColors"
 import ChangePlaybackRate from "./ChangePlaybackRate"
 import DesignMode from "./DesignMode"
 import InspectModeToggle from "./InspectModeToggle"
@@ -11,7 +10,6 @@ import YoutubeMarkers from "./YoutubeMarkers"
 import VideoQualitySection from "./VideoQualitySection"
 
 export {
-  ChangeColors,
   ChangePlaybackRate,
   DesignMode,
   InspectModeToggle,
@@ -25,3 +23,4 @@ export {
 }
 
 export { Switch } from "./ui/switch"
+export { ToggleRow } from "./ToggleRow"

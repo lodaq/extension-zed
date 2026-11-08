@@ -23,7 +23,7 @@ function storage(initial: Record<string, unknown>) {
 
 describe("settings transfer", () => {
   it("preserves section order in backups and partial imports", async () => {
-    const order = ["modes", "password", "playback", "volume", "quality", "colors", "scrollbars"]
+    const order = ["modes", "password", "playback", "volume", "quality", "scrollbars"]
     storage({ miscSectionOrder: order })
     expect((await exportSettings()).settings.miscSectionOrder).toEqual(order)
     await importSettings({ version: 1, settings: { miscSectionOrder: order } })
@@ -42,8 +42,8 @@ describe("settings transfer", () => {
     null,
     "password",
     [],
-    ["password", "playback", "volume", "quality", "colors", "scrollbars", "password"],
-    ["password", "playback", "volume", "quality", "colors", "scrollbars", "unknown"],
+    ["password", "playback", "volume", "quality", "scrollbars", "password"],
+    ["password", "playback", "volume", "quality", "scrollbars", "unknown"],
   ].map(order => ({ order })))(`rejects invalid section orders before writing: %j`, async ({ order }) => {
     const p = storage({ darkTheme: true })
     await expect(importSettings({ version: 1, settings: { miscSectionOrder: order } })).rejects.toThrow("Invalid setting")
@@ -67,7 +67,6 @@ describe("settings transfer", () => {
       inspectMode: "off",
       videoQuality: "hd1080",
       videoQualityFallback: "higher",
-      "pageColors:https://example.com": { text: "#aabbcc", background: "" },
       unused: 42,
     })
     const backup = await exportSettings()
@@ -78,19 +77,12 @@ describe("settings transfer", () => {
     expect(p.values.speed).toBe("1.36")
     expect(p.values.videoQuality).toBe("hd1080")
     expect(p.values.videoQualityFallback).toBe("higher")
-    expect(p.values["pageColors:https://example.com"]).toEqual({ text: "#aabbcc", background: "" })
   })
 
   it("merges partial imports, ignores unknown keys, and preserves theme", async () => {
     const p = storage({ darkTheme: true, speed: "2" })
     await importSettings({ version: 1, settings: { speed: "3", unused: "ignored" } })
     expect(p.values).toEqual({ darkTheme: true, speed: "3" })
-  })
-
-  it("preserves omitted colors within a partial origin setting", async () => {
-    const p = storage({ "pageColors:https://example.com": { background: "#112233", text: "#ffffff" } })
-    await importSettings({ version: 1, settings: { "pageColors:https://example.com": { text: "#aabbcc" } } })
-    expect(p.values["pageColors:https://example.com"]).toEqual({ background: "#112233", text: "#aabbcc" })
   })
 
   it.each([
@@ -102,8 +94,6 @@ describe("settings transfer", () => {
     { version: 1, settings: { popupActiveTab: "unknown" } },
     { version: 1, settings: { videoQuality: "super_ultra_fake" } },
     { version: 1, settings: { videoQualityFallback: "sideways" } },
-    { version: 1, settings: { "pageColors:https://example.com": { text: "red; } body { display:none" } } },
-    { version: 1, settings: { "pageColors:not-an-origin": { text: "#ffffff" } } },
   ])("rejects invalid recognized data before writing: %j", async (backup) => {
     const p = storage({ darkTheme: true })
     await expect(importSettings(backup)).rejects.toThrow()
@@ -129,13 +119,12 @@ describe("settings transfer", () => {
     expect(() => migrateSettings({ version: 99, settings: {} })).toThrow("schema version 99 is not supported")
   })
 
-  it("resets recognized settings and origin-based colors", async () => {
+  it("resets recognized settings", async () => {
     const p = storage({
       darkTheme: false,
       speed: "2.5",
       videoQuality: "hd1440",
       videoQualityFallback: "higher",
-      "pageColors:https://site.example": { text: "#ffffff", background: "#000000" },
       "ytMarkers:abcd1234ef": [{ id: "m1", time: 120, label: "Intro" }],
       unrelatedUserData: "leave-alone",
     })

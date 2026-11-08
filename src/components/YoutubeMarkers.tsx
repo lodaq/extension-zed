@@ -32,6 +32,7 @@ export default function YoutubeMarkers() {
 
   const loadMarkers = (vId: string) => {
     const key = `ytMarkers:${vId}`
+    if (typeof chrome === "undefined" || !chrome.storage?.local) return
     chrome.storage.local.get([key]).then((result) => {
       const stored = result[key]
       if (Array.isArray(stored)) {
@@ -43,6 +44,7 @@ export default function YoutubeMarkers() {
   }
 
   useEffect(() => {
+    if (typeof chrome === "undefined" || !chrome.tabs?.query) return
     chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
       if (!tab?.url) return
       try {

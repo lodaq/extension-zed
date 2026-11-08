@@ -2,7 +2,6 @@ import MiscTab from "@/components/MiscTab"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Toaster } from "@/components/ui/toast"
 import { toast } from "@/components/ui/use-toast"
 import { PAGE_ACTION_FEEDBACK_EVENT } from "@/lib/withActiveTab"
 import { Cross1Icon, ExclamationTriangleIcon } from "@radix-ui/react-icons"
@@ -10,6 +9,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from "react"
 import { readBootState, updateBootState } from "@/lib/bootCache"
 import { POPUP_TABS, readSetting } from "@/lib/settings"
 
+const Toaster = lazy(() => import("@/components/ui/toast").then((m) => ({ default: m.Toaster })))
 const ExtensionsTab = lazy(() => import("@/components/ExtensionsTab"))
 const YoutubeTab = lazy(() => import("@/components/YoutubeTab"))
 const SettingsTab = lazy(() => import("@/components/SettingsTab"))
@@ -25,7 +25,7 @@ function isTabValue(v: string): v is TabValue {
 const tabPanelClass =
   "col-start-1 row-start-1 mt-0 overflow-visible outline-none data-[state=inactive]:pointer-events-none data-[state=inactive]:invisible data-[state=active]:relative data-[state=active]:z-[1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 const tabTriggerClass =
-  "shrink-0 rounded-md px-2 text-xs transition-all hover:bg-background/50 hover:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/70"
+  "shrink-0 rounded-md px-2 text-xs font-medium text-foreground/75 transition-all hover:bg-background/50 hover:text-foreground data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/70"
 
 function App() {
   const [tab, setTab] = useState<TabValue>(() => readBootState().tab ?? "misc")
@@ -138,7 +138,7 @@ function App() {
             }
           }}
         >
-          <TabsList className="flex h-9 w-max min-w-full justify-start gap-0.5 rounded-lg border border-border/70 bg-muted/50 p-0.5">
+          <TabsList aria-label="Extension navigation tabs" className="flex h-9 w-max min-w-full justify-start gap-0.5 rounded-lg border border-border/70 bg-muted/50 p-0.5">
             <TabsTrigger value="misc" className={tabTriggerClass}>
               Misc
             </TabsTrigger>
@@ -209,7 +209,9 @@ function App() {
           </Suspense>
         </TabsContent>
       </ScrollArea>
-      <Toaster />
+      <Suspense fallback={null}>
+        <Toaster />
+      </Suspense>
     </Tabs>
   )
 }

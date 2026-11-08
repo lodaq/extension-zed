@@ -1,10 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Extension Zed - Browser power tools, YouTube optimizations, playback controls, and extension management." />
     <title>Extension Zed</title>
-    <script src="/boot.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/images/icon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="preload" href="/boot.js" as="script" />
+    <script defer src="/boot.js"></script>
     <style>
       /* First-frame shell. Kept inline so the popup paints at its final size
          before the stylesheet and React bundle arrive. React replaces #root. */
@@ -152,7 +156,7 @@
     </style>
   </head>
   <body>
-    <div id="root">
+    <main id="root">
       <div class="zed-boot" aria-hidden="true">
         <div class="zed-boot-tabs" role="presentation">
           <div class="zed-boot-tab" data-boot-tab="misc">Misc</div>
@@ -198,7 +202,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </main>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

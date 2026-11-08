@@ -24,16 +24,22 @@ const ChangeColors = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
   const [storageKey, setStorageKey] = useState<string | null>(null)
 
   useEffect(() => {
-    chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-      if (!tab?.url?.startsWith("http")) return
-      const key = `pageColors:${new URL(tab.url).origin}`
-      setStorageKey(key)
-      chrome.storage.local.get([key]).then((r) => {
-        const settings = r[key] as { background?: string; text?: string } | undefined
-        if (isColor(settings?.background) && settings?.background) setBg(settings.background)
-        if (isColor(settings?.text) && settings?.text) setFg(settings.text)
+    if (typeof chrome === "undefined" || !chrome.tabs?.query) return
+    chrome.tabs
+      .query({ active: true, currentWindow: true })
+      .then(([tab]) => {
+        if (!tab?.url?.startsWith("http")) return
+        const key = `pageColors:${new URL(tab.url).origin}`
+        setStorageKey(key)
+        if (chrome.storage?.local) {
+          chrome.storage.local.get([key]).then((r) => {
+            const settings = r[key] as { background?: string; text?: string } | undefined
+            if (isColor(settings?.background) && settings?.background) setBg(settings.background)
+            if (isColor(settings?.text) && settings?.text) setFg(settings.text)
+          })
+        }
       })
-    }).catch(() => setStorageKey(null))
+      .catch(() => setStorageKey(null))
   }, [])
 
   const applyBackground = (hex: string) => {

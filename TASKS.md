@@ -106,6 +106,7 @@ Good next additions:
 | Status | Task |
 |---|---|
 | [ ] | Reduce brittle YouTube selectors and document fallback behavior when YouTube changes. |
+| [ ] | Add YouTube enhancer features. |
 
 Defer until the basics are stable:
 

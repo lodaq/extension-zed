@@ -11,7 +11,6 @@
     "test": "vitest run",
     "test:e2e": "node scripts/test-extension-e2e.mjs",
     "test:e2e:video-quality": "node scripts/test-video-quality-e2e.mjs",
-    "test:e2e:page-colors": "bun scripts/test-page-colors-e2e.mjs",
     "check:build": "node scripts/check-build.mjs",
     "package:store": "bun run build && bun run check:build && bun scripts/package-extension.mjs",
     "cws:status": "bun scripts/chrome-web-store-status.mjs",

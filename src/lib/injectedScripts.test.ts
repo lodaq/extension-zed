@@ -7,51 +7,7 @@ const script = (name: string) => readFileSync(new URL(`../../public/scripts/${na
 const runInNewContext = (source: string, context: Context) => runContext(source, { setTimeout, clearTimeout, ...context })
 
 describe("injected script completion", () => {
-  it("does not overwrite a newer palette with a delayed storage read", async () => {
-    let finish!: (value: Record<string, unknown>) => void
-    const style = { id: "zed-page-colors", textContent: "" }
-    const get = vi.fn()
-      .mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
-      .mockResolvedValue({ pageColorsAllSites: true, pageColorsGlobal: { background: "#112233" } })
-    const context = {
-      window: {},
-      location: { origin: "https://example.com" },
-      chrome: { storage: { local: { get } } },
-      document: { getElementById: () => style },
-    }
-    const pending = runInNewContext(script("applyPageColors"), context)
-    await runInNewContext(script("applyPageColors"), context)
-    finish({ pageColorsAllSites: true, pageColorsGlobal: { background: "#ffffff" } })
-    await pending
-    expect(style.textContent).toContain("background-color: #112233")
-    expect(style.textContent).not.toContain("background-color: #ffffff")
-  })
-
-  it("updates a global theme and restores site colors when global scope is disabled", async () => {
-    const stored = {
-      pageColorsAllSites: true,
-      pageColorsGlobal: { background: "#112233" },
-      "pageColors:https://example.com": { background: "#445566" },
-    }
-    const style = { id: "zed-page-colors", textContent: "" }
-    const addListener = vi.fn()
-    const context = {
-      window: {},
-      location: { origin: "https://example.com" },
-      chrome: { storage: { local: { get: async () => stored }, onChanged: { addListener } } },
-      document: { getElementById: () => style },
-    }
-    await runInNewContext(script("applyPageColors"), context)
-    expect(style.textContent).toContain("background-color: #112233")
-    await runInNewContext(script("applyPageColors"), context)
-    expect(addListener).toHaveBeenCalledTimes(1)
-    stored.pageColorsAllSites = false
-    addListener.mock.calls[0][0]({ pageColorsAllSites: { newValue: false } }, "local")
-    await vi.waitFor(() => expect(style.textContent).toContain("background-color: #445566"))
-  })
-
   it.each([
-    "applyPageColors",
     "inspectMode",
     "youtubeProgressBar",
     "youtubeControls",
@@ -76,88 +32,6 @@ describe("injected script completion", () => {
     finish({})
     await pending
     expect(completed).toBe(true)
-  })
-
-  it("does not interpolate malformed stored colors into CSS", async () => {
-    const createElement = vi.fn()
-    const remove = vi.fn()
-    await runInNewContext(script("applyPageColors"), {
-      chrome: { storage: { local: { get: async () => ({ "pageColors:https://example.com": { text: "red; } body { display:none" } }) } } },
-      location: { origin: "https://example.com" },
-      document: { getElementById: () => ({ remove }), createElement },
-    })
-    expect(createElement).not.toHaveBeenCalled()
-    expect(remove).toHaveBeenCalled()
-  })
-
-  it("applies valid hex colors to pageColors style and removes when reset", async () => {
-    let styleNode = { textContent: "" }
-    const appendChild = vi.fn((node: { textContent: string }) => { styleNode = node })
-    const remove = vi.fn()
-    const fakeHead = { appendChild }
-
-    // Apply colors
-    await runInNewContext(script("applyPageColors"), {
-      chrome: { storage: { local: { get: async () => ({ "pageColors:https://example.com": { background: "#112233", text: "#445566" } }) } } },
-      location: { origin: "https://example.com" },
-      document: {
-        getElementById: () => null,
-        createElement: (tag: string) => ({ id: "", textContent: "", tag }),
-        head: fakeHead,
-      },
-    })
-    expect(appendChild).toHaveBeenCalled()
-    expect(styleNode.textContent).toContain("background-color: #112233")
-    expect(styleNode.textContent).toContain("color: #445566")
-
-    // Reset colors (both empty) removes style element
-    await runInNewContext(script("applyPageColors"), {
-      chrome: { storage: { local: { get: async () => ({ "pageColors:https://example.com": { background: "", text: "" } }) } } },
-      location: { origin: "https://example.com" },
-      document: {
-        getElementById: () => ({ remove }),
-        createElement: () => ({ id: "" }),
-      },
-    })
-    expect(remove).toHaveBeenCalled()
-  })
-
-  it("applies a full theme palette and leaves media elements unpainted", async () => {
-    let styleNode = { textContent: "" }
-    const appendChild = vi.fn((node: { textContent: string }) => { styleNode = node })
-    await runInNewContext(script("applyPageColors"), {
-      chrome: {
-        storage: {
-          local: {
-            get: async () => ({
-              "pageColors:https://example.com": {
-                background: "#0a0a0a",
-                text: "#fafafa",
-                surface: "#171717",
-                accent: "#00bc7d",
-                accentText: "#0a0a0a",
-                border: "#232323",
-              },
-            }),
-          },
-        },
-      },
-      location: { origin: "https://example.com" },
-      document: {
-        getElementById: () => null,
-        createElement: () => ({ id: "", textContent: "" }),
-        head: { appendChild },
-      },
-    })
-    expect(styleNode.textContent).toContain("color-scheme: dark")
-    expect(styleNode.textContent).toContain("background-color: #0a0a0a")
-    expect(styleNode.textContent).toContain("background-color: #171717")
-    expect(styleNode.textContent).toContain("border-color: #232323")
-    expect(styleNode.textContent).toContain("color: #fafafa")
-    expect(styleNode.textContent).toContain("color: #00bc7d")
-    expect(styleNode.textContent).not.toContain("background-image: none")
-    expect(styleNode.textContent).not.toContain("body *")
-    expect(styleNode.textContent).toContain("::selection")
   })
 
   it("injects and resets main, all, and custom scrollbar style elements", () => {

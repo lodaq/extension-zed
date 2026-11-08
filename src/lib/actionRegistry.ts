@@ -1,11 +1,4 @@
-import { isColor } from "./settings"
-
 export type ScriptAction =
-  | "changeBackgroundColor"
-  | "changeColor"
-  | "resetPageColors"
-  | "resetBackgroundOnly"
-  | "resetTextColorOnly"
   | "inspectModeApply"
   | "hideMainScrollBar"
   | "hideAllScrollBars"
@@ -40,14 +33,12 @@ export type ModeAction =
   | "hideYoutubeDuration"
   | "youtubeHalfScreen"
 
-export type ColorAction = "changeBackgroundColor" | "changeColor"
 export type ValueAction = "playbackRateApply" | "volumeBoost"
 
 export type PageActionRequest = { tabId?: number } & (
   | { event: ModeAction; value?: boolean }
-  | { event: ColorAction; value: string }
   | { event: ValueAction; value: number }
-  | { event: Exclude<PageAction, ModeAction | ColorAction | ValueAction>; value?: never }
+  | { event: Exclude<PageAction, ModeAction | ValueAction>; value?: never }
 )
 
 export type PageActionResult = { ok: boolean; saved: boolean; error?: string; message?: string; tabId?: number }
@@ -81,11 +72,6 @@ export const BOOLEAN_KEYS: Record<string, string> = {
 }
 
 export const ACTION_REGISTRY: Record<PageAction, ActionExecution> = {
-  changeBackgroundColor: { type: "script", file: "scripts/applyPageColors.js", allFrames: true },
-  changeColor: { type: "script", file: "scripts/applyPageColors.js", allFrames: true },
-  resetPageColors: { type: "script", file: "scripts/applyPageColors.js", allFrames: true },
-  resetBackgroundOnly: { type: "script", file: "scripts/applyPageColors.js", allFrames: true },
-  resetTextColorOnly: { type: "script", file: "scripts/applyPageColors.js", allFrames: true },
   inspectModeApply: { type: "script", file: "scripts/inspectMode.js", allFrames: true },
   hideMainScrollBar: { type: "script", file: "scripts/hideMainScrollBar.js", allFrames: true },
   hideAllScrollBars: { type: "script", file: "scripts/hideAllScrollBars.js", allFrames: true },
@@ -132,9 +118,7 @@ export function validateActionRequest(input: unknown): PageActionRequest {
   }
   if (tabId !== undefined && (!Number.isInteger(tabId) || tabId < 0)) throw new Error("Invalid tab")
 
-  if (event === "changeBackgroundColor" || event === "changeColor") {
-    if (!isColor(value) || value === "") throw new Error("Choose a six-digit hex color")
-  } else if (event === "volumeBoost") {
+  if (event === "volumeBoost") {
     if (typeof value !== "number" || !Number.isInteger(value) || value < 100 || value > 2000) {
       throw new Error("Invalid volume boost")
     }

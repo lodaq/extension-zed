@@ -115,7 +115,7 @@ async function run() {
     for (let j = 0; j < 200; j++) {
       state = await popup.evaluate(`(() => {
         const paints = Object.fromEntries(performance.getEntriesByType('paint').map(e => [e.name, +e.startTime.toFixed(1)]));
-        const ready = document.querySelectorAll('[role="tab"]').length === 4 && document.querySelectorAll('details').length === 7;
+        const ready = document.querySelectorAll('[role="tab"]').length === 4 && document.querySelectorAll('details').length === 6;
         const nav = performance.getEntriesByType('navigation')[0];
         const marks = Object.fromEntries(performance.getEntriesByType('mark').map(m => [m.name, +m.startTime.toFixed(1)]));
         return {

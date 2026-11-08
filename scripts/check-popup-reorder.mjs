@@ -58,7 +58,7 @@ try {
   }
   assert.ok(tab, "Open the extension URL in a regular tab first")
   await tab.evaluate('chrome.extension.getViews({type:"popup"}).forEach(view => view.close())')
-  await tab.evaluate('chrome.storage.local.set({popupActiveTab:"misc", miscSectionOrder:["password","playback","volume","quality","colors","scrollbars","modes"], miscExpandedSections:[]})')
+  await tab.evaluate('chrome.storage.local.set({popupActiveTab:"misc", miscSectionOrder:["password","playback","volume","quality","scrollbars","modes"], miscExpandedSections:[]})')
   const openPopup = async () => {
     const previous = new Set((await targets()).map(target => target.id))
     await tab.send("Page.bringToFront")
@@ -74,7 +74,7 @@ try {
     const page = await until(targets, list => list.some(target => !previous.has(target.id) && target.type === "page" && target.url.startsWith("chrome-extension:")))
     const target = page.find(target => !previous.has(target.id) && target.type === "page" && target.url.startsWith("chrome-extension:"))
     const connection = await connect(target)
-    await until(() => connection.evaluate('document.querySelectorAll("details").length'), count => count === 7)
+    await until(() => connection.evaluate('document.querySelectorAll("details").length'), count => count === 6)
     return { ...connection, id: target.id }
   }
   const popup = await openPopup()
@@ -100,9 +100,9 @@ try {
   await popup.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: points.x, y: points.endY, buttons: 1 })
   await popup.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: points.x, y: points.y, buttons: 1 })
   await popup.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: points.x, y: points.y, button: "left", clickCount: 1 })
-  assert.deepEqual(await until(() => tab.evaluate('(async () => (await chrome.storage.local.get("miscSectionOrder")).miscSectionOrder)()'), value => value.join(",") === "password,playback,volume,quality,colors,scrollbars,modes"), ["password", "playback", "volume", "quality", "colors", "scrollbars", "modes"])
+  assert.deepEqual(await until(() => tab.evaluate('(async () => (await chrome.storage.local.get("miscSectionOrder")).miscSectionOrder)()'), value => value.join(",") === "password,playback,volume,quality,scrollbars,modes"), ["password", "playback", "volume", "quality", "scrollbars", "modes"])
   // Dragging forward reorders and saves storage.
-  const expected = ["playback", "volume", "quality", "password", "colors", "scrollbars", "modes"]
+  const expected = ["playback", "volume", "quality", "password", "scrollbars", "modes"]
   await pause()
   await popup.send("Input.dispatchMouseEvent", { type: "mousePressed", x: points.x, y: points.y, button: "left", clickCount: 1 })
   await popup.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: points.x, y: points.endY, buttons: 1 })

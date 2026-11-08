@@ -8,16 +8,15 @@
 Extension Zed
 
 **Short Description** [REQUIRED]
-Customize website colors, control playback speeds, manage scrollbars, and optimize video viewing directly on the active tab.
+Control playback speeds, amplify audio, manage scrollbars, and optimize video viewing directly on the active tab.
 
 **Detailed Description** [REQUIRED]
-Extension Zed gives you fine-grained control over your browsing experience, media playback, and page aesthetics.
+Extension Zed gives you fine-grained control over your browsing experience, media playback, and page layout.
 
 Key Features:
 - Quick Keyboard Shortcut: Press Alt+Z anytime to immediately open or close the popup control panel.
 - Playback Speed Controls: Fine-tune audio and video speed in increments from 0.05x up to 16x with automatic persistence across site visits.
 - Audio Booster: Amplify quiet page audio and video with safe volume boosting up to 20x.
-- Page Colors & Curated Presets: Apply custom background and text colors to any website, or select one-click presets like Dark, High Contrast, Sepia, and Solarized.
 - Scrollbar Controls: Hide main or nested scrollbars, or apply a sleek, modern unobtrusive scrollbar theme without layout shifts.
 - Video Quality Control: Choose a preferred resolution (Auto through 8K) with higher/lower fallback, applied automatically to new videos on YouTube, Facebook, X, and other sites that expose a player quality menu.
 - YouTube Enhancement: Toggle distraction-free Focus Mode, hide progress bars and bottom controls, hide video duration, enable half-screen multitasking layouts, and save timestamp bookmarks.
@@ -28,11 +27,11 @@ Key Features:
 
 How to Use:
 1. Press Alt+Z or click the Extension Zed icon in your browser toolbar to open the control panel.
-2. Select your desired speed, color palette, or layout option.
+2. Select your desired speed, audio boost, or layout option.
 3. Changes apply instantly to your active page and your preferences are automatically remembered.
 
 Privacy & Trust:
-Extension Zed operates entirely on your device. We do not track your browsing history, run background analytics, or transmit any data to external servers. Your settings and custom color overrides remain private and stored exclusively in your browser.
+Extension Zed operates entirely on your device. We do not track your browsing history, run background analytics, or transmit any data to external servers. Your settings remain private and stored exclusively in your browser.
 
 Support & Feedback:
 For documentation, issue reports, or feature requests, visit the project repository on GitHub.
@@ -41,7 +40,7 @@ For documentation, issue reports, or feature requests, visit the project reposit
 Accessibility
 
 **Single Purpose** [REQUIRED]
-Customize website colors, control playback speeds, manage scrollbars, and optimize video viewing directly on the active tab.
+Control playback speeds, amplify audio, manage scrollbars, and optimize video viewing directly on the active tab.
 
 **Primary Language** [REQUIRED]
 English
@@ -58,7 +57,7 @@ English
 | Marquee Promo Tile | 1400×560 | ⬜ Not created | `promo-tile-marquee.png` |
 
 ### Screenshot Notes
-- Screenshot 1: Shows the Misc tab open with color presets, playback speed controller, and custom scrollbar options.
+- Screenshot 1: Shows the Misc tab open with playback speed controller, volume booster, and custom scrollbar options.
 - Screenshot 2: Shows YouTube Focus Mode active on a YouTube watch page with hidden controls and timestamp markers.
 - Screenshot 3: Shows Settings tab with theme toggling, data export/import, and privacy disclosure.
 
@@ -66,8 +65,8 @@ English
 
 | Permission | Type | Justification |
 |------------|------|---------------|
-| `storage` | permissions | Needed to persist user preferences such as playback speed presets, theme mode, and site-specific color customizations locally on the user's browser. |
-| `activeTab` | permissions | Needed to access the current active page only when the user invokes an action from the popup, such as applying colors, scrollbar styles, or YouTube modes. |
+| `storage` | permissions | Needed to persist user preferences such as playback speed presets, theme mode, and scrollbar settings locally on the user's browser. |
+| `activeTab` | permissions | Needed to access the current active page only when the user invokes an action from the popup, such as applying scrollbar styles, volume boost, or YouTube modes. |
 | `scripting` | permissions | Needed to dynamically apply and reset CSS styling rules, playback rate updates, and element inspection on the active tab upon user request. |
 | `management` | optional_permissions | Requested only when the user opens the Extensions tab; needed to list installed extensions and let the user enable, disable, reload, or uninstall them. |
 | `content_scripts` (`https://*/*`, `http://*/*`) | host_permissions | Required to persist user-selected playback speeds, optional RTL text direction, and the preferred video quality across page reloads and navigations on visited web pages. |
@@ -111,7 +110,7 @@ support@extension-zed.dev
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
 | 2.0.0 | 2026-11-08 | First Chrome Web Store submission, including the Extensions manager and updated popup navigation. | Draft |
-| 1.0.0 | 2026-11-02 | Initial release with Misc controls, YouTube focus mode & markers, theme presets, Alt+Z popup toggle, and export/import settings. | Draft |
+| 1.0.0 | 2026-11-02 | Initial release with Misc controls, YouTube focus mode & markers, Alt+Z popup toggle, and export/import settings. | Draft |
 
 ## Publishing
 

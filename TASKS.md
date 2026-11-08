@@ -9,7 +9,6 @@ Current popup tabs: **Misc**, **Extensions**, **YouTube**, and **Settings**.
 Implemented capabilities:
 
 - Keyboard shortcut (`Alt+Z`) to toggle the extension popup
-- Page background and text color controls with reset flows and curated presets (Dark, High Contrast, Sepia, Solarized)
 - Main, all-scrollbar, and custom non-layout-shifting scrollbar controls
 - Playback-rate presets, fine-stepping, and automatic site persistence
 - Design mode, inspect mode, and Arabic RTL mode
@@ -69,7 +68,6 @@ Implemented:
 - Preferred video quality collapsible with automatic resolution matching and selectable fallback options:
   1. Prefer higher quality
   2. Prefer lower quality
-- Page colors
 - Scrollbar controls
 - Design mode
 - Inspect mode
@@ -80,7 +78,6 @@ Completed additions:
 | Status | Task |
 |---|---|
 | [x] | Add custom scrollbar styling without changing page layout unexpectedly. |
-| [x] | Add saved page-theme presets for dark, grayscale, and custom colors. |
 | [x] | Add volume boost for page audio and video with a capped 20× gain and safety warning. |
 | [x] | Define a useful timestamp/age feature before implementation. |
 

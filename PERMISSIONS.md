@@ -16,8 +16,8 @@ Extension Zed declares three required permissions and requests `management` only
 | Permission | Justification & Features Using It | Least-Privilege Verification |
 |---|---|---|
 | `activeTab` | Grants temporary, user-invoked execution access to the active tab when opening the action popup. | Does **not** grant background access to tabs. Access expires as soon as navigation occurs or the user switches tabs. |
-| `scripting` | Programmatically executes on-demand content actions (`chrome.scripting.executeScript`) when the user applies design mode, page colors, scrollbar toggles, focus mode, element inspector, volume boost, or video quality. | Only used on target tabs matching active user intent. Restricted Chrome internal URLs (`chrome://`, webstore, extensions gallery) are caught and protected with safe user messaging. |
-| `storage` | Persists user preferences (`chrome.storage.local`) such as dark theme, playback speed presets, custom page colors, section order, and mode toggles. | Synced locally only on the device; no remote transmission. Includes export/import validation. |
+| `scripting` | Programmatically executes on-demand content actions (`chrome.scripting.executeScript`) when the user applies design mode, scrollbar toggles, focus mode, element inspector, volume boost, or video quality. | Only used on target tabs matching active user intent. Restricted Chrome internal URLs (`chrome://`, webstore, extensions gallery) are caught and protected with safe user messaging. |
+| `storage` | Persists user preferences (`chrome.storage.local`) such as dark theme, playback speed presets, section order, and mode toggles. | Synced locally only on the device; no remote transmission. Includes export/import validation. |
 | `management` (optional) | Lists and manages installed extensions from the Extensions tab. | Requested only after the user presses **Allow access** in that tab. |
 
 ### Host Permissions Audit

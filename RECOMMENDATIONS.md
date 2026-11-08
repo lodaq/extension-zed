@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | Playback module | Shared normalization/stepping, persistent application owner, player overrides, no one-shot script or URL polling | Off-grid rates, limits, new media/videos, explicit actions, repeated initialization, cleanup tests |
 | Packaging | ES-module background worker and classic playback script with stable manifest filenames | Type check, build, `bun run check:build` |
-| Page-action module | Background owns validation, saving, targeting, execution, and errors; popup and background share the interface | Caller parity, failures, invalid inputs, missing tabs, color resets, deferred completion tests |
+| Page-action module | Background owns validation, saving, targeting, execution, and errors; popup and background share the interface | Caller parity, failures, invalid inputs, missing tabs, resets, deferred completion tests |
 | Failure semantics | Application failures retain saved preferences and report failure; storage failure stops application; popup feedback | Handler tests; browser-specific feedback still needs loaded-extension coverage |
 | Settings-transfer module | Validated version-1 merge, recognized-only export, unknown-key filtering, safe reader defaults | Round trips, partial imports/theme preservation, invalid values/versions, no writes on rejection |
 | Saved-preference loading | Live storage updates take precedence over startup reads; save completion never overwrites live state; cleanup invalidates pending reads | Deferred read success/failure, save ordering/errors, cleanup, validation and reset tests |
@@ -60,7 +60,7 @@ Playback uses loading events/source changes. Some players reuse MediaSource URLs
 | Productivity | Pomodoro; posture, eyes, exercise, custom, azkar/salah reminders | One configurable timer; permissions only when needed |
 | Bookmarks/new tab | Curated bookmarks, sync, quotes/ayah/tips | Decide whether replacing the new tab is wanted |
 | Capture/share | Post-to-image and screenshot workflows | Local capture/export without accounts |
-| Appearance | Scrollbar styling and color presets | A few presets using existing color behavior |
+| Appearance | Scrollbar styling | Preset scrollbar themes |
 | Integrations | Notion, Google Tasks/Calendar/Keep, social tools | One concrete save destination and authorization flow |
 | Browser tools | Site-data clearing, extension management, ad filtering | Separate permission and recovery design |
 | Media download | Native-host/yt-dlp workflow | Explicit native-host installation, separate from ordinary downloads |

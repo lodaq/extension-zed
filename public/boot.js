@@ -1,6 +1,6 @@
 (function () {
   var TABS = ["misc", "extensions", "youtube", "settings"]
-  var SECTIONS = ["password", "playback", "volume", "quality", "colors", "scrollbars", "modes"]
+  var SECTIONS = ["password", "playback", "volume", "quality", "scrollbars", "modes"]
   var state = {}
   try {
     state = JSON.parse(localStorage.getItem("zed.boot") || "{}") || {}

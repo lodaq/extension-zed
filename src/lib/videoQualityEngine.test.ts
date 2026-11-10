@@ -114,6 +114,20 @@ describe("programmatic video quality", () => {
     expect(selectVideoQuality).toHaveBeenCalledTimes(1)
   })
 
+  it("applies Facebook speed through the native controller even when video quality settings are unconfigured", async () => {
+    const state = { availableVideoQualities: ["270p", "360p", "1080p"], selectedVideoQuality: "auto", targetPlaybackRate: 1 }
+    const video = { tagName: "VIDEO", __reactFiber$test: {} }
+    const selectVideoQuality = vi.fn((quality: string) => { state.selectedVideoQuality = quality })
+    const setPlaybackRate = vi.fn((rate: number) => { state.targetPlaybackRate = rate })
+    const controller = { getCurrentState: () => state, internal_getVideoElement: () => video, selectVideoQuality, setPlaybackRate }
+    video.__reactFiber$test = { memoizedProps: { value: controller } }
+    const p = page([video], { location: { hostname: "www.facebook.com" }, __zedVideoQualitySettings: null })
+    await p.run()
+    p.event("zed-playback-speed-changed", video, 1.5)
+    expect(state.targetPlaybackRate).toBe(1.5)
+    expect(setPlaybackRate).toHaveBeenCalledWith(1.5)
+  })
+
   it("switches TikTok streams through its native player while preserving playback state", async () => {
     const video = { tagName: "VIDEO", currentTime: 12.5, paused: true, volume: 0.4, muted: true, playbackRate: 1.5,
       parentElement: { __reactFiber$test: {} } }

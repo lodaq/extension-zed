@@ -21,7 +21,6 @@ export function installPlayback(): Promise<() => void> {
 async function initialize() {
   const stored = await chrome.storage.local.get(["speed"])
   let speed = nearestPreset(Number(readSetting("speed", stored.speed, 1)))
-  const facebook = /(^|\.)facebook\.com$/i.test(window.location?.hostname || "")
   const videos = new Map<HTMLVideoElement, () => void>()
   const roots = new Set<Document | ShadowRoot>([document])
   const events = ["loadstart", "loadedmetadata", "play", "playing"]
@@ -73,7 +72,7 @@ async function initialize() {
 
   function applyAll(value: unknown) {
     speed = nearestPreset(Number(readSetting("speed", value, 1)))
-    if (facebook) { publishSpeed(); return }
+    publishSpeed()
     discover(document)
     scan()
     for (const video of videos.keys()) apply(video)
@@ -88,12 +87,10 @@ async function initialize() {
     }
     scan()
   })
-  if (facebook) publishSpeed()
-  else {
-    observer.observe(document.documentElement, { childList: true, subtree: true })
-    discover(document)
-    scan()
-  }
+  publishSpeed()
+  observer.observe(document.documentElement, { childList: true, subtree: true })
+  discover(document)
+  scan()
   chrome.storage.onChanged.addListener(onStorage)
   window.__zedPlaybackApply = async () => {
     const result = await chrome.storage.local.get(["speed"])

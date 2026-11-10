@@ -183,14 +183,21 @@
     return null;
   }
 
+  function syncMetaSpeed(controller) {
+    if (speed === null || typeof controller.setPlaybackRate !== "function") return;
+    const state = controller.getCurrentState();
+    if (state && state.targetPlaybackRate !== speed) controller.setPlaybackRate(speed);
+  }
+
   function applyMeta(video, force) {
     const controller = metaController(video);
     if (!controller || typeof controller.isFrozen === "function" && controller.isFrozen()) return null;
+    syncMetaSpeed(controller);
+    if (!settings) return null;
     const state = controller.getCurrentState();
-    if (speed !== null && typeof controller.setPlaybackRate === "function" && state.targetPlaybackRate !== speed) controller.setPlaybackRate(speed);
     if (!Array.isArray(state.availableVideoQualities)) return null;
     const levels = state.availableVideoQualities.map(function (id) {
-      const match = typeof id === "string" && id.match(/^(\d{3,4})p(?:\d+)?$/);
+      const match = typeof id === "string" && id.match(/^(\d{3,4})p(?:\\d+)?$/);
       return { id, height: match ? Number(match[1]) : id === "SD" ? 360 : id === "HD" ? 720 : 0 };
     });
     return update(controller, [state.videoFBID, state.playerInstanceKey], levels, function (height, auto) {
@@ -240,11 +247,11 @@
   function setSpeed(value) {
     const next = Number(value);
     speed = Number.isFinite(next) && next >= 0.1 && next <= 10 ? Math.round(next * 10) / 10 : null;
-    if (isFacebook) void applyAll(false);
+    if (isMeta) void applyAll(false);
   }
 
   function applyAll(force) {
-    if (!settings) return Promise.resolve(null);
+    if (!settings && speed === null) return Promise.resolve(null);
     let result = null;
     function attempt(action, active) {
       // A disposed or unsupported player must not stop other videos in the frame.
@@ -258,9 +265,11 @@
       const player = document.getElementById("movie_player");
       if (player) youtubePlayers.add(player);
     }
-    for (const player of youtubePlayers) attempt(function () { return applyYouTube(player, force); });
+    if (settings) {
+      for (const player of youtubePlayers) attempt(function () { return applyYouTube(player, force); });
+    }
     const videos = queryAll("video");
-    if (isTikTok) {
+    if (isTikTok && settings) {
       const active = videos.find(function (video) { return video.paused === false; }) || videos.find(function (video) {
         if (typeof video.getBoundingClientRect !== "function") return true;
         const rect = video.getBoundingClientRect();
@@ -270,14 +279,18 @@
     }
     for (const video of videos) {
       if (isMeta) attempt(function () { return applyMeta(video, force); }, video.paused === false);
-      attempt(function () { return applyHls(video, force); });
-      attempt(function () { return applyShaka(video, force); });
-    }
-    attempt(function () {
-      if (window.videojs && typeof window.videojs.getPlayers === "function") {
-        for (const player of Object.values(window.videojs.getPlayers())) attempt(function () { return applyVideoJs(player, force); });
+      if (settings) {
+        attempt(function () { return applyHls(video, force); });
+        attempt(function () { return applyShaka(video, force); });
       }
-    });
+    }
+    if (settings) {
+      attempt(function () {
+        if (window.videojs && typeof window.videojs.getPlayers === "function") {
+          for (const player of Object.values(window.videojs.getPlayers())) attempt(function () { return applyVideoJs(player, force); });
+        }
+      });
+    }
     return Promise.resolve(result);
   }
 
@@ -338,7 +351,7 @@
     observer = new MutationObserver(function (records) {
       if (records.some(function (record) { return record.type === "attributes" && record.target === document.documentElement; })) {
         setSettings(readSettings());
-        if (isFacebook) setSpeed(document.documentElement.getAttribute(SPEED_ATTRIBUTE));
+        if (isMeta) setSpeed(document.documentElement.getAttribute(SPEED_ATTRIBUTE));
       }
       for (const record of records) for (const node of record.addedNodes) if (node.nodeType === 1) discover(node);
       if (records.some(function (record) { return record.addedNodes.length > 0; })) void applyAll(false);
@@ -346,7 +359,7 @@
     observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: [SETTINGS_ATTRIBUTE, SPEED_ATTRIBUTE] });
   }
   discover(document);
-  if (isFacebook && document.documentElement) setSpeed(document.documentElement.getAttribute(SPEED_ATTRIBUTE));
+  if (isMeta && document.documentElement) setSpeed(document.documentElement.getAttribute(SPEED_ATTRIBUTE));
 
   const initial = normalize(window.__zedVideoQualitySettings) || readSettings();
   if (initial) return apply(initial);

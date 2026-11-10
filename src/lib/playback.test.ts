@@ -38,14 +38,15 @@ function page(speed = "1.36", shadowVideos: Video[] = [], hostname = "example.co
 }
 
 describe("playback", () => {
-  it("routes Facebook speed through its controller bridge instead of writing conflicting media rates", async () => {
+  it("applies media rates and publishes speed for Facebook's controller bridge", async () => {
     const p = page("2", [], "www.facebook.com")
     const cleanup = await installPlayback()
     expect(p.attributes.get("data-zed-playback-speed")).toBe("2")
-    expect(p.videos[0].playbackRate).toBe(1)
-    expect(p.videos[0].defaultPlaybackRate).toBe(1)
+    expect(p.videos[0].playbackRate).toBe(2)
+    expect(p.videos[0].defaultPlaybackRate).toBe(2)
     for (const listener of p.storageListeners) listener({ speed: { newValue: "3" } }, "local")
     expect(p.attributes.get("data-zed-playback-speed")).toBe("3")
+    expect(p.videos[0].playbackRate).toBe(3)
     cleanup()
   })
 

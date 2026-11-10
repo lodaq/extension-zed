@@ -21,9 +21,9 @@ Sources: `src/App.tsx`, `src/background.ts`, `src/lib/withActiveTab.ts`, `public
 | Extension row | Lists every installed extension alphabetically, with icon, name, and version. Apps and themes are excluded. Clicking the row toggles the extension. Disabled extensions are dimmed. |
 | Settings | Opens the extension's dedicated options page (`optionsUrl`) directly in a new tab when available and enabled, or opens Chrome's extension details page (`chrome://extensions/?id=...`). For Extension Zed itself, always opens the browser’s extension details/settings page. |
 | On/off switch | Enables or disables the extension through `chrome.management.setEnabled`. Chrome may show its own confirmation when re-enabling an extension with escalated permissions. |
-| Reload | Disables and immediately re-enables the extension. Unpacked extensions re-read their code from disk; store extensions apply an update Chrome has already downloaded. Chrome has no public API to force an update check for another extension. |
+| Reload | Disables and immediately re-enables another extension (unpacked extensions re-read code from disk; store extensions apply downloaded updates). For Extension Zed itself, reloads via `chrome.runtime.reload()`. Chrome has no public API to force an update check for another extension. |
 | Uninstall | Calls `chrome.management.uninstall`. Chrome always shows its own confirmation dialog when one extension uninstalls another; a dismissed dialog is treated as a cancellation, not an error. |
-| Guarded rows | Zed itself, policy-managed extensions (`mayDisable: false`), and disabled extensions that Chrome will not re-enable show disabled controls and, where relevant, a policy label. |
+| Guarded rows | Zed itself cannot be disabled or uninstalled, while policy-managed extensions (`mayDisable: false`) and disabled extensions that Chrome will not re-enable show disabled controls and, where relevant, a policy label. Zed itself can be reloaded. |
 
 The list refreshes after every action and subscribes to `chrome.management` install/enable/disable/uninstall events while the popup is open. Failures use the same success/error toast pattern as page actions. No update check is faked: the reload control only restarts the extension.
 
@@ -61,11 +61,10 @@ Sources: `src/components/MiscTab.tsx`, `src/components/VideoQualitySection.tsx`,
 | Hide controls | Hides bottom controls; toggle off removes its style |
 | Hide duration | Hides only the duration/time remaining while keeping the progress bar clickable |
 | Half-screen layout | Constrains the player to a clean half-screen viewport layout for multitasking |
-| Timestamp markers | Bookmark key moments with label and timestamp, jump to any bookmark, export/import markers |
 
 Preferences are global and saved locally.
 
-Sources: `src/components/YoutubeFocusMode.tsx`, `src/components/YoutubeMarkers.tsx`, `public/scripts/youtube*.js`.
+Sources: `src/components/YoutubeFocusMode.tsx`, `public/scripts/youtube*.js`.
 
 ## Settings transfer
 

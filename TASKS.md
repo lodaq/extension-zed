@@ -12,10 +12,9 @@ Implemented capabilities:
 - Main, all-scrollbar, and custom non-layout-shifting scrollbar controls
 - Playback-rate presets, fine-stepping, and automatic site persistence
 - Design mode, inspect mode, and Arabic RTL mode
-- Page timestamp and publication age inspector
 - Video quality selector with fallback options (prefer higher / prefer lower quality)
 - Installed extensions management tab with search, status toggles, reload, and uninstall flows
-- YouTube focus mode, progress-bar controls, duration hiding, half-screen layout, and timestamp bookmarks/markers
+- YouTube focus mode, progress-bar controls, duration hiding, and half-screen layout
 - Persistent dark theme, defaulting to dark
 - Success/error toast feedback for page actions
 - Settings schema versioning (v1), file size & JSON validation, export/import, and factory reset flow
@@ -79,7 +78,6 @@ Completed additions:
 |---|---|
 | [x] | Add custom scrollbar styling without changing page layout unexpectedly. |
 | [x] | Add volume boost for page audio and video with a capped 20× gain and safety warning. |
-| [x] | Define a useful timestamp/age feature before implementation. |
 
 Defer until there is a clear product and permission design:
 
@@ -92,7 +90,7 @@ Implemented:
 
 - Extension search and filtering
 - Enable/disable toggles with instant rollback on failure
-- Reload unpacked/installed extensions
+- Reload unpacked/installed extensions (including Extension Zed itself)
 - Uninstall confirmation flow
 - Self-extension detection with direct navigation to Settings
 
@@ -106,7 +104,6 @@ Implemented:
 - Hide controls
 - Hide duration
 - Half-screen layout
-- Timestamp bookmarks/markers
 
 Good next additions:
 

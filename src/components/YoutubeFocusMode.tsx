@@ -2,7 +2,6 @@ import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLay
 import { cn } from "@/lib/utils"
 import { sendPageAction } from "@/lib/withActiveTab"
 import { useStoredValue } from "@/lib/useStoredValue"
-import YoutubeMarkers from "@/components/YoutubeMarkers"
 import { ToggleRow, type ToggleRowProps } from "@/components/ToggleRow"
 import type { ModeAction } from "@/lib/actionRegistry"
 
@@ -89,8 +88,6 @@ const YoutubeFocusMode = () => {
           <YoutubeToggleItem key={config.id} config={config} />
         ))}
       </div>
-
-      <YoutubeMarkers />
     </section>
   )
 }

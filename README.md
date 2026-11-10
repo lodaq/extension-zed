@@ -78,9 +78,8 @@ To create a portable build ZIP yourself, run `bun run package:store`. It creates
 
 - Expand the player with **Focus mode** or use a **Half-screen layout**.
 - Hide the progress bar and chapters, time and duration, or player controls independently.
-- Save labeled timestamp markers, jump back to a marker, and export or import markers.
 
-YouTube layout and marker preferences are saved in the browser. A YouTube player is needed for the layout controls, and a video must be open to save markers.
+YouTube layout preferences are saved in the browser. A YouTube player is needed for the layout controls.
 
 ### Extensions
 
@@ -89,9 +88,9 @@ YouTube layout and marker preferences are saved in the browser. A YouTube player
 - Click an extension row or use its switch to turn it on or off.
 - Open an extension's settings directly using the gear button.
 - Reload an extension, or uninstall it through Chrome's confirmation dialog.
-- Extension Zed and extensions controlled by browser policy cannot be changed here.
+- Extensions controlled by browser policy cannot be changed here.
 
-The **Reload** action restarts an extension. It can apply an update Chrome has already downloaded, but it does not check for updates itself.
+The **Reload** action restarts an extension (for Extension Zed, it reloads the active extension; for other extensions, it restarts the extension to apply updates Chrome has already downloaded).
 
 ### Settings
 

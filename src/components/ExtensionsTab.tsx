@@ -354,7 +354,11 @@ export default function ExtensionsTab() {
                     size="icon"
                     className="h-5 w-5 shrink-0 rounded text-muted-foreground hover:text-foreground"
                     aria-label={`Reload ${extension.name}`}
-                    title="Reload (applies an update Chrome has already downloaded)"
+                    title={
+                      extension.isSelf
+                        ? "Reload this extension"
+                        : "Reload (applies an update Chrome has already downloaded)"
+                    }
                     disabled={!extension.canReload || Boolean(busy)}
                     onClick={(event) => {
                       event.stopPropagation()

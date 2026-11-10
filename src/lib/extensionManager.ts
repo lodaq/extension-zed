@@ -67,7 +67,7 @@ export function toManagedExtensions(
         enabled: info.enabled,
         isSelf,
         canToggle,
-        canReload: canToggle && info.enabled,
+        canReload: (canToggle || isSelf) && info.enabled,
         canUninstall: !isSelf && info.mayDisable,
         iconUrl: pickIconUrl(info),
         optionsUrl: info.optionsUrl || "",
@@ -95,8 +95,15 @@ export async function setExtensionEnabled(id: string, enabled: boolean): Promise
  * Chrome has no public "update another extension" API. Disabling and enabling
  * reloads an unpacked extension from disk and applies an update that Chrome has
  * already downloaded for a store extension.
+ * When reloading Extension Zed itself, uses chrome.runtime.reload() to restart
+ * the extension.
  */
 export async function reloadExtension(id: string): Promise<void> {
+  const selfId = currentExtensionId()
+  if (selfId && id === selfId && typeof chrome !== "undefined" && chrome.runtime?.reload) {
+    chrome.runtime.reload()
+    return
+  }
   const api = getManagement()
   await api.setEnabled(id, false)
   await api.setEnabled(id, true)

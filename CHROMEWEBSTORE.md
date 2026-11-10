@@ -19,8 +19,7 @@ Key Features:
 - Audio Booster: Amplify quiet page audio and video with safe volume boosting up to 20x.
 - Scrollbar Controls: Hide main or nested scrollbars, or apply a sleek, modern unobtrusive scrollbar theme without layout shifts.
 - Video Quality Control: Choose a preferred resolution (Auto through 8K) with higher/lower fallback, applied automatically to new videos on YouTube, Facebook, X, and other sites that expose a player quality menu.
-- YouTube Enhancement: Toggle distraction-free Focus Mode, hide progress bars and bottom controls, hide video duration, enable half-screen multitasking layouts, and save timestamp bookmarks.
-- Page Inspector & Timestamps: Inspect publication dates and last-modified timestamps on any web page.
+- YouTube Enhancement: Toggle distraction-free Focus Mode, hide progress bars and bottom controls, hide video duration, and enable half-screen multitasking layouts.
 - Arabic RTL Mode: Instantly adjust text direction and alignment for Arabic and RTL content.
 - Built-in Password Generator: Generate secure passwords with customizable character sets and length.
 - Full Data Ownership: Backup, export, or import all your settings with a single click, or reset everything to defaults anytime.
@@ -58,7 +57,7 @@ English
 
 ### Screenshot Notes
 - Screenshot 1: Shows the Misc tab open with playback speed controller, volume booster, and custom scrollbar options.
-- Screenshot 2: Shows YouTube Focus Mode active on a YouTube watch page with hidden controls and timestamp markers.
+- Screenshot 2: Shows YouTube Focus Mode active on a YouTube watch page with hidden controls and layout options.
 - Screenshot 3: Shows Settings tab with theme toggling, data export/import, and privacy disclosure.
 
 ## Permissions Justification

@@ -50,12 +50,12 @@ describe("managed extension list", () => {
     expect(rows.map((row) => row.name)).toEqual(["alpha", "Beta"])
   })
 
-  it("marks the current extension and disables its destructive actions", () => {
+  it("marks the current extension and disables its destructive actions but allows reload", () => {
     const [self] = toManagedExtensions([info({ id: "self", name: "Zed", optionsUrl: "chrome-extension://self/options.html" })], "self")
 
     expect(self.isSelf).toBe(true)
     expect(self.canToggle).toBe(false)
-    expect(self.canReload).toBe(false)
+    expect(self.canReload).toBe(true)
     expect(self.canUninstall).toBe(false)
   })
 
@@ -145,6 +145,19 @@ describe("management actions", () => {
       ["abc", false],
       ["abc", true],
     ])
+  })
+
+  it("reloads self via chrome.runtime.reload when available", async () => {
+    const reload = vi.fn()
+    vi.stubGlobal("chrome", {
+      runtime: { id: "self-id", reload },
+      management: { setEnabled: vi.fn() },
+    })
+
+    await reloadExtension("self-id")
+
+    expect(reload).toHaveBeenCalledOnce()
+    expect(chrome.management.setEnabled).not.toHaveBeenCalled()
   })
 
   it("forwards uninstall requests", async () => {

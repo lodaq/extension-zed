@@ -22,6 +22,7 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     .header{flex-shrink:0;display:flex;align-items:start;justify-content:space-between;gap:20px;margin-bottom:16px}
     h2{font:inherit;font-size:16px;font-weight:600;margin:0}
     button,a{font:inherit;cursor:pointer;padding:8px 16px;border:1px solid var(--input);color:var(--foreground);background:transparent;text-decoration:none}
+    .footer button,.footer a{display:inline-flex;align-items:center;justify-content:center;height:36px;font-weight:500}
     button:hover:not(:disabled),a:hover{background:var(--accent);color:var(--accent-foreground)}
     button:focus-visible,a:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
     button:disabled{opacity:.6;cursor:default}
@@ -318,8 +319,7 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     const copy = document.createElement("iframe")
     copy.src = chrome.runtime.getURL("screenshot-clipboard.html")
     copy.title = "Copy screenshot to clipboard"
-    copy.allow = "clipboard-write *"
-    copy.style.cssText = "width:180px;height:44px;border:0;max-width:100%"
+    copy.style.cssText = "width:180px;height:44px;border:0;max-width:100%;margin:-4px 0"
     const copyOrigin = new URL(copy.src).origin
     window.addEventListener("message", (event) => {
       if (event.source !== copy.contentWindow || event.origin !== copyOrigin) return
@@ -328,7 +328,7 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
           status.textContent = "Image is too large to copy. Use Download instead."
           return
         }
-        copy.contentWindow?.postMessage({ type: "zed-screenshot-image", dark, image: dataUrl }, copyOrigin)
+        copy.contentWindow?.postMessage({ type: "zed-screenshot-image", token, dark, image: dataUrl }, copyOrigin)
       } else if (event.data?.type === "zed-screenshot-close") {
         close()
       } else if (event.data?.type === "zed-screenshot-copy" && typeof event.data.message === "string") {

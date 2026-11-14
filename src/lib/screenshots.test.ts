@@ -72,3 +72,31 @@ it("rejects editor requests without an authorized screenshot session", async () 
   await expect(handleScreenshotMessage({ type: "screenshot:edit", token: "forged", image: "data:image/png;base64,eA==" }, { tab: { id: 1, windowId: 2 }, frameId: 0 })).rejects.toThrow("expired")
   expect(create).not.toHaveBeenCalled()
 })
+
+it("copies PNGs from the authorized extension clipboard frame in the background", async () => {
+  const write = vi.fn<(items: { data: Record<string, Blob> }[]) => Promise<void>>(async () => {})
+  vi.stubGlobal("chrome", {
+    runtime: { getURL: (path: string) => `chrome-extension://zed/${path}` },
+    storage: { session: { get: async () => ({ "screenshot:1": { token: "valid" } }) } },
+  })
+  vi.stubGlobal("navigator", { clipboard: { write } })
+  vi.stubGlobal("ClipboardItem", class { constructor(public data: Record<string, Blob>) {} })
+  const sender = { tab: { id: 1, windowId: 2 }, frameId: 3, url: "chrome-extension://zed/screenshot-clipboard.html" }
+  await expect(handleScreenshotMessage({ type: "screenshot:copy", token: "valid", image: "data:image/png;base64,cG5n" }, sender)).resolves.toEqual({ ok: true })
+  expect(write).toHaveBeenCalledOnce()
+  const blob = write.mock.calls[0][0][0].data["image/png"]
+  expect(blob.type).toBe("image/png")
+  expect(await blob.text()).toBe("png")
+  await expect(handleScreenshotMessage({ type: "screenshot:copy", token: "valid", image: "not a PNG" }, sender)).rejects.toThrow("Invalid clipboard image")
+  await expect(handleScreenshotMessage({ type: "screenshot:copy", token: "valid", image: "data:image/png;base64,cG5n" }, { ...sender, url: "https://gitmanual.com/" })).rejects.toThrow("Invalid screenshot sender")
+  await expect(handleScreenshotMessage({ type: "screenshot:copy", token: "forged", image: "data:image/png;base64,cG5n" }, sender)).rejects.toThrow("expired")
+})
+
+it("keeps native image copy available on browsers without worker clipboard support", async () => {
+  vi.stubGlobal("chrome", {
+    runtime: { getURL: (path: string) => `chrome-extension://zed/${path}` },
+    storage: { session: { get: async () => ({ "screenshot:1": { token: "valid" } }) } },
+  })
+  vi.stubGlobal("navigator", {})
+  await expect(handleScreenshotMessage({ type: "screenshot:copy", token: "valid", image: "data:image/png;base64,cG5n" }, { tab: { id: 1, windowId: 2 }, frameId: 3, url: "chrome-extension://zed/screenshot-clipboard.html" })).resolves.toEqual({ ok: true, nativeCopy: true })
+})

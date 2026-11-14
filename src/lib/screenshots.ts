@@ -33,13 +33,23 @@ export async function handleScreenshotMessage(
     return { ok: true }
   }
 
-  if (sender.tab?.id === undefined || sender.frameId !== 0 || typeof data.token !== "string") {
+  const clipboardFrame = data.type === "screenshot:copy" && sender.url === chrome.runtime.getURL("screenshot-clipboard.html")
+  if (sender.tab?.id === undefined || (sender.frameId !== 0 && !clipboardFrame) || typeof data.token !== "string") {
     throw new Error("Invalid screenshot sender")
   }
   const tab = sender.tab
   const key = `screenshot:${tab.id}`
   const stored = await chrome.storage.session.get<Record<string, { token: string }>>(key)
   if (stored[key]?.token !== data.token) throw new Error("Screenshot session expired. Start a new capture.")
+
+  if (data.type === "screenshot:copy") {
+    if (typeof data.image !== "string" || !data.image.startsWith("data:image/png;base64,") || data.image.length > 32 * 1024 * 1024) throw new Error("Invalid clipboard image")
+    // Chrome 157+ supports clipboard writes in extension service workers.
+    if (!navigator.clipboard?.write) return { ok: true, nativeCopy: true }
+    const bytes = Uint8Array.from(atob(data.image.split(",")[1]), (char) => char.charCodeAt(0))
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": new Blob([bytes], { type: "image/png" }) })])
+    return { ok: true }
+  }
 
   if (data.type === "screenshot:edit") {
     await openScreenshotEditor(data.image)

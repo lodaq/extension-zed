@@ -106,6 +106,16 @@
       "all_frames": true,
       "match_about_blank": true,
       "match_origin_as_fallback": true
+    },
+    {
+      "matches": [
+        "https://*.linkedin.com/*"
+      ],
+      "js": [
+        "scripts/linkedinPosts.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
     }
   ],
   "permissions": [

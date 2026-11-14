@@ -129,7 +129,7 @@
   }
 
   function applyVideoJs(player, force) {
-    if (!player || typeof player.qualityLevels !== "function") return null;
+    if (!player || typeof player.isDisposed === "function" && player.isDisposed() || typeof player.qualityLevels !== "function") return null;
     const levels = Array.from(player.qualityLevels());
     const source = typeof player.currentSrc === "function" ? player.currentSrc() : "";
     return update(player, source, levels, function (height, auto) {
@@ -289,6 +289,9 @@
     for (const video of videos) {
       if (isMeta) attempt(function () { return applyMeta(video, force); }, video.paused === false);
       if (settings) {
+        // Bundled Video.js builds (including LinkedIn) do not expose window.videojs.
+        const localPlayer = video.player || (video.closest && video.closest(".video-js") || video.parentElement || {}).player;
+        attempt(function () { return applyVideoJs(localPlayer, force); });
         attempt(function () { return applyHls(video, force); });
         attempt(function () { return applyShaka(video, force); });
       }
@@ -330,13 +333,13 @@
   }
 
   if (window.__zedVideoQualityEngine) {
-    if (window.__zedVideoQualityEngine.version !== 9) {
+    if (window.__zedVideoQualityEngine.version !== 10) {
       window.__zedVideoQualityEngine.setSettings({ quality: "auto", fallback: "lower" }, { apply: false });
       throw new Error("Refresh this tab to replace the old video quality handler.");
     }
     return window.__zedVideoQualityEngine.apply(normalize(window.__zedVideoQualitySettings) || undefined);
   }
-  window.__zedVideoQualityEngine = { apply, applyAll, setSettings, getSettings: function () { return settings; }, version: 9 };
+  window.__zedVideoQualityEngine = { apply, applyAll, setSettings, getSettings: function () { return settings; }, version: 10 };
 
   function onMedia(event) {
     if (!event.target || event.target.tagName !== "VIDEO") return;

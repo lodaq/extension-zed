@@ -1,3 +1,4 @@
+import tokens from "../design-system/tokens.css?raw"
 import { readSaved, mediaUrl, SAVED_BUTTONS_KEY, SAVED_KEY, type SavedItem } from "../lib/saved"
 import { findMediaTargets, LINKEDIN_CARD } from "../lib/mediaTargets"
 
@@ -7,10 +8,8 @@ const state = globalThis as typeof globalThis & { __zedSaveInstalled?: boolean }
 
 function installSaveButtons() {
   if (state.__zedSaveInstalled || window !== window.top || !/(^|\.)(youtube\.com|youtu\.be|instagram\.com|facebook\.com|linkedin\.com)$/.test(location.hostname)) return
-  let themeUrl: string
   try {
     if (!chrome.runtime?.id) return
-    themeUrl = chrome.runtime.getURL("theme.css")
   } catch (error) {
     if (/extension context invalidated/i.test(String(error))) return
     throw error
@@ -104,11 +103,8 @@ function installSaveButtons() {
       if (post && !card) host.setAttribute("data-zed-post-inline", "")
       if (post) host.setAttribute("data-zed-post", "")
       const shadow = host.attachShadow({ mode: "closed" })
-      const theme = document.createElement("link")
-      theme.rel = "stylesheet"
-      theme.href = themeUrl
       const style = document.createElement("style")
-      style.textContent = `:host { all: initial; position: absolute !important; top: var(--zed-space-3); right: var(--zed-space-3); z-index: 2147483647; animation: none !important; transition: none !important; }
+      style.textContent = tokens.replace(/:root/g, ":host") + `:host { all: initial; position: absolute !important; top: var(--zed-space-3); right: var(--zed-space-3); z-index: 2147483647; animation: none !important; transition: none !important; }
         :host([data-zed-post]) { position: relative !important; display: block; top: auto; right: auto; padding: var(--zed-space-3); }
         :host([data-zed-post-inline]) { display: inline-flex; vertical-align: middle; }
         :host([hidden]) { display: none !important; }
@@ -121,14 +117,14 @@ function installSaveButtons() {
       button.type = "button"
       button.setAttribute("aria-live", "polite")
       button.title = url ? `Save ${url} to Zed` : "Save this post to Zed"
-      shadow.append(theme, style, button)
+      shadow.append(style, button)
       const previousPosition = !post && getComputedStyle(target).position === "static" ? target.style.position : null
       if (previousPosition !== null) target.style.position = "relative"
-      if (post && card) target.prepend(host)
-      else if (post) target.append(host)
+      const mount = post ? target.parentElement : target
+      if (!mount) continue
+      if (post) target.before(host)
       else target.append(host)
-      const entry = { host, button, url, busy: false, previousPosition, mount: target }
-      theme.addEventListener("load", () => raiseAbovePlayer(entry))
+      const entry = { host, button, url, busy: false, previousPosition, mount }
       entries.set(target, entry)
       for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"]) {
         button.addEventListener(type, event => event.stopPropagation())
@@ -187,7 +183,7 @@ function installSaveButtons() {
     timeout = window.setTimeout(() => { scheduled = false; scan() }, 100)
   }
   observer = new MutationObserver(schedule)
-  observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["href", "video-id", "data-video-id", "src", "aria-hidden", "data-urn"] })
+  observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["href", "video-id", "data-video-id", "src", "aria-hidden", "data-urn", "data-id", "componentkey", "data-zed-linkedin-url"] })
   window.addEventListener("scroll", schedule, { capture: true, passive: true })
   window.addEventListener("resize", schedule)
   window.addEventListener("popstate", schedule)

@@ -89,3 +89,50 @@ it("attaches to Facebook timestamps without relying on post wrappers", () => {
     [second, null],
   ])
 })
+
+it("finds LinkedIn text posts by their URNs and prefers them to quoted post links", () => {
+  const card = {
+    parentElement: null,
+    getAttribute: () => "urn:li:activity:123",
+  } as unknown as HTMLElement
+  const anchor = { href: "https://linkedin.com/posts/alex_topic-activity-456-Abcd", closest: () => card }
+  const root = {
+    querySelectorAll: (selector: string) => selector === "a[href]" ? [anchor] : selector === "video" ? [] : [card],
+  } as unknown as Document
+  expect([...findMediaTargets(root, "https://www.linkedin.com/feed/")]).toEqual([
+    [card, "https://www.linkedin.com/feed/update/urn:li:activity:123/"],
+  ])
+})
+
+it("deduplicates LinkedIn timestamp links within their outer feed card", () => {
+  const card = { parentElement: null, getAttribute: () => null } as unknown as HTMLElement
+  const inner = { parentElement: { closest: () => card } }
+  const href = "https://linkedin.com/posts/alex_topic-activity-123-Abcd"
+  const root = {
+    querySelectorAll: (selector: string) => selector === "a[href]" ? [
+      { href, closest: () => inner },
+      { href: href + "?tracking=1", closest: () => card },
+      { href, closest: () => null },
+    ] : selector === "video" ? [] : [card],
+  } as unknown as Document
+  expect([...findMediaTargets(root, "https://www.linkedin.com/feed/")]).toEqual([
+    [card, "https://www.linkedin.com/feed/update/urn:li:activity:123/"],
+  ])
+})
+
+it("keeps controls on SDUI posts without DOM permalinks and ignores embedded external media", () => {
+  const first = {
+    parentElement: null,
+    getAttribute: (key: string) => key === "data-zed-linkedin-url" ? "https://www.linkedin.com/feed/update/urn:li:activity:123/" : null,
+  } as unknown as HTMLElement
+  const second = { parentElement: null, getAttribute: () => null } as unknown as HTMLElement
+  const root = {
+    querySelectorAll: (selector: string) => selector === "a[href]" ? [
+      { href: "https://youtube.com/watch?v=external", closest: () => second },
+    ] : selector === "video" ? [] : [first, second],
+  } as unknown as Document
+  expect([...findMediaTargets(root, "https://www.linkedin.com/feed/")]).toEqual([
+    [first, "https://www.linkedin.com/feed/update/urn:li:activity:123/"],
+    [second, null],
+  ])
+})

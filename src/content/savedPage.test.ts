@@ -1,7 +1,15 @@
 import { afterEach, expect, it, vi } from "vitest"
+import { readFileSync } from "node:fs"
 import { findMediaTargets } from "../lib/mediaTargets"
 
-vi.mock("../lib/mediaTargets", () => ({ findMediaTargets: vi.fn(() => new Map()) }))
+vi.mock("../design-system/tokens.css?raw", () => ({
+  default: readFileSync(new URL("../design-system/tokens.css", import.meta.url), "utf8"),
+}))
+
+vi.mock("../lib/mediaTargets", async importOriginal => ({
+  ...await importOriginal<typeof import("../lib/mediaTargets")>(),
+  findMediaTargets: vi.fn(() => new Map()),
+}))
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -9,7 +17,10 @@ afterEach(() => {
   vi.resetModules()
 })
 
-it.each([false, true])("stops scanning after runtime invalidation (throwing accessor: %s)", async throwing => {
+it.each([
+  [false, "www.instagram.com"], [true, "www.instagram.com"],
+  [false, "www.linkedin.com"], [true, "www.linkedin.com"],
+])("stops scanning after runtime invalidation (throwing accessor: %s, host: %s)", async (throwing, hostname) => {
   const callbacks: Record<string, () => void> = {}
   const disconnect = vi.fn()
   const removeListener = vi.fn()
@@ -27,7 +38,7 @@ it.each([false, true])("stops scanning after runtime invalidation (throwing acce
   }
   win.top = win
   vi.stubGlobal("window", win)
-  vi.stubGlobal("location", { hostname: "www.instagram.com", href: "https://www.instagram.com/reels/example/" })
+  vi.stubGlobal("location", { hostname, href: `https://${hostname}/feed/` })
   vi.stubGlobal("document", { documentElement: {} })
   vi.stubGlobal("MutationObserver", class {
     observe() {}
@@ -65,41 +76,60 @@ it.each(["missing", "throwing"])("ignores deferred startup with a %s runtime", a
   vi.stubGlobal("window", win)
   vi.stubGlobal("location", { hostname: "www.instagram.com" })
   vi.stubGlobal("document", { documentElement: null, addEventListener: (_: string, callback: () => void) => { start = callback } })
-  const getURL = vi.fn(() => { throw new Error("Extension context invalidated.") })
-  vi.stubGlobal("chrome", { runtime: mode === "missing" ? undefined : { id: "zed", getURL } })
+  const runtime = { get id(): string { throw new Error("Extension context invalidated.") } }
+  vi.stubGlobal("chrome", { runtime: mode === "missing" ? undefined : runtime })
   delete (globalThis as { __zedSaveInstalled?: boolean }).__zedSaveInstalled
   await import("./savedPage")
   expect(() => start()).not.toThrow()
   expect(findMediaTargets).not.toHaveBeenCalled()
 })
 
-it.each(["missing runtime", "invalidated callback"])("handles stylesheet load after %s", async mode => {
+
+it("mounts post controls outside the card with bundled styles and removes them on invalidation", async () => {
   const callbacks: Record<string, () => void> = {}
   const disconnect = vi.fn()
-  const runtime: { id?: string; getURL: () => string } = { id: "zed", getURL: () => "chrome-extension://zed/theme.css" }
+  const runtime: { id?: string } = { id: "zed" }
+  const styles: { textContent?: string }[] = []
+  const shadowAppend = vi.fn()
+  const parent = {}
   const host = {
-    setAttribute: vi.fn(), attachShadow: () => ({ append: vi.fn() }),
+    setAttribute: vi.fn(), attachShadow: () => ({ append: shadowAppend }),
     classList: { toggle: vi.fn() }, isConnected: true,
-    hasAttribute: vi.fn(() => true), remove: vi.fn(), parentElement: null as unknown,
+    hasAttribute: vi.fn(() => true), remove: vi.fn(), parentElement: parent,
   }
-  vi.stubGlobal("getComputedStyle", () => ({ position: "relative" }))
-  const target = { append: vi.fn(), matches: () => true, prepend: vi.fn(), style: { position: "" } }
-  host.parentElement = target
+  const target = { parentElement: parent, before: vi.fn(), append: vi.fn(), matches: () => true, prepend: vi.fn(), style: { position: "" } }
   const button = { setAttribute: vi.fn(), addEventListener: vi.fn() }
-  vi.mocked(findMediaTargets).mockReturnValue(new Map([[target as unknown as HTMLElement, "https://www.instagram.com/reel/example/"]]))
-  const win = { top: null as unknown, addEventListener: vi.fn(), removeEventListener: vi.fn(), setInterval: () => 1, clearInterval: vi.fn(), clearTimeout: vi.fn() }
+  vi.mocked(findMediaTargets).mockReturnValue(new Map([[target as unknown as HTMLElement, "https://www.linkedin.com/feed/update/urn:li:activity:123/"]]))
+  const win = {
+    top: null as unknown,
+    addEventListener: (name: string, callback: () => void) => { callbacks[name] = callback },
+    removeEventListener: vi.fn(), setInterval: () => 1, clearInterval: vi.fn(), clearTimeout: vi.fn(),
+  }
   win.top = win
   vi.stubGlobal("window", win)
-  vi.stubGlobal("location", { hostname: "www.instagram.com", href: "https://www.instagram.com/reels/example/" })
-  vi.stubGlobal("document", { documentElement: {}, createElement: (tag: string) => tag === "div" ? host : tag === "button" ? button : { addEventListener: (name: string, callback: () => void) => { callbacks[name] = callback } } })
+  vi.stubGlobal("location", { hostname: "www.linkedin.com", href: "https://www.linkedin.com/feed/" })
+  const createElement = vi.fn((tag: string) => {
+    if (tag === "div") return host
+    if (tag === "button") return button
+    const style = {}
+    styles.push(style)
+    return style
+  })
+  vi.stubGlobal("document", { documentElement: {}, createElement })
   vi.stubGlobal("MutationObserver", class { observe() {} disconnect = disconnect })
   vi.stubGlobal("chrome", { runtime, storage: { local: { get: async () => ({}) }, onChanged: { addListener: vi.fn(), removeListener: vi.fn() } } })
   delete (globalThis as { __zedSaveInstalled?: boolean }).__zedSaveInstalled
   await import("./savedPage")
-  expect(callbacks.load).toBeTypeOf("function")
-  if (mode === "missing runtime") runtime.id = undefined
-  host.hasAttribute.mockImplementation(() => { throw new Error("Extension context invalidated.") })
-  expect(() => callbacks.load()).not.toThrow()
+  expect(target.before).toHaveBeenCalledWith(host)
+  expect(target.prepend).not.toHaveBeenCalled()
+  expect(target.append).not.toHaveBeenCalled()
+  expect(target.style.position).toBe("")
+  expect(createElement).not.toHaveBeenCalledWith("link")
+  expect(styles[0].textContent).toContain(":host {")
+  expect(styles[0].textContent).toContain("--zed-bg:")
+  expect(shadowAppend).toHaveBeenCalledWith(styles[0], button)
+  runtime.id = undefined
+  callbacks.scroll()
   expect(disconnect).toHaveBeenCalledOnce()
   expect(host.remove).toHaveBeenCalledOnce()
   delete (globalThis as { __zedSaveInstalled?: boolean }).__zedSaveInstalled

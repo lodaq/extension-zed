@@ -51,3 +51,20 @@ it("normalizes group timestamp links and permanent post links to the same URL", 
   expect(mediaUrl("https://facebook.com/groups/123/?multi_permalinks=1,2")).toBeNull()
   expect(readSetting("savedButtonsEnabled", false, true)).toBe(false)
 })
+
+it("normalizes LinkedIn share links and rejects unrelated or unsafe URLs", () => {
+  const expected = "https://www.linkedin.com/feed/update/urn:li:activity:123456789/"
+  for (const url of [
+    expected + "?utm_source=share#comments",
+    "https://linkedin.com/posts/alex_some-topic-activity-123456789-Ab_c?utm_medium=member_desktop",
+    "https://www.linkedin.com/feed/update/urn%3Ali%3Aactivity%3A123456789/",
+  ]) expect(mediaUrl(url)).toBe(expected)
+  expect(mediaUrl("https://linkedin.com/feed/update/urn:li:ugcPost:123/")).toBe("https://www.linkedin.com/feed/update/urn:li:ugcPost:123/")
+  for (const url of [
+    "https://linkedin.com/in/alex/", "https://linkedin.com/feed/",
+    "https://linkedin.com.evil/feed/update/urn:li:activity:123/",
+    "http://linkedin.com/feed/update/urn:li:activity:123/",
+    "https://linkedin.com/feed/update/urn:li:activity:bad/",
+    "https://linkedin.com/feed/update/%ZZ/",
+  ]) expect(mediaUrl(url)).toBeNull()
+})

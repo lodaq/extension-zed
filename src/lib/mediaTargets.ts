@@ -1,7 +1,7 @@
 import { mediaUrl } from "./saved"
 
 // Prefer the whole media card so title and thumbnail links share one button.
-export const LINKEDIN_CARD = '.feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-urn^="urn:li:share:"], [data-urn^="urn:li:ugcPost:"]'
+export const LINKEDIN_CARD = '[componentkey^="update-card-focus"], [data-view-name="feed-full-update"], [data-id^="urn:li:activity:"], .feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-urn^="urn:li:share:"], [data-urn^="urn:li:ugcPost:"]'
 const CARD = "ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer, ytd-reel-item-renderer, ytd-reel-video-renderer, yt-lockup-view-model, yt-shorts-lockup-view-model, ytm-shorts-lockup-view-model, article, [role=article], [data-pagelet^=FeedUnit]"
 export function findMediaTargets(root: Document, pageUrl: string): Map<HTMLElement, string | null> {
   const targets = new Map<HTMLElement, string | null>()
@@ -10,9 +10,10 @@ export function findMediaTargets(root: Document, pageUrl: string): Map<HTMLEleme
   if (linkedin) {
     for (const card of root.querySelectorAll<HTMLElement>(LINKEDIN_CARD)) {
       if (card.parentElement?.closest(LINKEDIN_CARD)) continue
-      const urn = card.getAttribute("data-urn")
-      const url = urn ? mediaUrl(`https://www.linkedin.com/feed/update/${urn}/`) : null
-      if (url) targets.set(card, url)
+      const urn = card.getAttribute("data-urn") ?? card.getAttribute("data-id")
+      const url = mediaUrl(card.getAttribute("data-zed-linkedin-url") ?? "") ??
+        (urn ? mediaUrl(`https://www.linkedin.com/feed/update/${urn}/`) : null)
+      targets.set(card, url)
     }
   }
   const facebook = /^(?:www\.|m\.)?facebook\.com$/.test(new URL(pageUrl).hostname)
@@ -21,6 +22,7 @@ export function findMediaTargets(root: Document, pageUrl: string): Map<HTMLEleme
     try { destination = new URL(anchor.href) } catch { continue }
     if (destination.searchParams.has("comment_id") || destination.searchParams.has("reply_comment_id")) continue
     const url = mediaUrl(anchor.href)
+    if (linkedin && !/^(?:www\.|m\.)?linkedin\.com$/.test(destination.hostname)) continue
     // Feed experiments omit article wrappers and hydrate timestamp links on hover.
     const timestamp = facebook && /^(?:www\.|m\.)?facebook\.com$/.test(destination.hostname) && /(?:\b(?:ago|yesterday|just now|[0-9]+\s*[smhdwy])\b|منذ|ساعة|ساعات|دقيقة|دقائق|ثانية|أمس)/i.test(
       `${anchor.textContent ?? ""} ${anchor.getAttribute?.("aria-label") ?? ""} ${anchor.getAttribute?.("title") ?? ""}`,
@@ -28,7 +30,11 @@ export function findMediaTargets(root: Document, pageUrl: string): Map<HTMLEleme
     const rawHref = anchor.getAttribute?.("href")
     if ((rawHref === "#" || rawHref === "") && !timestamp) continue
     if (!url && !timestamp) continue
-    const card = anchor.closest<HTMLElement>(cardSelector)
+    let card = anchor.closest<HTMLElement>(cardSelector)
+    if (linkedin) {
+      let parent = card?.parentElement?.closest<HTMLElement>(LINKEDIN_CARD)
+      while (parent) { card = parent; parent = card.parentElement?.closest<HTMLElement>(LINKEDIN_CARD) }
+    }
     // Prefer the post timestamp to a separate link opening only its photo.
     if (facebook && !card && destination.pathname.startsWith("/photo") && !timestamp) continue
     if (linkedin && !card) continue
@@ -36,6 +42,7 @@ export function findMediaTargets(root: Document, pageUrl: string): Map<HTMLEleme
     if (!target) continue
     if (!targets.has(target) || targets.get(target) === null) targets.set(target, url)
   }
+  if (linkedin) return targets
   const videos = root.querySelectorAll("video")
   // Reel viewers preload hidden/neighboring videos. Only the most visible player
   // may use the address-bar permalink when its card has no link of its own.

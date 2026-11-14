@@ -114,7 +114,10 @@ it("reconnects activated and newly loaded tabs without opening the popup", async
   expect(inject).toHaveBeenCalledWith({ target: { tabId: 8, allFrames: true }, files: ["scripts/shortcuts.js"] })
 })
 
-it("saves a post timestamp link directly from Chrome's link context menu", async () => {
+it.each([
+  ["https://www.facebook.com/person/posts/pfbid123/?tracking=feed", "https://www.facebook.com/person/posts/pfbid123/"],
+  ["https://www.linkedin.com/posts/alex_topic-activity-123-Abcd?utm_source=share", "https://www.linkedin.com/feed/update/urn:li:activity:123/"],
+])("saves a post link from Chrome's context menu: %s", async (linkUrl, expectedUrl) => {
   vi.resetModules()
   const values: Record<string, unknown> = {}
   let click!: (info: { menuItemId: string; linkUrl: string }, tab: { id: number }) => void
@@ -126,6 +129,6 @@ it("saves a post timestamp link directly from Chrome's link context menu", async
     action: { setBadgeText: vi.fn(), setTitle: vi.fn() },
   })
   await import("./background")
-  click({ menuItemId: "zed-save-link", linkUrl: "https://www.facebook.com/person/posts/pfbid123/?tracking=feed" }, { id: 1 })
-  await vi.waitFor(() => expect(values.savedItems).toEqual([expect.objectContaining({ url: "https://www.facebook.com/person/posts/pfbid123/", kind: "link" })]))
+  click({ menuItemId: "zed-save-link", linkUrl }, { id: 1 })
+  await vi.waitFor(() => expect(values.savedItems).toEqual([expect.objectContaining({ url: expectedUrl, kind: "link" })]))
 })

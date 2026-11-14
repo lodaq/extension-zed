@@ -332,3 +332,20 @@ describe("programmatic video quality", () => {
     expect(levels[0].enabled).toBe(false)
   })
 })
+
+it("finds LinkedIn's bundled Video.js player on its container without a global registry", async () => {
+  const levels = [{ height: 360, enabled: true }, { height: 720, enabled: true }]
+  const player = { qualityLevels: () => levels, currentSrc: () => "stream", isDisposed: () => false }
+  const video = { tagName: "VIDEO", parentElement: { player } }
+  const p = page([video], {
+    location: { hostname: "www.linkedin.com" },
+    __zedVideoQualitySettings: { quality: "medium", fallback: "lower" },
+  })
+  expect(await p.run()).toBe("360p")
+  expect(levels.map(level => level.enabled)).toEqual([true, false])
+  p.event("zed-video-quality-changed", video, { quality: "auto", fallback: "lower" })
+  expect(levels.every(level => level.enabled)).toBe(true)
+  levels.push({ height: 1080, enabled: true })
+  p.event("zed-video-quality-changed", video, { quality: "hd720", fallback: "lower" })
+  expect(levels.map(level => level.enabled)).toEqual([false, true, false])
+})

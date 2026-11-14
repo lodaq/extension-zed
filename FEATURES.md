@@ -51,7 +51,7 @@ Speed normalizes before stepping: `1.36` becomes `1.4`, then Faster selects `1.5
 
 The password generator automatically generates a new password when an option changes. Each enabled character type appears at least once; disabling every type clears the output and disables copying. Lengths must be whole numbers from 4–128. It uses `crypto.getRandomValues` with rejection sampling and a cryptographic shuffle, with no network requests or password storage. Sources: `src/components/PasswordGenerator.tsx`, `src/lib/passwordGenerator.ts`.
 
-Sources: `src/components/MiscTab.tsx`, `src/components/VideoQualitySection.tsx`, `src/lib/videoQuality.ts`, `src/lib/playbackPresets.ts`, `src/lib/playback.ts`, `src/lib/pageActions.ts`, `public/scripts/`.
+Sources: `src/App.tsx`, `src/components/VideoQualitySection.tsx`, `src/lib/videoQuality.ts`, `src/lib/playbackPresets.ts`, `src/lib/playback.ts`, `src/lib/pageActions.ts`, `public/scripts/`.
 
 ## YouTube tab
 

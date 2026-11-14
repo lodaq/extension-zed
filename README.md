@@ -67,6 +67,8 @@ To create a portable build ZIP yourself, run `bun run package:store`. It creates
 
 ### Misc
 
+- **Site limiter:** enter a website URL and a duration in minutes, then choose **Block website**. The rule covers that domain and its subdomains, has no early-unblock control, and expires automatically. Daily usage limits count the active tab in the focused window and reset at local midnight. Ordinary rules need no administrator setup and apply only in the browser where Zed is enabled; they do not cover Tor or other browsers.
+
 - **Screenshots:** capture a selected area, visible area, full page, or element. Full page uses the browser renderer without walking the page in scroll steps. Preview the image, copy it as PNG, download it, or click Edit to send the original PNG to miniPaint’s own tab. Edit requires miniPaint site access and supports PNG files up to about 36 MiB; larger files can be downloaded and opened manually. Locked app shells may briefly render at a taller viewport before restoration. Native full-page capture requires the debugger permission and may show the browser's debugging indicator.
 
 - **Password generator:** create 4–128 character passwords using any combination of uppercase letters, lowercase letters, numbers, and symbols. It uses cryptographic randomness. Copying is always a separate action; generated passwords and generator options are not saved or included in backups.
@@ -77,7 +79,7 @@ To create a portable build ZIP yourself, run `bun run package:store`. It creates
 - **Inspect mode:** hover over page elements to view their identity, position, size, box model, colors, layout, and typography. Press **Escape** to exit an active inspect overlay.
 - **Design mode:** temporarily make page content editable. Turning the mode off does not undo edits; reloading the page restores the website.
 - **Arabic RTL mode:** adjust Arabic-leading text to read right-to-left, including newly inserted content. Turning it off restores alignment changes made by the extension.
-- **Section organization:** collapse sections, drag them into a new order, or focus a section's reorder handle and press Up/Down. The open state and order are saved and included in settings backups.
+- **Tool organization:** open Misc tools from tiles and change their order in Settings → Tool order using the Up/Down buttons. The popup remembers the selected view and its scroll position.
 
 ### YouTube
 
@@ -99,7 +101,7 @@ The **Reload** action restarts an extension (for Extension Zed, it reloads the a
 
 ### Links
 
-- Manage custom links and shortcuts for fast one-click navigation to frequently used destinations.
+- Manage custom links together with saved media links. Opening a link removes it from the list after the new tab opens; you can also copy or remove links explicitly.
 
 ### Saved
 
@@ -124,7 +126,7 @@ The **Reload** action restarts an extension (for Extension Zed, it reloads the a
 
 Preferences and saved items stay in the local browser profile. Extension Zed has no account or cloud sync and does not send telemetry, browsing history, or personal data to an external server. Exported backups include saved website origins along with preferences, so keep backup files private.
 
-The extension needs `scripting`, `activeTab`, `storage`, `clipboardWrite`, `debugger`, `tabs`, and `contextMenus` for page actions, context menu saving, tab navigation, and local preferences. Its automatic playback, video quality, shortcuts, and in-page save features run on HTTP and HTTPS pages, so the browser may show a broad site-access warning. **Management** is optional and is requested only when you choose to use the Extensions tab. Browser-internal and other protected pages generally do not allow page actions. Chrome requires debugger access to be declared at install/update; it cannot be granted as an optional runtime permission. Read [Permissions](PERMISSIONS.md) for details.
+The extension needs `scripting`, `activeTab`, `storage`, `clipboardWrite`, `debugger`, `tabs`, `contextMenus`, `alarms`, `idle`, `declarativeNetRequest`, and `nativeMessaging` for page actions, context menu saving, tab navigation, and local preferences. Its automatic playback, video quality, shortcuts, and in-page save features run on HTTP and HTTPS pages, so the browser may show a broad site-access warning. **Management** is optional and is requested only when you choose to use the Extensions tab. Browser-internal and other protected pages generally do not allow page actions. Chrome requires debugger access to be declared at install/update; it cannot be granted as an optional runtime permission. Read [Permissions](PERMISSIONS.md) for details.
 
 Media features depend on the site's player. Some sites may change their player APIs, inaccessible frames may remain unchanged, and unsupported players may not accept speed or quality changes.
 
@@ -137,3 +139,30 @@ Media features depend on the site's player. Some sites may change their player A
 - [Development and contribution notes](CONTRIBUTING.md)
 
 All UI uses the Zed Dark design system in `src/design-system/`; see DESIGN_SYSTEM.md. No raw colors, radii or font sizes outside tokens.css.
+
+## Administrator-protected website rules
+
+Misc → Site limiter supports timed blocks and daily foreground usage limits. Browser-only rules stop being enforced if the extension is disabled. The optional administrator-protection path uses a mandatory signed browser component and a separate administrator-owned companion; it cannot be activated by an ordinary unpacked install.
+
+See [companion setup and deployment limits](companion/README.md) for Linux, Windows and macOS installers, prerequisites and acceptance checks. These installers are prepared but **cross-platform enforcement has not been production validated**. They are not run by the extension build. A signed managed distribution and administrator installation are still required; protection is scoped to managed Chrome, with device/network restrictions needed to prevent other access paths.
+
+## Development checks and cleanup
+
+Use Bun 1.4.4. After installing dependencies, run:
+
+```sh
+bun run test
+bun run lint
+bun run build
+bun run check:build
+python3 -m unittest discover -s companion -p 'test_*.py'
+bun run test:e2e
+bun run test:e2e:video-quality
+bun audit --production
+```
+
+Browser tests use a separate temporary profile and the pinned Chrome DevTools MCP 1.13.0 runner through `npx`; Node.js and npm are required. Set `CHROME_PATH` to your Chromium/Chrome for Testing executable. On this development machine it defaults to the cached Playwright Chromium path. Tests install the built `dist` extension, not the source tree, and automatically clean up their temporary profiles.
+
+The cleanup removed 752 lines of unused production TypeScript: the retired Misc accordion/drag handlers, unused scroll/tabs/label wrappers, and an unnecessary component export barrel. Tool ordering and scrolling still use the current Settings and popup implementations. Scroll-cache tests now live beside `bootCache.ts`; browser suites share one client and check the current tile navigation. Unused Radix tabs/label dependencies were removed. Existing saved settings and active website rules are preserved.
+
+Verification covers unit tests, companion state/IPC tests, built assets, popup navigation/password regeneration, page actions, and media player fixtures. It does not certify every live website or administrator installation on Windows/macOS. See the [companion deployment limits](companion/README.md) and [development dependency audit](docs/dependency-audit.md). System-wide filtering across Tor and other browsers is not implemented.

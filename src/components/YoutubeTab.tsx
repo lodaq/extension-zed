@@ -1,4 +1,4 @@
-import { YoutubeFocusMode } from "."
+import YoutubeFocusMode from "./YoutubeFocusMode"
 import { popupSectionStack } from "@/lib/popupLayout"
 import { cn } from "@/lib/utils"
 

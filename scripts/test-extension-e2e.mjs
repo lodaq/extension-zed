@@ -1,119 +1,7 @@
-import { spawn } from "node:child_process";
-import fs from "node:fs";
 import http from "node:http";
-import path from "node:path";
 import process from "node:process";
 
-const EXTENSION_DIST = path.resolve("dist");
-const CHROME_PATH = "/home/sebaq/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome";
-const USER_DATA_DIR = "/tmp/chrome-mcp-test-profile";
-
-class DevToolsClient {
-  constructor() {
-    this.proc = null;
-    this.reqId = 1;
-    this.pending = new Map();
-    this.buffer = "";
-  }
-
-  async start() {
-    if (fs.existsSync(USER_DATA_DIR)) {
-      try {
-        fs.rmSync(USER_DATA_DIR, { recursive: true, force: true });
-      } catch {}
-    }
-
-    this.proc = spawn(
-      "npx",
-      [
-        "-y",
-        "chrome-devtools-mcp@latest",
-        "--categoryExtensions",
-        "--headless",
-        `--userDataDir=${USER_DATA_DIR}`,
-        `--executablePath=${CHROME_PATH}`,
-        `--workspace=${path.resolve(".")}`,
-        "--ignore-default-chrome-arg=--disable-extensions",
-        "--chrome-arg=--no-sandbox",
-        "--chrome-arg=--disable-setuid-sandbox",
-        "--chrome-arg=--headless=new",
-        "--no-usage-statistics",
-      ],
-      {
-        stdio: ["pipe", "pipe", "inherit"],
-        env: {
-          ...process.env,
-          TMPDIR: "/tmp",
-        },
-      }
-    );
-
-    this.proc.stdout.on("data", (chunk) => {
-      this.buffer += chunk.toString("utf8");
-      const lines = this.buffer.split("\n");
-      this.buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const msg = JSON.parse(line);
-          if (msg.id && this.pending.has(msg.id)) {
-            const { resolve, reject } = this.pending.get(msg.id);
-            this.pending.delete(msg.id);
-            if (msg.error) {
-              reject(new Error(msg.error.message || JSON.stringify(msg.error)));
-            } else {
-              resolve(msg.result);
-            }
-          }
-        } catch {
-          // Ignore non-json logs
-        }
-      }
-    });
-
-    this.proc.on("exit", (code) => {
-      for (const { reject } of this.pending.values()) {
-        reject(new Error(`MCP server exited with code ${code}`));
-      }
-      this.pending.clear();
-    });
-
-    // Initialize MCP connection
-    await this.request("initialize", {
-      protocolVersion: "2024-11-05",
-      capabilities: {},
-      clientInfo: { name: "test-client", version: "1.0.0" },
-    });
-
-    // Send initialized notification
-    this.proc.stdin.write(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        method: "notifications/initialized",
-        params: {},
-      }) + "\n"
-    );
-  }
-
-  async request(method, params = {}) {
-    const id = this.reqId++;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.proc.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
-    });
-  }
-
-  async callTool(name, args = {}) {
-    const res = await this.request("tools/call", { name, arguments: args });
-    return res;
-  }
-
-  async close() {
-    if (this.proc) {
-      this.proc.kill("SIGTERM");
-    }
-  }
-}
+import { DevToolsClient, EXTENSION_DIST, parseTextContent } from "./test-browser.mjs";
 
 // Simple test web server for content-script testing
 function startTestServer() {
@@ -146,13 +34,6 @@ function startTestServer() {
       resolve({ server, port });
     });
   });
-}
-
-function parseTextContent(toolResult) {
-  if (!toolResult || !toolResult.content) return "";
-  return toolResult.content
-    .map((c) => (c.type === "text" ? c.text : JSON.stringify(c)))
-    .join("\n");
 }
 
 async function run() {
@@ -223,14 +104,14 @@ async function run() {
     let snapshotText = parseTextContent(snapshotRes);
 
     const hasMiscTab = snapshotText.includes('"Misc"');
-    const hasYoutubeTab = snapshotText.includes('"Youtube"');
+    const hasYoutubeTab = snapshotText.includes('"YouTube"');
     const hasSettingsTab = snapshotText.includes('"Settings"');
     const hasShortcutsTab = /shortcuts/i.test(snapshotText);
 
     record("Popup tab: Misc present", hasMiscTab);
     record("Popup tab: Youtube present", hasYoutubeTab);
     record("Popup tab: Settings present", hasSettingsTab);
-    record("Popup tab: Shortcuts NOT present", !hasShortcutsTab, hasShortcutsTab ? "Found shortcuts reference" : "None");
+    record("Popup tab: Shortcuts present", hasShortcutsTab);
 
     // Check for popup console errors
     const consoleRes = await client.callTool("list_console_messages", { pageId: 1, types: ["error"] });
@@ -243,17 +124,13 @@ async function run() {
     const pwGenEval = await client.callTool("evaluate_script", {
       pageId: 1,
       function: `async () => {
-        const summaries = Array.from(document.querySelectorAll('summary'));
-        const pwSummary = summaries.find(s => s.textContent.includes('Password generator'));
-        if (pwSummary) {
-          pwSummary.click();
-        }
+        document.getElementById('zed-tool-password')?.click();
         await new Promise(r => setTimeout(r, 400));
 
         const input = document.querySelector('input[aria-label="Generated password"]');
         const initialVal = input ? input.value : null;
 
-        const reloadBtn = document.querySelector('button[aria-label="Generate a new password"]');
+        const reloadBtn = document.querySelector('button[aria-label="Generate new password"]');
         if (reloadBtn) reloadBtn.click();
         await new Promise(r => setTimeout(r, 200));
 
@@ -262,16 +139,17 @@ async function run() {
           opened: !!input,
           initialLen: initialVal ? initialVal.length : 0,
           newLen: newVal ? newVal.length : 0,
-          hasValue: Boolean(newVal && newVal.length > 0)
+          hasValue: Boolean(newVal && newVal.length > 0),
+          changed: initialVal !== newVal
         };
       }`,
     });
     const pwGenText = parseTextContent(pwGenEval);
-    record("Password Generator click & update", pwGenText.includes('"hasValue":true'), pwGenText);
+    record("Password Generator click & update", pwGenText.includes('"hasValue":true') && pwGenText.includes('"changed":true'), pwGenText);
 
     // Switch to Extensions tab using CDP click tool
     console.log("\n8. Testing Tab switching to Extensions via click tool...");
-    const extMatch = snapshotText.match(/uid=([^\s]+)\s+tab\s+"Extensions"/);
+    const extMatch = snapshotText.match(/uid=([^\s]+)\s+button\s+"Extensions"/);
     if (extMatch) {
       await client.callTool("click", { pageId: 1, uid: extMatch[1] });
       await new Promise(r => setTimeout(r, 200));
@@ -285,13 +163,13 @@ async function run() {
 
     // Switch to YouTube tab using CDP click tool
     console.log("\n8b. Testing Tab switching to YouTube via click tool...");
-    const ytMatch = snapshotText.match(/uid=([^\s]+)\s+tab\s+"Youtube"/);
+    const ytMatch = snapshotText.match(/uid=([^\s]+)\s+button\s+"YouTube"/);
     if (ytMatch) {
       await client.callTool("click", { pageId: 1, uid: ytMatch[1] });
       await new Promise(r => setTimeout(r, 200));
       const ytSnap = await client.callTool("take_snapshot", { pageId: 1 });
       const ytSnapText = parseTextContent(ytSnap);
-      const ytActive = ytSnapText.includes('tabpanel "Youtube"');
+      const ytActive = ytSnapText.includes('heading "YouTube"') && ytSnapText.includes('Focus mode');
       record("Switch to YouTube tab", ytActive, ytSnapText.slice(0, 300));
     } else {
       record("Switch to YouTube tab", false, "Could not find YouTube tab UID");
@@ -305,7 +183,7 @@ async function run() {
       await new Promise(r => setTimeout(r, 600));
       const setSnap = await client.callTool("take_snapshot", { pageId: 1 });
       const setSnapText = parseTextContent(setSnap);
-      const setHasExport = setSnapText.includes("Export settings") || setSnapText.includes("Settings");
+      const setHasExport = setSnapText.includes("Export") && setSnapText.includes("Import");
       record("Switch to Settings tab & verify Export/Import", setHasExport, setSnapText.slice(0, 300));
     } else {
       record("Switch to Settings tab & verify Export/Import", false, "Could not find Settings tab UID");
@@ -383,12 +261,11 @@ async function run() {
       pageId: testPageId,
       function: `() => {
         const video = document.querySelector('video');
-        if (video) video.playbackRate = 1.75;
         return { rate: video ? video.playbackRate : 1 };
       }`,
     });
     const playbackVerifyText = parseTextContent(playbackVerify);
-    record("Media element playback rate verified", playbackVerifyText.includes('"rate":1.75') || playbackVerifyText.includes('rate: 1.75'), playbackVerifyText);
+    record("Media element playback rate verified", playbackVerifyText.includes('"rate":1.8'), playbackVerifyText);
 
     // Verify Arabic RTL mode content script injection
     console.log("\n14. Verifying Arabic RTL mode behavior on target page...");

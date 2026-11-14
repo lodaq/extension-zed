@@ -3,10 +3,12 @@ import { useStoredValue } from "./useStoredValue"
 
 const hooks = vi.hoisted(() => ({
   setValue: vi.fn(),
+  loadedKey: null as string | null,
+  setLoadedKey: vi.fn((key: string) => { hooks.loadedKey = key }),
   effect: undefined as undefined | (() => void | (() => void)),
 }))
 vi.mock("react", () => ({
-  useState: (initial: unknown) => [typeof initial === "function" ? (initial as () => unknown)() : initial, hooks.setValue],
+  useState: (initial: unknown) => initial === null ? [hooks.loadedKey, hooks.setLoadedKey] : [typeof initial === "function" ? (initial as () => unknown)() : initial, hooks.setValue],
   useEffect: (effect: () => void | (() => void)) => { hooks.effect = effect },
   useRef: (initial: unknown) => ({ current: initial }),
 }))
@@ -38,7 +40,10 @@ function change(value: unknown, area: Parameters<Listener>[1] = "local", key = "
 async function settle() { await Promise.resolve(); await Promise.resolve() }
 
 beforeEach(() => {
+  cleanup = undefined
   hooks.setValue.mockClear()
+  hooks.loadedKey = null
+  hooks.setLoadedKey.mockClear()
   listeners = new Set()
   read = deferred()
   write = deferred()
@@ -126,4 +131,34 @@ it("initializes synchronously from functional initial value", () => {
   const [val] = useStoredValue("customKey", getter)
   expect(val).toBe(false)
   expect(getter).toHaveBeenCalledOnce()
+})
+
+it("keeps YouTube values loading until storage responds", async () => {
+  expect(useStoredValue("youtubeFocus", false)[2]).toBe(false)
+  cleanup = hooks.effect?.()
+  read.resolve({ youtubeFocus: true })
+  await settle()
+  expect(hooks.setValue).toHaveBeenLastCalledWith(true)
+  expect(useStoredValue("youtubeFocus", false)[2]).toBe(true)
+  expect(useStoredValue("youtubeHideControls", false)[2]).toBe(false)
+})
+
+it("finishes loading on live changes and storage failures", async () => {
+  mount()
+  change(false)
+  expect(StoredValueHarness()[2]).toBe(true)
+  hooks.loadedKey = null
+  cleanup?.()
+  read = deferred()
+  mount()
+  read.reject(new Error("unavailable"))
+  await settle()
+  expect(StoredValueHarness()[2]).toBe(true)
+})
+
+it("uses defaults immediately when storage is unavailable", () => {
+  vi.stubGlobal("chrome", {})
+  const [value, , loaded] = useStoredValue("youtubeFocus", false)
+  expect(value).toBe(false)
+  expect(loaded).toBe(true)
 })

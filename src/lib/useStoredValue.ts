@@ -3,8 +3,10 @@ import { mirrorBootValue, readBootState } from "./bootCache"
 import { readSetting } from "./settings"
 
 export function useStoredValue<T>(key: string, initialValue: T | (() => T)) {
+  const hasStorage = typeof chrome !== "undefined" && Boolean(chrome.storage?.local)
   const resolveInitial = (): T => {
     const boot = readBootState()
+    if (key === "popupLocation" && boot.location) return boot.location as T
     if (key === "darkTheme") {
       if (typeof boot.dark === "boolean") return boot.dark as unknown as T
       if (typeof document !== "undefined" && document.documentElement) {
@@ -24,11 +26,11 @@ export function useStoredValue<T>(key: string, initialValue: T | (() => T)) {
   }
 
   const [value, setValue] = useState<T>(resolveInitial)
+  const [loadedKey, setLoadedKey] = useState<string | null>(null)
 
   useEffect(() => {
     let acceptInitialRead = true
     const fallback = typeof initialValue === "function" ? (initialValue as () => T)() : initialValue
-    const hasStorage = typeof chrome !== "undefined" && Boolean(chrome.storage?.local)
     const hasOnChanged = typeof chrome !== "undefined" && Boolean(chrome.storage?.onChanged)
 
     const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
@@ -37,6 +39,7 @@ export function useStoredValue<T>(key: string, initialValue: T | (() => T)) {
         const next = readSetting(key, changes[key].newValue, fallback)
         mirrorBootValue(key, next)
         setValue(next)
+        setLoadedKey(key)
       }
     }
     if (hasOnChanged) {
@@ -50,10 +53,14 @@ export function useStoredValue<T>(key: string, initialValue: T | (() => T)) {
             const next = readSetting(key, result[key], fallback)
             mirrorBootValue(key, next)
             setValue(next)
+            setLoadedKey(key)
           }
         })
         .catch(() => {
-          if (acceptInitialRead) setValue(fallback)
+          if (acceptInitialRead) {
+            setValue(fallback)
+            setLoadedKey(key)
+          }
         })
     }
     return () => {
@@ -62,7 +69,7 @@ export function useStoredValue<T>(key: string, initialValue: T | (() => T)) {
         chrome.storage.onChanged.removeListener(listener)
       }
     }
-  }, [initialValue, key])
+  }, [initialValue, key, hasStorage])
 
   const setStoredValue = (next: T) => {
     mirrorBootValue(key, next)
@@ -72,5 +79,5 @@ export function useStoredValue<T>(key: string, initialValue: T | (() => T)) {
     return Promise.resolve()
   }
 
-  return [value, setStoredValue] as const
+  return [value, setStoredValue, loadedKey === key || !hasStorage] as const
 }

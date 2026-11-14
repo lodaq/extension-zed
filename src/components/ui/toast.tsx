@@ -14,7 +14,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed inset-x-3 top-3 z-[100] flex max-h-screen flex-col gap-2 outline-none",
+      "absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex max-w-full flex-col outline-none",
       className
     )}
     {...props}
@@ -23,12 +23,12 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-none border p-3 pr-8 text-sm shadow-lg",
+  "zed-toast group pointer-events-auto relative flex items-center gap-2 pr-8",
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
-        destructive: "border-destructive bg-destructive text-destructive-foreground",
+        default: "",
+        destructive: "",
       },
     },
     defaultVariants: { variant: "default" },
@@ -50,7 +50,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-2 rounded-none p-1 text-foreground/50 opacity-0 hover:text-foreground focus:opacity-100 focus:outline-none group-hover:opacity-100",
+      "absolute right-2 top-2 rounded-[var(--zed-radius-lg)] p-1 text-foreground/50 opacity-0 hover:text-foreground focus:opacity-100 focus:outline-none group-hover:opacity-100",
       className
     )}
     toast-close=""
@@ -81,14 +81,14 @@ export function Toaster() {
   const { toasts } = useToast()
 
   return (
-    <ToastProvider duration={1000} swipeDirection="up">
+    <ToastProvider duration={1800} swipeDirection="up">
       {toasts.map(({ id, title, description, ...props }) => (
-        <Toast key={id} {...props}>
+        <Toast key={id} role="status" aria-live="polite" {...props}>
           <div className="grid gap-1">
             {title && <ToastTitle>{title}</ToastTitle>}
             {description && <ToastDescription>{description}</ToastDescription>}
           </div>
-          <ToastClose />
+          <ToastClose aria-label="Dismiss notification" />
         </Toast>
       ))}
       <ToastViewport />

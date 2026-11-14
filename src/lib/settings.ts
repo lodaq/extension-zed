@@ -35,10 +35,12 @@ export const RESET_SETTINGS_KEYS = [
   "designMode",
   "arabicRtlMode",
   "popupActiveTab",
+  "popupLocation",
   "miscSectionOrder",
   "miscExpandedSections",
+  "keyboardShortcuts",
 ] as const
-export type KnownSettingKey = (typeof RESET_SETTINGS_KEYS)[number]
+export type KnownSettingKey = (typeof RESET_SETTINGS_KEYS)[number] | "savedLinks"
 
 export interface ExportPayload {
   version: number
@@ -107,7 +109,25 @@ function isValidMiscExpandedSections(value: unknown): boolean {
 
 type SettingValidator = (value: unknown) => boolean
 
+function isSavedLinks(value: unknown): boolean {
+  return Array.isArray(value) && value.every(link => {
+    if (!isRecord(link) || typeof link.url !== "string" || typeof link.title !== "string" || typeof link.href !== "string") return false
+    try { return ["http:", "https:", "chrome:", "chrome-extension:", "edge:", "brave:", "about:", "view-source:", "devtools:", "file:"].includes(new URL(link.href).protocol) }
+    catch { return false }
+  })
+}
+
+function isShortcutMap(value: unknown): boolean {
+  return isRecord(value) && Object.entries(value).every(([key, combo]) => /^action(?:[0-9]|1[0-9]|2[0-7])$/.test(key) && typeof combo === "string" && combo.length <= 100)
+}
+
 const validators: Record<KnownSettingKey, SettingValidator> = {
+  popupLocation: value => isRecord(value) &&
+    ["Misc", "Extensions", "YouTube", "Links", "Shortcuts"].includes(value.tab as string) &&
+    (value.detail === null || ["playback", "quality", "password", "volume", "scrollbars", "modes", "capture"].includes(value.detail as string)) &&
+    typeof value.settings === "boolean",
+  keyboardShortcuts: isShortcutMap,
+  savedLinks: isSavedLinks,
   speed: isValidSpeed,
   volumeBoost: isValidVolumeBoost,
   darkTheme: isBoolean,

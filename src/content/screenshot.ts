@@ -14,14 +14,15 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
   const shadow = host.attachShadow({ mode: "closed" })
   const style = document.createElement("style")
   style.textContent = scrollbarCss + `
-    *{box-sizing:border-box;border-radius:0!important;animation:none!important;transition:none!important}
-    dialog{pointer-events:auto;color:var(--card-foreground);background:var(--card);border:1px solid var(--border);font:14px/1.5 var(--font-sans);padding:20px;box-shadow:0 2px 6px #0008}
-    dialog::backdrop{background:#0005}
+    *{box-sizing:border-box;animation:none!important;transition:none!important}
+    :host{font-family:var(--zed-font)}
+    dialog{border-radius:var(--zed-radius-dialog);pointer-events:auto;color:var(--card-foreground);background:var(--card);border:1px solid var(--border);font:var(--zed-fs-base)/1.5 var(--font-sans);padding:20px;box-shadow:0 2px 6px var(--zed-scrim)}
+    dialog::backdrop{background:var(--zed-scrim)}
     .preview{width:min(760px,calc(100vw - 32px));max-width:none;max-height:min(640px,80dvh);margin:auto;overflow:hidden}
     .preview[open]{display:flex;flex-direction:column}
     .header{flex-shrink:0;display:flex;align-items:start;justify-content:space-between;gap:20px;margin-bottom:16px}
-    h2{font:inherit;font-size:16px;font-weight:600;margin:0}
-    button,a{font:inherit;cursor:pointer;padding:8px 16px;border:1px solid var(--input);color:var(--foreground);background:transparent;text-decoration:none}
+    h2{font:inherit;font-size: var(--zed-fs-lg);font-weight:600;margin:0}
+    button,a{border-radius:var(--zed-radius-md);font:inherit;cursor:pointer;padding:8px 16px;border:1px solid var(--input);color:var(--foreground);background:transparent;text-decoration:none}
     .footer button,.footer a{display:inline-flex;align-items:center;justify-content:center;height:36px;font-weight:500}
     button:hover:not(:disabled),a:hover{background:var(--accent);color:var(--accent-foreground)}
     button:focus-visible,a:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
@@ -32,10 +33,10 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     .image{max-height:min(460px,calc(80dvh - 180px));overflow:auto;background:var(--muted);min-height:0;flex:1 1 auto}
     img{display:block;width:100%;height:auto}
     .footer{flex-shrink:0;display:flex;flex-wrap:wrap;gap:8px;justify-content:end;align-items:center;margin-top:16px}
-    .status{flex-shrink:0;font-size:14px;margin:8px 0 0}
-    .picker{pointer-events:auto;position:fixed;inset:0;width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:0;background:transparent;border:0;border-radius:0;cursor:crosshair;box-shadow:none;overflow:hidden}
+    .status{flex-shrink:0;font-size: var(--zed-fs-base);margin:8px 0 0}
+    .picker{pointer-events:auto;position:fixed;inset:0;width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:0;background:transparent;border:0;border-radius: var(--zed-radius-none);cursor:crosshair;box-shadow:none;overflow:hidden}
     .picker::backdrop{background:transparent}
-    .hint{position:absolute;top:12px;left:50%;transform:translateX(-50%);max-width:90vw;padding:8px 14px;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);font-size:14px;pointer-events:none}
+    .hint{position:absolute;top:12px;left:50%;transform:translateX(-50%);max-width:90vw;padding:8px 14px;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);font-size: var(--zed-fs-base);pointer-events:none}
     .box{position:fixed;border:2px solid var(--ring);background:transparent;pointer-events:none}
   `
   shadow.append(style)

@@ -1,14 +1,14 @@
 /* Shared by every extension document and injected preview. */
 .dark,
 :host {
-  --zed-scrollbar-color: oklch(0.6 0.03 269.46 / 0.4);
-  --zed-scrollbar-thumb: oklch(0.6 0.03 269.46 / 0.35);
-  --zed-scrollbar-hover: oklch(0.6 0.03 269.46 / 0.65);
+  --zed-scrollbar-color: var(--zed-text-muted);
+  --zed-scrollbar-thumb: var(--zed-text-muted);
+  --zed-scrollbar-hover: var(--zed-text-muted);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--zed-scrollbar-color, oklch(0.5 0.03 268.53 / 0.4)) transparent;
+  scrollbar-color: var(--zed-scrollbar-color, var(--zed-text-muted)) transparent;
 }
 
 .modular-scrollbar,
@@ -20,12 +20,12 @@
 *::-webkit-scrollbar { width: 6px; height: 6px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: var(--zed-scrollbar-thumb, oklch(0.5 0.03 268.53 / 0.35));
-  border-radius: 0;
+  background: var(--zed-scrollbar-thumb, var(--zed-text-muted));
+  border-radius: var(--zed-radius-pill);
   border: 1px solid transparent;
   background-clip: padding-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--zed-scrollbar-hover, oklch(0.5 0.03 268.53 / 0.65));
+  background: var(--zed-scrollbar-hover, var(--zed-text-muted));
   background-clip: padding-box;
 }

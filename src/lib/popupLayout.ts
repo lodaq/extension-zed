@@ -1,8 +1,10 @@
+import type { MiscSectionId } from "./settings"
+export const DEFAULT_TOOL_ORDER: readonly MiscSectionId[] = ["playback","quality","password","volume","scrollbars","modes","screenshot"]
 export const popupSectionStack = "flex flex-col gap-3"
 
-export const popupPanel = "rounded-none border border-border/80 bg-card p-3"
+export const popupPanel = "zed-stack"
 
-export const popupSectionTitle = "text-base font-semibold leading-5 text-foreground"
+export const popupSectionTitle = "zed-title"
 
 export const popupSectionInner = "flex flex-col gap-2.5"
 

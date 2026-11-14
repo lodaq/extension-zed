@@ -19,7 +19,6 @@
     border-radius: 9999px !important;
     border: 2px solid transparent !important;
     background-clip: padding-box !important;
-    transition: background-color 0.2s ease;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(140, 140, 140, 0.75) !important;

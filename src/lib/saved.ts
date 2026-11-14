@@ -19,6 +19,12 @@ export function mediaUrl(value: string): string | null {
       if (id && /^[\w-]+$/.test(id)) return `https://www.youtube.com/watch?v=${id}`
     }
     if (host === "youtu.be" && /^\/[\w-]+$/.test(url.pathname)) return `https://www.youtube.com/watch?v=${url.pathname.slice(1)}`
+    if (host === "linkedin.com") {
+      const update = decodeURIComponent(url.pathname).match(/^\/feed\/update\/urn:li:(activity|share|ugcPost):(\d+)\/?$/)
+      if (update) return `https://www.linkedin.com/feed/update/urn:li:${update[1]}:${update[2]}/`
+      const post = url.pathname.match(/^\/posts\/[\w-]+-activity-(\d+)-[\w-]+\/?$/)
+      if (post) return `https://www.linkedin.com/feed/update/urn:li:activity:${post[1]}/`
+    }
     if (host === "instagram.com" || host === "facebook.com") {
       if (host === "instagram.com") {
         const post = url.pathname.match(/^\/p\/([\w-]+)(?:\/|$)/)

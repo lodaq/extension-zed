@@ -1,12 +1,12 @@
 import { readSaved, mediaUrl, SAVED_BUTTONS_KEY, SAVED_KEY, type SavedItem } from "../lib/saved"
-import { findMediaTargets } from "../lib/mediaTargets"
+import { findMediaTargets, LINKEDIN_CARD } from "../lib/mediaTargets"
 
 type SaveEntry = { mount: HTMLElement; previousPosition: string | null; host: HTMLDivElement; button: HTMLButtonElement; url: string | null; busy: boolean }
 
 const state = globalThis as typeof globalThis & { __zedSaveInstalled?: boolean }
 
 function installSaveButtons() {
-  if (state.__zedSaveInstalled || window !== window.top || !/(^|\.)(youtube\.com|youtu\.be|instagram\.com|facebook\.com)$/.test(location.hostname)) return
+  if (state.__zedSaveInstalled || window !== window.top || !/(^|\.)(youtube\.com|youtu\.be|instagram\.com|facebook\.com|linkedin\.com)$/.test(location.hostname)) return
   let themeUrl: string
   try {
     if (!chrome.runtime?.id) return
@@ -98,7 +98,7 @@ function installSaveButtons() {
       if (entries.has(target)) continue
       const host = document.createElement("div")
       host.setAttribute("data-zed-save-button", "")
-      const card = target.matches('article, [role=article], [data-pagelet^=FeedUnit]')
+      const card = target.matches(`article, [role=article], [data-pagelet^=FeedUnit], ${LINKEDIN_CARD}`)
       const facebook = /^(?:www\.|m\.)?facebook\.com$/.test(location.hostname)
       const post = (card || facebook) && !/\/reels?\//.test(url ?? "")
       if (post && !card) host.setAttribute("data-zed-post-inline", "")
@@ -187,7 +187,7 @@ function installSaveButtons() {
     timeout = window.setTimeout(() => { scheduled = false; scan() }, 100)
   }
   observer = new MutationObserver(schedule)
-  observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["href", "video-id", "data-video-id", "src", "aria-hidden"] })
+  observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["href", "video-id", "data-video-id", "src", "aria-hidden", "data-urn"] })
   window.addEventListener("scroll", schedule, { capture: true, passive: true })
   window.addEventListener("resize", schedule)
   window.addEventListener("popstate", schedule)

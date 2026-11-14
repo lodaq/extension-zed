@@ -1,9 +1,20 @@
 import { mediaUrl } from "./saved"
 
 // Prefer the whole media card so title and thumbnail links share one button.
+export const LINKEDIN_CARD = '.feed-shared-update-v2, .occludable-update, [data-urn^="urn:li:activity:"], [data-urn^="urn:li:share:"], [data-urn^="urn:li:ugcPost:"]'
 const CARD = "ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer, ytd-reel-item-renderer, ytd-reel-video-renderer, yt-lockup-view-model, yt-shorts-lockup-view-model, ytm-shorts-lockup-view-model, article, [role=article], [data-pagelet^=FeedUnit]"
 export function findMediaTargets(root: Document, pageUrl: string): Map<HTMLElement, string | null> {
   const targets = new Map<HTMLElement, string | null>()
+  const linkedin = /^(?:www\.|m\.)?linkedin\.com$/.test(new URL(pageUrl).hostname)
+  const cardSelector = linkedin ? LINKEDIN_CARD : CARD
+  if (linkedin) {
+    for (const card of root.querySelectorAll<HTMLElement>(LINKEDIN_CARD)) {
+      if (card.parentElement?.closest(LINKEDIN_CARD)) continue
+      const urn = card.getAttribute("data-urn")
+      const url = urn ? mediaUrl(`https://www.linkedin.com/feed/update/${urn}/`) : null
+      if (url) targets.set(card, url)
+    }
+  }
   const facebook = /^(?:www\.|m\.)?facebook\.com$/.test(new URL(pageUrl).hostname)
   for (const anchor of root.querySelectorAll<HTMLAnchorElement>("a[href]")) {
     let destination: URL
@@ -17,9 +28,10 @@ export function findMediaTargets(root: Document, pageUrl: string): Map<HTMLEleme
     const rawHref = anchor.getAttribute?.("href")
     if ((rawHref === "#" || rawHref === "") && !timestamp) continue
     if (!url && !timestamp) continue
-    const card = anchor.closest<HTMLElement>(CARD)
+    const card = anchor.closest<HTMLElement>(cardSelector)
     // Prefer the post timestamp to a separate link opening only its photo.
     if (facebook && !card && destination.pathname.startsWith("/photo") && !timestamp) continue
+    if (linkedin && !card) continue
     const target = card ?? anchor.parentElement
     if (!target) continue
     if (!targets.has(target) || targets.get(target) === null) targets.set(target, url)
@@ -41,9 +53,9 @@ export function findMediaTargets(root: Document, pageUrl: string): Map<HTMLEleme
     }
   }
   for (const video of videos) {
-    const target = video.closest<HTMLElement>(CARD) ?? video.parentElement
+    const target = video.closest<HTMLElement>(cardSelector) ?? video.parentElement
     if (!target || targets.has(target)) continue
-    const card = video.closest<HTMLElement>(CARD)
+    const card = video.closest<HTMLElement>(cardSelector)
     const id = card?.getAttribute("video-id") ?? card?.getAttribute("data-video-id")
     const ownUrl = id ? mediaUrl(`https://www.youtube.com/watch?v=${id}`) : null
     if (ownUrl) { targets.set(target, ownUrl); continue }

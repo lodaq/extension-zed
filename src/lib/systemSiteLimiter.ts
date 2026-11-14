@@ -5,14 +5,17 @@ export const SYSTEM_LIMITER_ALARM = "zed-system-site-limiter"
 const HOST = "com.extension_zed.limiter"
 const FIRST_RULE = 710_000
 export type SystemSiteLimit = SiteLimit & { locked?: boolean; system: true }
-type Response = { ok: boolean; rules?: SystemSiteLimit[]; error?: string }
+type Response = { ok: boolean; rules?: SystemSiteLimit[]; error?: string; allowUnmanaged?: boolean }
 let pending: Promise<unknown> = Promise.resolve()
 
 export function systemSiteLimiter(action: "status" | "add" | "report", input: { url?: unknown; mode?: unknown; minutes?: unknown } = {}) {
   const task = pending.then(async () => {
-    // Unpacked or ordinary installs cannot provide mandatory foreground tracking.
+    // The Brave standalone service explicitly permits ordinary installs.
     const self = await chrome.management.getSelf()
-    if (self.installType !== "admin") throw new Error("Administrator setup required. Ask your administrator to install the mandatory Zed browser component and companion service.")
+    if (self.installType !== "admin") {
+      const status: Response = await chrome.runtime.sendNativeMessage(HOST, { action: "status" })
+      if (!status?.ok || status.allowUnmanaged !== true) throw new Error("Administrator setup required. Install the Brave system blocker or the mandatory Chrome companion.")
+    }
     const response: Response = await chrome.runtime.sendNativeMessage(HOST, { ...input, action })
     if (!response?.ok || !Array.isArray(response.rules)) throw new Error(response?.error || "Administrator service is unavailable")
     const rules = response.rules.map(rule => ({ ...rule, system: true as const }))

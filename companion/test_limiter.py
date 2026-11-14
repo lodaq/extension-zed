@@ -172,6 +172,20 @@ class LimiterTests(unittest.TestCase):
             with self.assertRaises(PermissionError):
                 verify_bridge(None, config)
 
+    def test_brave_bundle_keeps_disable_available_and_uses_separate_system_paths(self):
+        output = Path(self.directory.name) / "brave"
+        install.bundle(output, "a" * 32, {}, "https://example.com/update.xml", "brave")
+        config = json.loads((output / "linux/config.json").read_text())
+        self.assertTrue(config["allow_unmanaged"])
+        self.assertEqual(config["policies"], {})
+        self.assertEqual(config["policy_path"], "/etc/brave/policies/managed/extension-zed.json")
+        self.assertEqual(config["native_manifest_path"], "/etc/chromium/native-messaging-hosts/com.extension_zed.limiter.json")
+        self.assertIn("/opt/brave-bin/brave", config["browsers"])
+        unit = (output / "linux/extension-zed-brave.service").read_text()
+        self.assertIn("ReadWritePaths=/var/lib/extension-zed-brave /etc/brave/policies/managed", unit)
+        self.assertIn("/usr/local/lib/extension-zed-brave/zed_limiter.py", unit)
+        self.assertFalse((output / "macos").exists())
+
     def test_bundle_generation_has_exact_origin_and_all_platform_services(self):
         output = Path(self.directory.name) / "bundle"
         extension_id = "a" * 32

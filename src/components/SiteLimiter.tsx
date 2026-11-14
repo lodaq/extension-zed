@@ -12,7 +12,7 @@ export default function SiteLimiter() {
   const [rules, setRules] = useState<SiteLimit[]>([])
   const [system, setSystem] = useState(false)
   const [systemRules, setSystemRules] = useState<SystemSiteLimit[]>([])
-  const [systemStatus, setSystemStatus] = useState("Checking administrator protection…")
+  const [systemStatus, setSystemStatus] = useState("Checking system protection…")
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState("")
@@ -28,7 +28,8 @@ export default function SiteLimiter() {
     void chrome.runtime.sendMessage({ type: "limiter:system-status" }).then(result => {
       if (!result?.ok) throw new Error(result?.error || "Administrator service is unavailable")
       setSystemRules(result.rules)
-      setSystemStatus("Administrator service connected. The administrator must verify mandatory Chrome policies before relying on protection.")
+      setSystem(true)
+      setSystemStatus("System blocker connected. New rules use system protection by default and remain enforced when Zed is disabled.")
     }).catch(error => {
       setSystemStatus(String(error).replace(/^(Error:\s*)+/, ""))
       void chrome.storage.local.get(SYSTEM_LIMITER_VIEW).then(stored => setSystemRules((stored[SYSTEM_LIMITER_VIEW] ?? []) as SystemSiteLimit[])).catch(() => {})
@@ -65,21 +66,21 @@ export default function SiteLimiter() {
       </fieldset>
       <label htmlFor={`${id}-minutes`}>{mode === "block" ? "Block duration" : "Daily allowance"} (minutes)</label>
       <input id={`${id}-minutes`} name="minutes" type="number" className="zed-input" min={1} max={mode === "daily" ? 1440 : 525600} step={1} value={minutes} onChange={e => setMinutes(e.target.value)} required />
-      <p className="zed-helper">{mode === "daily" ? "Recurring every day, with no removal control. Counts the active tab in the focused window while the computer is in use. Browser-only rules reset at local midnight; administrator rules reset at midnight UTC. Cutoff may be delayed by browser alarms." : "Automatically allows access after the duration. No early unblock control."}</p>
+      <p className="zed-helper">{mode === "daily" ? "Recurring every day, with no removal control. Counts the active tab in the focused window while the computer is in use. Browser-only rules reset at local midnight; system rules reset at midnight UTC. Cutoff may be delayed by browser alarms." : "Automatically allows access after the duration. No early unblock control."}</p>
       <details>
-        <summary className="zed-helper">Advanced: administrator protection</summary>
+        <summary className="zed-helper">Advanced: system protection</summary>
         <div className="zed-stack">
           <p className="zed-helper">Optional. Ordinary timed blocks work without administrator setup.</p>
           <p className="zed-helper" role="status">{systemStatus}</p>
-      <label><input name="system" type="checkbox" checked={system} onChange={e => setSystem(e.target.checked)} /> Administrator protection for this new rule</label>
-      <p className="zed-helper">{system ? "Requires mandatory Zed and the administrator companion. Missing foreground reports for 75 seconds, including closing the browser or sleeping, blocks daily sites until midnight UTC. Changing this choice cannot change existing rules." : "Browser-only protection stops if Zed is disabled. Existing administrator rules remain enforced."}</p>
+      <label><input name="system" type="checkbox" checked={system} onChange={e => setSystem(e.target.checked)} /> System protection for this new rule</label>
+      <p className="zed-helper">{system ? "Requires the installed system blocker. Missing foreground reports for 75 seconds, including closing the browser or sleeping, blocks daily sites until midnight UTC. Changing this choice cannot change existing rules." : "Browser-only protection stops if Zed is disabled. Existing system rules remain enforced."}</p>
         </div>
       </details>
       <Button type="submit" disabled={busy}>{busy ? "Starting…" : mode === "block" ? "Block website" : "Start daily limit"}</Button>
     </form>
     {error && <p role="alert">{error}</p>}
-    <p className="zed-helper">For browser-only rules, Chrome stops enforcement if this extension is disabled or removed. Rules survive browser restarts and settings resets, but cannot prevent changes made outside the extension.</p>
-    {systemRules.map(rule => <Card key={`system-${rule.host}`}><strong className="break-all">{rule.host}</strong><p className="zed-helper">Administrator protected · {rule.mode === "block" ? `Blocked until ${new Date(rule.until).toLocaleString()}` : `${rule.locked ? "Blocked until midnight UTC" : "Foreground daily limit active"} · ${Math.ceil(rule.used / 60_000)} / ${rule.minutes} minutes today`}</p></Card>)}
+    <p className="zed-helper">Closing the popup keeps all rules active. Existing browser-only rules are not automatically converted to system rules. For browser-only rules, Chrome stops enforcement if this extension is disabled or removed. Rules survive browser restarts and settings resets, but cannot prevent changes made outside the extension.</p>
+    {systemRules.map(rule => <Card key={`system-${rule.host}`}><strong className="break-all">{rule.host}</strong><p className="zed-helper">System protected · {rule.mode === "block" ? `Blocked until ${new Date(rule.until).toLocaleString()}` : `${rule.locked ? "Blocked until midnight UTC" : "Foreground daily limit active"} · ${Math.ceil(rule.used / 60_000)} / ${rule.minutes} minutes today`}</p></Card>)}
     <div aria-live="polite" className="zed-stack">{rules.length ? rules.map(rule => <Card key={rule.id}><strong className="break-all">{rule.host}</strong><p className="zed-helper">Browser only · {rule.mode === "block" ? `Blocked until ${new Date(rule.until).toLocaleString()}` : `${rule.used >= rule.minutes * 60_000 ? "Blocked until local midnight" : "Daily limit active"} · ${Math.ceil(rule.used / 60_000)} / ${rule.minutes} minutes today`}</p></Card>) : !systemRules.length ? <p className="zed-empty">No website rules yet.</p> : null}</div>
   </section>
 }

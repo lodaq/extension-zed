@@ -25,7 +25,7 @@ it("rejects ordinary or unpacked installs without creating weaker substitutes", 
   const { native, update } = setup("development")
   const { systemSiteLimiter } = await import("./systemSiteLimiter")
   await expect(systemSiteLimiter("add", { url: "example.com", mode: "block", minutes: 30 })).rejects.toThrow("mandatory")
-  expect(native).not.toHaveBeenCalled()
+  expect(native).toHaveBeenCalledExactlyOnceWith("com.extension_zed.limiter", { action: "status" })
   expect(update).not.toHaveBeenCalled()
 })
 
@@ -60,4 +60,14 @@ it("reports the focused tab but sends an empty URL when the computer is idle", a
   chrome.idle.queryState = vi.fn(async () => "idle") as typeof chrome.idle.queryState
   await reportSystemForeground()
   expect(native).toHaveBeenLastCalledWith("com.extension_zed.limiter", { action: "report", url: "" })
+})
+
+it("allows ordinary Brave installs only when the service permits standalone enforcement", async () => {
+  vi.resetModules()
+  const { native, saved } = setup("development")
+  native.mockResolvedValue({ ok: true, rules: [], allowUnmanaged: true } as Awaited<ReturnType<typeof native>>)
+  const { systemSiteLimiter } = await import("./systemSiteLimiter")
+  await systemSiteLimiter("add", { url: "example.com", mode: "block", minutes: 30 })
+  expect(native).toHaveBeenLastCalledWith("com.extension_zed.limiter", { action: "add", url: "example.com", mode: "block", minutes: 30 })
+  expect(saved).toHaveBeenCalled()
 })

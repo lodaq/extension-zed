@@ -13,7 +13,9 @@ HERE = Path(__file__).resolve().parent
 HOST = "com.extension_zed.limiter"
 
 
-def bundle(destination, extension_id, python, update_url):
+def bundle(destination, extension_id, python, update_url, browser="chrome"):
+    if browser not in ("chrome", "brave"):
+        raise ValueError("Unsupported browser")
     if not re.fullmatch("[a-p]{32}", extension_id):
         raise ValueError("Use the extension's stable 32-character ID")
     if not update_url.startswith("https://") or any(char in update_url for char in "\r\n"):
@@ -33,11 +35,18 @@ def bundle(destination, extension_id, python, update_url):
         "NativeMessagingBlocklist": ["*"],
         "NativeMessagingAllowlist": [HOST],
     }
-    for platform in ("linux", "macos", "windows"):
+    if browser == "brave":
+        # Standalone enforcement leaves the extension disable switch available.
+        policies = {}
+    for platform in (("linux",) if browser == "brave" else ("linux", "macos", "windows")):
         folder = destination / platform
         folder.mkdir()
         root = {"linux": "/usr/local/lib/extension-zed", "macos": "/Library/Application Support/ExtensionZed", "windows": r"C:\Program Files\ExtensionZed"}[platform]
+        if browser == "brave":
+            root += "-brave"
         state = {"linux": "/var/lib/extension-zed", "macos": "/Library/Application Support/ExtensionZed/state", "windows": r"C:\ProgramData\ExtensionZed"}[platform]
+        if browser == "brave":
+            state += "-brave"
         python_path = python.get(platform, {"linux": "/usr/bin/python3", "macos": "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3", "windows": r"C:\Program Files\Python313\python.exe"}[platform])
         config = {
             "extension_id": extension_id, "python": python_path, "policies": policies,
@@ -47,6 +56,13 @@ def bundle(destination, extension_id, python, update_url):
             "launcher": root + (r"\zed-native.exe" if platform == "windows" else "/zed-native"),
             "browsers": {"linux": ["/opt/google/chrome/chrome"], "macos": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"], "windows": [r"C:\Program Files\Google\Chrome\Application\chrome.exe", r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]}[platform],
         }
+        config["browser"] = browser
+        config["allow_unmanaged"] = browser == "brave"
+        config["service_name"] = "extension-zed-brave" if browser == "brave" else "extension-zed"
+        config["native_manifest_path"] = "/etc/chromium/native-messaging-hosts/" + HOST + ".json" if browser == "brave" else ("/Library/Google/Chrome/NativeMessagingHosts/" + HOST + ".json" if platform == "macos" else "/etc/opt/chrome/native-messaging-hosts/" + HOST + ".json")
+        if browser == "brave":
+            config["policy_path"] = "/etc/brave/policies/managed/extension-zed.json"
+            config["browsers"] = ["/opt/brave-bin/brave", "/opt/brave.com/brave/brave"]
         (folder / "config.json").write_text(json.dumps(config, indent=2) + "\n")
         native = {"name": HOST, "description": "Extension Zed administrator limiter", "path": config["launcher"], "type": "stdio", "allowed_origins": [f"chrome-extension://{extension_id}/"]}
         (folder / f"{HOST}.json").write_text(json.dumps(native, indent=2) + "\n")
@@ -71,11 +87,11 @@ ProtectHome=yes
 PrivateTmp=yes
 NoNewPrivileges=yes
 ProtectSystem=strict
-ReadWritePaths=/var/lib/extension-zed /etc/opt/chrome/policies/managed
+ReadWritePaths={state} {Path(config["policy_path"]).parent}
 [Install]
 WantedBy=multi-user.target
 """
-            (folder / "extension-zed.service").write_text(unit)
+            (folder / (config["service_name"] + ".service")).write_text(unit)
         if platform == "macos":
             daemon = {"Label": "com.extension_zed.limiter", "ProgramArguments": [python_path, "-I", root + "/zed_limiter.py", "serve"], "RunAtLoad": True, "KeepAlive": True, "UserName": "root", "Umask": 18, "ThrottleInterval": 2, "StandardErrorPath": state + "/service.log"}
             (folder / "com.extension_zed.limiter.plist").write_bytes(plistlib.dumps(daemon))
@@ -88,6 +104,7 @@ WantedBy=multi-user.target
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--browser", choices=("chrome", "brave"), default="chrome", help="Brave standalone mode currently supports Linux only")
     parser.add_argument("--extension-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--update-url", default="https://clients2.google.com/service/update2/crx")
@@ -95,5 +112,5 @@ if __name__ == "__main__":
     parser.add_argument("--python-macos")
     parser.add_argument("--python-windows")
     args = parser.parse_args()
-    bundle(args.output, args.extension_id, {name: value for name, value in {"linux": args.python_linux, "macos": args.python_macos, "windows": args.python_windows}.items() if value}, args.update_url)
+    bundle(args.output, args.extension_id, {name: value for name, value in {"linux": args.python_linux, "macos": args.python_macos, "windows": args.python_windows}.items() if value}, args.update_url, args.browser)
     print(f"Bundle generated at {args.output.resolve()}. Review README.md before administrator installation.")

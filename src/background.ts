@@ -101,7 +101,7 @@ chrome.tabs.onUpdated.addListener((tabId, change) => {
 function installSaveMenu() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({ id: "zed-save-text", title: "Save text to Zed", contexts: ["selection"] })
-    chrome.contextMenus.create({ id: "zed-save-link", title: "Save link to Zed", contexts: ["link"], targetUrlPatterns: ["https://*.facebook.com/*", "https://*.instagram.com/*", "https://*.youtube.com/*", "https://youtu.be/*"] })
+    chrome.contextMenus.create({ id: "zed-save-link", title: "Save link to Zed", contexts: ["link"], targetUrlPatterns: ["https://*.linkedin.com/*", "https://*.facebook.com/*", "https://*.instagram.com/*", "https://*.youtube.com/*", "https://youtu.be/*"] })
   })
 }
 // A worker restart also repairs menus missing after an unpacked reload.

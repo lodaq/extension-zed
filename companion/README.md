@@ -4,6 +4,23 @@ This companion keeps timed website blocks and daily foreground-usage counters ou
 
 Do not describe the feature as tamper-proof. The code and installers are prepared, but Windows/macOS installation and managed-browser end-to-end enforcement have not been tested here. Do not deploy to an end user until the acceptance checks below pass on that OS. No system service, policies or account restrictions are installed by building the extension.
 
+## Brave on Linux: standalone blocker
+
+Brave can use the root-owned service while Zed remains an ordinary, disableable extension. Generate and install its separate Linux bundle:
+
+```sh
+python3 companion/install.py --browser brave --extension-id YOUR_32_CHARACTER_EXTENSION_ID --output artifacts/zed-brave-companion
+sudo python3 artifacts/zed-brave-companion/install-unix.py
+```
+
+The service is `extension-zed-brave.service`, with program files in `/usr/local/lib/extension-zed-brave`, state in `/var/lib/extension-zed-brave`, and mandatory website policy in `/etc/brave/policies/managed/extension-zed.json`. The native host is registered in `/etc/chromium/native-messaging-hosts`. Supported default binaries are `/opt/brave-bin/brave` and `/opt/brave.com/brave/brave`; adjust the generated configuration before installation for another protected binary.
+
+Reload Zed after building the extension. A connected service makes system protection the default for new rules. Existing browser-only rules remain browser-only; add them separately with system protection if needed. Verify URLBlocklist in `brave://policy`. This mode does not force-install Zed or remove its disable switch. Timed blocks remain enforced after disabling/removing Zed; daily sites lock after 75 seconds without foreground reports until midnight UTC. Closing the popup leaves reporting active. Closing Brave or sleeping can trigger the daily lock too.
+
+Use one reporting Brave profile: multiple enabled copies share one foreground sensor and can keep its reporting lease alive. These policies apply to Brave navigation across profiles, not every application on the device. Already-loaded pages are redirected by Zed while it is enabled; disabling Zed removes that redirect mechanism, so policy enforcement applies to subsequent navigation. Administrator access can change the service or policies. User-level native-host overrides and browser developer tools remain available in this mode, so it does not provide the stronger managed-browser boundary described below. Windows/macOS Brave support is not included.
+
+The remaining deployment requirements describe strict managed Chrome mode.
+
 ## Required deployment
 
 - The everyday account must be a **standard account**, without administrator credentials or permission to edit the system clock, service, Python installation, browser binaries, installation directory or policy files. A separate administrator retains recovery access.
@@ -76,3 +93,7 @@ bun run build
 ```
 
 Unit tests use temporary files and in-memory policy publishers; they never install services or alter actual browser/OS policy.
+
+### Brave Linux verification (2026-11-14)
+
+On the installed Brave Linux binary, native messaging from the built unpacked Zed extension connected successfully. With Zed disabled through Brave's extension management API, a timed domain and its subdomain returned `ERR_BLOCKED_BY_ADMINISTRATOR`; the timed domain became accessible after expiry. Daily test domains stayed blocked after a service restart with Zed disabled. Browser policy refresh introduced a short delay. The 75-second missing-report behavior is covered by the companion tests; this browser run also had another live profile reporting, so it did not independently establish a missing-report timeout. Temporary test rules were removed administratively afterward. Full OS reboot and Windows/macOS acceptance remain untested.

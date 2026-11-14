@@ -39,8 +39,9 @@ def install():
         target = root / filename
         if target.exists() or target.is_symlink():
             raise SystemExit("Existing installation requires administrator review; no files were replaced")
-    service = Path("/Library/LaunchDaemons/com.extension_zed.limiter.plist") if platform == "macos" else Path("/etc/systemd/system/extension-zed.service")
-    native_manifest = Path("/Library/Google/Chrome/NativeMessagingHosts/com.extension_zed.limiter.json") if platform == "macos" else Path("/etc/opt/chrome/native-messaging-hosts/com.extension_zed.limiter.json")
+    service_name = config.get("service_name", "extension-zed")
+    service = Path("/Library/LaunchDaemons/com.extension_zed.limiter.plist") if platform == "macos" else Path(f"/etc/systemd/system/{service_name}.service")
+    native_manifest = Path(config["native_manifest_path"])
     if service.exists() or service.is_symlink() or native_manifest.exists() or native_manifest.is_symlink():
         raise SystemExit("Existing service or native host requires administrator review")
     protected(root)
@@ -60,7 +61,7 @@ def install():
             values = json.loads(policy.read_text())
             if {"URLBlocklist", "URLAllowlist", *config["policies"]}.intersection(values):
                 raise SystemExit(f"Conflicting existing policy: {policy}")
-        native = Path("/etc/opt/chrome/native-messaging-hosts")
+        native = native_manifest.parent
     else:
         native = Path("/Library/Google/Chrome/NativeMessagingHosts")
         protected(Path("/Library/Managed Preferences"))
@@ -97,14 +98,14 @@ def install():
         policy = Path(config["policy_path"])
         policy.write_text(json.dumps(config["policies"]))
         policy.chmod(0o644)
-        target = Path("/etc/systemd/system/extension-zed.service")
+        target = Path(f"/etc/systemd/system/{service_name}.service")
         protected(target.parent)
         if target.exists() or target.is_symlink():
             raise SystemExit("Service already exists")
         shutil.copyfile(source / target.name, target)
         target.chmod(0o644)
         subprocess.run(["/usr/bin/systemctl", "daemon-reload"], check=True)
-        subprocess.run(["/usr/bin/systemctl", "enable", "--now", "extension-zed.service"], check=True)
+        subprocess.run(["/usr/bin/systemctl", "enable", "--now", service_name + ".service"], check=True)
     else:
         target = Path("/Library/LaunchDaemons/com.extension_zed.limiter.plist")
         protected(target.parent)
@@ -114,7 +115,7 @@ def install():
         target.chmod(0o644)
         # Deploy the non-removable profile through MDM before using strict mode.
         subprocess.run(["/bin/launchctl", "bootstrap", "system", str(target)], check=True)
-    print("Service installed. Verify mandatory policies and force-installation in chrome://policy before using strict mode.")
+    print("Service installed. Verify URLBlocklist in brave://policy." if config.get("browser") == "brave" else "Service installed. Verify mandatory policies and force-installation in chrome://policy before using strict mode.")
 
 
 if __name__ == "__main__":

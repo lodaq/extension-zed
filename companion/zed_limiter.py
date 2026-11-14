@@ -348,6 +348,7 @@ def serve(config):
                 return
             request = json.loads(connection.recv_bytes(MAX_MESSAGE))
             response = store.handle(request)
+            response["allowUnmanaged"] = config.get("allow_unmanaged", False)
             connection.send_bytes(json.dumps(response).encode())
         except (ValueError, OSError, EOFError) as error:
             try:

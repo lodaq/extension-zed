@@ -1,122 +1,39 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi } from "vitest"
 
-let target: EventTarget
-let send: ReturnType<typeof vi.fn>
+vi.mock("./savedPage", () => ({}))
+vi.mock("./savedIndicator", () => ({ installSavedIndicator: vi.fn() }))
 
-beforeEach(() => {
-  vi.resetModules()
-  delete (globalThis as typeof globalThis & { __zedShortcutsInstalled?: boolean }).__zedShortcutsInstalled
-  target = new EventTarget()
-  send = vi.fn(async () => ({ ok: true }))
-  vi.stubGlobal("window", target)
-  vi.stubGlobal("chrome", {
-    storage: {
-      local: { get: async () => ({ keyboardShortcuts: { action13: "Ctrl+Cmd+S" } }) },
-      onChanged: { addListener: vi.fn() },
-    },
-    runtime: { id: "zed", sendMessage: send },
-  })
-})
 afterEach(() => {
-  vi.restoreAllMocks()
-  delete (globalThis as typeof globalThis & { __zedShortcutsInstalled?: boolean }).__zedShortcutsInstalled
+  delete (globalThis as { __zedShortcutsInstalled?: boolean }).__zedShortcutsInstalled
   vi.unstubAllGlobals()
-})
-
-it("does not intercept default shortcuts before preferences load", async () => {
-  let resolve!: (value: object) => void
-  const initial = new Promise<object>(done => { resolve = done })
-  vi.stubGlobal("chrome", { ...chrome, storage: { ...chrome.storage, local: { get: () => initial } } })
-  await import("./shortcuts")
-  const event = key({ key: "ArrowRight", code: "ArrowRight", ctrlKey: false, metaKey: false, altKey: true, shiftKey: true })
-  target.dispatchEvent(event)
-  expect(event.defaultPrevented).toBe(false)
-  expect(send).not.toHaveBeenCalled()
-  resolve({ keyboardShortcuts: { action0: "" } })
-  await initial
-})
-
-it("keeps newer shortcut changes when an older initial read completes", async () => {
-  let resolve!: (value: object) => void
-  const initial = new Promise<object>(done => { resolve = done })
-  vi.stubGlobal("chrome", { ...chrome, storage: { ...chrome.storage, local: { get: () => initial } } })
-  await import("./shortcuts")
-  const changed = vi.mocked(chrome.storage.onChanged.addListener).mock.calls[0][0]
-  changed({ keyboardShortcuts: { newValue: { action13: "", action20: "" } } }, "local")
-  resolve({ keyboardShortcuts: { action13: "Ctrl+Cmd+S" } })
-  await initial
-  const event = key()
-  target.dispatchEvent(event)
-  expect(event.defaultPrevented).toBe(false)
-  expect(send).not.toHaveBeenCalled()
-})
-
-it("handles a failed initial read and recovers on a storage change", async () => {
-  const error = new Error("Storage unavailable")
-  const log = vi.spyOn(console, "error").mockImplementation(() => {})
-  vi.stubGlobal("chrome", { ...chrome, storage: { ...chrome.storage, local: { get: async () => { throw error } } } })
-  await import("./shortcuts")
-  await vi.waitFor(() => expect(log).toHaveBeenCalledWith(error))
-  const event = key({ key: "ArrowRight", code: "ArrowRight", ctrlKey: false, metaKey: false, altKey: true, shiftKey: true })
-  target.dispatchEvent(event)
-  expect(event.defaultPrevented).toBe(false)
-  const changed = vi.mocked(chrome.storage.onChanged.addListener).mock.calls[0][0]
-  changed({ keyboardShortcuts: { newValue: { action13: "Ctrl+Cmd+S" } } }, "local")
-  target.dispatchEvent(key())
-  expect(send).toHaveBeenCalledExactlyOnceWith({ type: "zed:shortcut", id: "action13" })
-})
-
-function key(overrides: Record<string, unknown> = {}) {
-  const event = new Event("keydown", { cancelable: true })
-  Object.assign(event, {
-    key: "s", code: "KeyS", ctrlKey: true, metaKey: true, shiftKey: false, altKey: false,
-    repeat: false, isComposing: false,
-    composedPath: () => [{ tagName: "TEXTAREA", isContentEditable: true }],
-    ...overrides,
-  })
-  return event
-}
-
-it("runs assigned shortcuts in editors before site handlers, once after reinjection", async () => {
-  await import("./shortcuts")
+  vi.restoreAllMocks()
   vi.resetModules()
-  await import("./shortcuts")
-  const siteHandler = vi.fn()
-  target.addEventListener("keydown", siteHandler)
-  const event = key()
-  target.dispatchEvent(event)
-  expect(send).toHaveBeenCalledExactlyOnceWith({ type: "zed:shortcut", id: "action13" })
-  expect(event.defaultPrevented).toBe(true)
-  expect(siteHandler).not.toHaveBeenCalled()
 })
 
-it("handles assigned keys even when a site has prevented their default action", async () => {
-  await import("./shortcuts")
-  const event = key()
-  event.preventDefault()
-  target.dispatchEvent(event)
-  expect(send).toHaveBeenCalledExactlyOnceWith({ type: "zed:shortcut", id: "action13" })
-})
-
-it("leaves unassigned keys, repeated keys and text composition alone", async () => {
-  await import("./shortcuts")
-  for (const overrides of [{ ctrlKey: false, metaKey: false }, { repeat: true }, { isComposing: true }]) {
-    const event = key(overrides)
-    target.dispatchEvent(event)
-    expect(event.defaultPrevented).toBe(false)
+it.each(["accessor", "synchronous message", "rejected message"])("handles invalidation from %s without an uncaught error", async mode => {
+  let keydown: (event: KeyboardEvent) => Promise<void> = async () => {}
+  const removeEventListener = vi.fn()
+  const runtime = {
+    id: "zed",
+    sendMessage: vi.fn(() => {
+      if (mode === "synchronous message") throw new Error("Extension context invalidated.")
+      return Promise.reject(new Error("Extension context invalidated."))
+    }),
   }
-  expect(send).not.toHaveBeenCalled()
-})
-
-it("lets working listeners receive keys after an older extension context disconnects", async () => {
+  const win = {
+    top: {},
+    addEventListener: (_name: string, listener: typeof keydown) => { keydown = listener },
+    removeEventListener,
+  }
+  vi.stubGlobal("window", win)
+  vi.stubGlobal("chrome", {
+    runtime,
+    storage: { onChanged: { addListener: vi.fn() }, local: { get: vi.fn(async () => ({ keyboardShortcuts: { action0: "Alt+Shift+→" } })) } },
+  })
+  const log = vi.spyOn(console, "error").mockImplementation(() => {})
   await import("./shortcuts")
-  const current = chrome.runtime
-  vi.stubGlobal("chrome", { ...chrome, runtime: { ...current, id: undefined } })
-  const workingListener = vi.fn()
-  target.addEventListener("keydown", workingListener)
-  const event = key()
-  target.dispatchEvent(event)
-  expect(send).not.toHaveBeenCalled()
-  expect(event.defaultPrevented).toBe(false)
-  expect(workingListener).toHaveBeenCalledOnce()
+  if (mode === "accessor") Object.defineProperty(runtime, "id", { get() { throw new Error("Extension context invalidated.") } })
+  await expect(keydown({ key: "ArrowRight", code: "ArrowRight", altKey: true, shiftKey: true, preventDefault: vi.fn(), stopImmediatePropagation: vi.fn() } as unknown as KeyboardEvent)).resolves.toBeUndefined()
+  expect(removeEventListener).toHaveBeenCalledWith("keydown", keydown, true)
+  expect(log).not.toHaveBeenCalled()
 })

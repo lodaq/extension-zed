@@ -50,13 +50,8 @@ describe("managed extension list", () => {
     expect(rows.map((row) => row.name)).toEqual(["alpha", "Beta"])
   })
 
-  it("marks the current extension and disables its destructive actions but allows reload", () => {
-    const [self] = toManagedExtensions([info({ id: "self", name: "Zed", optionsUrl: "chrome-extension://self/options.html" })], "self")
-
-    expect(self.isSelf).toBe(true)
-    expect(self.canToggle).toBe(false)
-    expect(self.canReload).toBe(true)
-    expect(self.canUninstall).toBe(false)
+  it("hides the current extension from the list", () => {
+    expect(toManagedExtensions([info({ id: "self", name: "Zed" })], "self")).toEqual([])
   })
 
   it("follows Chrome's mayDisable and mayEnable flags", () => {
@@ -118,7 +113,7 @@ describe("management actions", () => {
     })
 
     expect(currentExtensionId()).toBe("my-id")
-    await expect(listExtensions()).resolves.toMatchObject([{ id: "my-id", isSelf: true }])
+    await expect(listExtensions()).resolves.toEqual([])
     expect(getAll).toHaveBeenCalledOnce()
   })
 
@@ -278,7 +273,7 @@ describe("extension settings navigation", () => {
     })
     vi.stubGlobal("chrome", { tabs: { create } })
 
-    const [self] = toManagedExtensions([info({ id: "self", name: "Zed", optionsUrl: "chrome-extension://self/options.html" })], "self")
+    const self = { id: "self", isSelf: true } as Parameters<typeof openExtensionSettings>[0]
     await openExtensionSettings(self)
 
     expect(create).toHaveBeenCalledWith(

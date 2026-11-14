@@ -7,6 +7,14 @@ const state = globalThis as typeof globalThis & { __zedSaveInstalled?: boolean }
 
 function installSaveButtons() {
   if (state.__zedSaveInstalled || window !== window.top || !/(^|\.)(youtube\.com|youtu\.be|instagram\.com|facebook\.com)$/.test(location.hostname)) return
+  let themeUrl: string
+  try {
+    if (!chrome.runtime?.id) return
+    themeUrl = chrome.runtime.getURL("theme.css")
+  } catch (error) {
+    if (/extension context invalidated/i.test(String(error))) return
+    throw error
+  }
   state.__zedSaveInstalled = true
   let items: SavedItem[] = []
   let dark = true
@@ -25,25 +33,59 @@ function installSaveButtons() {
     }
   }
   const raiseAbovePlayer = (entry: SaveEntry) => {
-    if (entry.host.hasAttribute("data-zed-post")) return
-    const rect = entry.host.getBoundingClientRect()
-    if (!rect.width || !rect.height || rect.bottom <= 0 || rect.top >= innerHeight) return
-    const blocker = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
-    if (!blocker || blocker === entry.host) return
-    let mount: HTMLElement | null = entry.mount
-    while (mount && !mount.contains(blocker)) mount = mount.parentElement
-    if (!mount || mount === entry.mount || mount === document.body || mount === document.documentElement) return
-    const bounds = mount.getBoundingClientRect()
-    const original = entry.mount.getBoundingClientRect()
-    // Promote only within this player, never over unrelated dialogs or feed items.
-    if (mount.querySelectorAll("video").length > 1 || bounds.width > original.width * 1.5 || bounds.height > original.height * 1.5) return
-    if (entry.previousPosition !== null && entry.mount.style.position === "relative") entry.mount.style.position = entry.previousPosition
-    entry.previousPosition = getComputedStyle(mount).position === "static" ? mount.style.position : null
-    if (entry.previousPosition !== null) mount.style.position = "relative"
-    entry.mount = mount
-    mount.append(entry.host)
+    if (!contextAvailable()) return
+    try {
+      if (entry.host.hasAttribute("data-zed-post")) return
+      const rect = entry.host.getBoundingClientRect()
+      if (!rect.width || !rect.height || rect.bottom <= 0 || rect.top >= innerHeight) return
+      const blocker = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+      if (!blocker || blocker === entry.host) return
+      let mount: HTMLElement | null = entry.mount
+      while (mount && !mount.contains(blocker)) mount = mount.parentElement
+      if (!mount || mount === entry.mount || mount === document.body || mount === document.documentElement) return
+      const bounds = mount.getBoundingClientRect()
+      const original = entry.mount.getBoundingClientRect()
+      // Promote only within this player, never over unrelated dialogs or feed items.
+      if (mount.querySelectorAll("video").length > 1 || bounds.width > original.width * 1.5 || bounds.height > original.height * 1.5) return
+      if (entry.previousPosition !== null && entry.mount.style.position === "relative") entry.mount.style.position = entry.previousPosition
+      entry.previousPosition = getComputedStyle(mount).position === "static" ? mount.style.position : null
+      if (entry.previousPosition !== null) mount.style.position = "relative"
+      entry.mount = mount
+      mount.append(entry.host)
+    } catch (error) {
+      if (/extension context invalidated/i.test(String(error))) { stop(); return }
+      throw error
+    }
+  }
+  let stopped = false
+  let timeout: number | undefined
+  let interval: number | undefined
+  let observer: MutationObserver | undefined
+  const stop = () => {
+    stopped = true
+    observer?.disconnect()
+    window.clearTimeout(timeout)
+    window.clearInterval(interval)
+    window.removeEventListener("scroll", schedule, true)
+    window.removeEventListener("resize", schedule)
+    window.removeEventListener("popstate", schedule)
+    try { chrome.storage.onChanged.removeListener(onStorageChanged) } catch { /* The extension may already be disconnected. */ }
+    for (const entry of entries.values()) {
+      entry.host.remove()
+      if (entry.previousPosition !== null && entry.mount.style.position === "relative") entry.mount.style.position = entry.previousPosition
+    }
+    entries.clear()
+  }
+  const contextAvailable = () => {
+    if (stopped) return false
+    try {
+      if (chrome.runtime?.id) return true
+    } catch { /* Reloading can invalidate the runtime accessor itself. */ }
+    stop()
+    return false
   }
   const scan = () => {
+    if (!contextAvailable()) return
     const targets = enabled ? findMediaTargets(document, location.href) : new Map<HTMLElement, string | null>()
     for (const [target, entry] of entries) {
       if (targets.get(target) !== entry.url || !entry.host.isConnected || entry.host.parentElement !== entry.mount) {
@@ -64,7 +106,7 @@ function installSaveButtons() {
       const shadow = host.attachShadow({ mode: "closed" })
       const theme = document.createElement("link")
       theme.rel = "stylesheet"
-      theme.href = chrome.runtime.getURL("theme.css")
+      theme.href = themeUrl
       const style = document.createElement("style")
       style.textContent = `:host { all: initial; position: absolute !important; top: var(--zed-space-3); right: var(--zed-space-3); z-index: 2147483647; animation: none !important; transition: none !important; }
         :host([data-zed-post]) { position: relative !important; display: block; top: auto; right: auto; padding: var(--zed-space-3); }
@@ -94,6 +136,7 @@ function installSaveButtons() {
       button.addEventListener("click", async (event) => {
         event.preventDefault()
         event.stopPropagation()
+        if (!contextAvailable()) return
         entry.busy = true
         button.disabled = true
         button.textContent = "Updating…"
@@ -129,25 +172,27 @@ function installSaveButtons() {
     if (!preferenceChanged) enabled = result[SAVED_BUTTONS_KEY] !== false
     scan()
   }).catch(console.error)
-  chrome.storage.onChanged.addListener((changes, area) => {
+  const onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
     if (area !== "local") return
     if (changes[SAVED_BUTTONS_KEY]) { preferenceChanged = true; enabled = changes[SAVED_BUTTONS_KEY].newValue !== false; scan() }
     if (changes.darkTheme) dark = changes.darkTheme.newValue !== false
     if (changes[SAVED_KEY]) items = readSaved(changes[SAVED_KEY].newValue)
     render()
-  })
+  }
+  chrome.storage.onChanged.addListener(onStorageChanged)
   let scheduled = false
   const schedule = () => {
-    if (scheduled) return
+    if (!contextAvailable() || scheduled) return
     scheduled = true
-    window.setTimeout(() => { scheduled = false; scan() }, 100)
+    timeout = window.setTimeout(() => { scheduled = false; scan() }, 100)
   }
-  new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["href", "video-id", "data-video-id", "src", "aria-hidden"] })
+  observer = new MutationObserver(schedule)
+  observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["href", "video-id", "data-video-id", "src", "aria-hidden"] })
   window.addEventListener("scroll", schedule, { capture: true, passive: true })
   window.addEventListener("resize", schedule)
   window.addEventListener("popstate", schedule)
   let pageUrl = location.href
-  window.setInterval(() => { if (location.href !== pageUrl) { pageUrl = location.href; schedule() } }, 750)
+  interval = window.setInterval(() => { if (!contextAvailable()) return; if (location.href !== pageUrl) { pageUrl = location.href; schedule() } }, 750)
   scan()
 }
 

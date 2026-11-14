@@ -115,7 +115,11 @@
     "clipboardWrite",
     "debugger",
     "tabs",
-    "contextMenus"
+    "contextMenus",
+    "alarms",
+    "idle",
+    "declarativeNetRequest",
+    "nativeMessaging"
   ],
   "host_permissions": [
     "http://*/*",

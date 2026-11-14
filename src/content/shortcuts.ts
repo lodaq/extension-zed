@@ -17,15 +17,26 @@ if (!state.__zedShortcutsInstalled) {
   void chrome.storage.local.get("keyboardShortcuts").then(result => {
     if (acceptInitialRead) combos = readShortcuts(result.keyboardShortcuts)
   }).catch(console.error)
-  window.addEventListener("keydown", event => {
-    // Reloaded extensions leave disconnected listeners in already-open pages.
-    if (!chrome.runtime?.id || event.repeat || event.isComposing) return
-    let combo: string | null
-    try { combo = recordCombo(event) } catch { return }
-    if (!combo) return
-    const id = Object.keys(combos).find(id => combos[id] === combo)
-    if (!id) return
-    event.preventDefault(); event.stopImmediatePropagation()
-    void chrome.runtime.sendMessage({ type: "zed:shortcut", id }).then(async result => { if (!result?.ok) throw new Error(result?.error || "Shortcut failed"); if (result.password) await navigator.clipboard.writeText(result.password) }).catch(console.error)
-  }, true)
+  const onKeydown = async (event: KeyboardEvent) => {
+    try {
+      // Reloaded extensions leave disconnected listeners in already-open pages.
+      if (!chrome.runtime?.id || event.repeat || event.isComposing) return
+      let combo: string | null
+      try { combo = recordCombo(event) } catch { return }
+      if (!combo) return
+      const id = Object.keys(combos).find(id => combos[id] === combo)
+      if (!id) return
+      event.preventDefault(); event.stopImmediatePropagation()
+      const result = await chrome.runtime.sendMessage({ type: "zed:shortcut", id })
+      if (!result?.ok) throw new Error(result?.error || "Shortcut failed")
+      if (result.password) await navigator.clipboard.writeText(result.password)
+    } catch (error) {
+      if (/extension context invalidated/i.test(String(error))) {
+        window.removeEventListener("keydown", onKeydown, true)
+        return
+      }
+      console.error(error)
+    }
+  }
+  window.addEventListener("keydown", onKeydown, true)
 }

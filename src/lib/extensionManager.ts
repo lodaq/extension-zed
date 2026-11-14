@@ -56,7 +56,7 @@ export function toManagedExtensions(
   selfId: string
 ): ManagedExtension[] {
   return infos
-    .filter((info) => info.type === "extension")
+    .filter((info) => info.type === "extension" && info.id !== selfId)
     .map((info) => {
       const isSelf = info.id === selfId
       const canToggle = !isSelf && (info.enabled ? info.mayDisable : info.mayEnable !== false)

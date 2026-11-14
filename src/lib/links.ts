@@ -1,3 +1,5 @@
+import { changeSaved, readSaved, SAVED_KEY } from "./saved"
+
 export type SavedLink = { url: string; href: string; title: string }
 export function normalizeLink(input: string, title?: string, fromTab = false): SavedLink | null {
   const original = input.trim()
@@ -32,4 +34,23 @@ export async function openSavedLink(link: SavedLink) {
   const stored = await chrome.storage.local.get("savedLinks")
   const links: SavedLink[] = Array.isArray(stored.savedLinks) ? stored.savedLinks : []
   await chrome.storage.local.set({ savedLinks: links.filter(item => item.url !== link.url) })
+  const saved = await chrome.storage.local.get(SAVED_KEY)
+  for (const item of readSaved(saved[SAVED_KEY])) {
+    if (item.kind === "link" && normalizeLink(item.url)?.url === link.url) {
+      await changeSaved({ type: "saved:remove", id: item.id })
+    }
+  }
+}
+
+export function includeSavedMedia(links: SavedLink[], stored: unknown): (SavedLink & { savedId?: string })[] {
+  const result: (SavedLink & { savedId?: string })[] = links.map(link => ({ ...link }))
+  for (const item of readSaved(stored)) {
+    if (item.kind !== "link") continue
+    const link = normalizeLink(item.url)
+    if (!link) continue
+    const existing = result.find(candidate => candidate.url === link.url)
+    if (existing) existing.savedId = item.id
+    else result.push({ ...link, savedId: item.id })
+  }
+  return result
 }

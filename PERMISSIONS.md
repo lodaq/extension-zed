@@ -85,3 +85,11 @@ Declared in `manifest.json`:
 ### User-Injected Scripts
 - **Current status**: Not in scope.
 - **Requirement**: Manifest V3 strictly forbids arbitrary remote script execution or `eval()`. Any future custom scripting feature must use declarative rule sets or sandboxed iframes without `unsafe-eval`.
+
+## Administrator site limiter companion
+
+- `alarms` schedules limiter expiry, usage updates and companion heartbeats; `idle` excludes computer idle time from foreground usage. `declarativeNetRequest` stores navigation blocks across browser restarts. `nativeMessaging` talks only to the administrator-installed `com.extension_zed.limiter` host for system protection.
+- System protection requires a signed, policy-installed Zed (`management.getSelf().installType === "admin"`). `getSelf` does not grant management of other extensions. Popup-only sender checks guard all limiter requests; content scripts cannot submit system rules.
+- The unprivileged native host relays size-limited JSON over OS IPC. The administrator service verifies the peer runtime and browser process ancestry, owns counters/deadlines, and offers no delete, reset, shortening or early-unblock operation. The browser copy is a read-only mirror of administrator rules; resetting/importing extension settings cannot change them.
+- Service setup is separate, explicit administrator work. The generated policies make Zed mandatory, disable developer/guest/incognito/new-profile bypasses, restrict native messaging to the machine host, and apply URL blocks. The companion guide documents deployment prerequisites, fail-closed behavior, profile/application-control limits and required platform acceptance tests. Native host registration is bound to one exact extension origin.
+- Foreground reporting sends the active URL locally to the bridge; the service retains only its hostname, configured rule domains, daily usage counters and deadlines. No page content or browsing-history log is collected, and nothing is sent to a remote service. A missing reporting lease locks daily sites until the next eligible daily reset.

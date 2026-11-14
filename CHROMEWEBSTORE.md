@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Extension Zed
 
-> Last Updated: 2026-11-08
+> Last Updated: 2026-11-14
 
 ## Store Listing
 
@@ -58,7 +58,7 @@ English
 ### Screenshot Notes
 - Screenshot 1: Shows the Misc tab open with playback speed controller, volume booster, and custom scrollbar options.
 - Screenshot 2: Shows YouTube Focus Mode active on a YouTube watch page with hidden controls and layout options.
-- Screenshot 3: Shows Settings tab with theme toggling, data export/import, and privacy disclosure.
+- Screenshot 3: Refresh to show the Settings tab with Extension Zed refresh, browser settings, and errors controls alongside theme toggling, data export/import, and privacy disclosure.
 
 ## Permissions Justification
 
@@ -112,6 +112,7 @@ support@extension-zed.dev
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
+| Unreleased | 2026-11-14 | Show saved reels, posts, and videos in Links, including existing saves. Hide Extension Zed from extension lists; move its refresh and browser settings controls into Settings and add an errors shortcut. Handle invalidated shortcut handlers, deferred startup, and stylesheet callbacks; stop stale Save-to-Zed scripts after extension reloads. | Draft |
 | 2.0.0 | 2026-11-08 | First Chrome Web Store submission, including the Extensions manager and updated popup navigation. | Draft |
 | 1.0.0 | 2026-11-02 | Initial release with Misc controls, YouTube focus mode & markers, Alt+Z popup toggle, and export/import settings. | Draft |
 
@@ -146,3 +147,16 @@ The second command requires `gh auth login`. Never commit `.env.local` or paste 
 ### Known Issues / Limitations
 - Media playback rate and volume boosting require HTML5 audio/video elements on the page.
 - Chrome internal pages (`chrome://`, web store) cannot be scripted due to Chrome security policy; informative feedback is displayed to the user when attempted.
+
+### Administrator site limiter integration (unreleased)
+
+Site limiter adds timed website blocks and daily foreground usage limits. Browser-only rules are labeled separately. Administrator protection additionally requires a signed, force-installed browser component plus an independently installed system companion; an ordinary store/unpacked installation alone does not supply this protection. Deployment and OS acceptance tests are documented in `companion/README.md` and are not yet complete on Windows/macOS. Refresh Misc screenshots before release.
+
+Additional permission justifications:
+
+- **alarms:** automatically expire timed website blocks and update daily allowance counters.
+- **idle:** stop counting foreground website usage when the computer is idle.
+- **declarativeNetRequest:** prevent navigation to websites with active blocks, including across browser restarts.
+- **nativeMessaging:** communicate locally with the separately administrator-installed site limiter to store protected rules and daily foreground usage counters. No data is transmitted to a remote service. Ordinary installations cannot silently activate administrator protection.
+
+Privacy disclosure: the companion receives foreground URLs only over local native messaging and retains only the current hostname, configured website domains, rule deadlines and daily usage counters. Paths, search terms, page titles and content are not retained. Settings export/reset does not include or remove administrator-owned rules. Update any published privacy policy and Chrome Web Store data-use disclosures before releasing this capability.

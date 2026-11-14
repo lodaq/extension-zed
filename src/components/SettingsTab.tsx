@@ -13,6 +13,8 @@ import {
   MAX_SETTINGS_FILE_SIZE,
   type MiscSectionId,
 } from "@/lib/settings"
+import { Icon } from "@/design-system/Icon"
+import { currentExtensionId, openTab, reloadExtension } from "@/lib/extensionManager"
 import { useStoredValue } from "@/lib/useStoredValue"
 
 function downloadSettings(backup: Awaited<ReturnType<typeof exportSettings>>) {
@@ -35,6 +37,14 @@ export default function SettingsTab() {
   const [confirmReset, setConfirmReset] = useState(false)
   const [showPrivacy, setShowPrivacy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const appAction = async (action: () => Promise<void>) => {
+    try {
+      await action()
+    } catch (error) {
+      toast({ title: "Could not complete action", description: String(error), variant: "destructive" })
+    }
+  }
 
   const toggle = (enabled: boolean) => {
     document.documentElement.classList.toggle("dark", enabled)
@@ -117,6 +127,19 @@ export default function SettingsTab() {
 
   return (
     <section className={cn(popupPanel, popupSectionInner)}>
+      <h2 className={popupSectionTitle}>Extension Zed</h2>
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" onClick={() => void appAction(() => reloadExtension(currentExtensionId()))}>
+          <Icon name="reload" size={16} />Refresh
+        </Button>
+        <Button type="button" variant="outline" onClick={() => void appAction(() => openTab(`chrome://extensions/?id=${currentExtensionId()}`))}>
+          <Icon name="settings" size={16} />Settings
+        </Button>
+        <Button type="button" variant="outline" size="icon" aria-label="Open Extension Zed errors" title="Errors"
+          onClick={() => void appAction(() => openTab(`brave://extensions/?errors=${currentExtensionId()}`))}>
+          <Icon name="error" size={16} />
+        </Button>
+      </div>
       <h2 className={popupSectionTitle}>Appearance</h2>
       <SwitchRow label="Dark theme" checked={dark} onChange={toggle}/>
       <SwitchRow label="Black and white" description="Show all websites in grayscale." checked={blackAndWhite} onChange={enabled=>void setBlackAndWhite(enabled).catch(error=>toast({title:String(error),variant:"destructive"}))}/>

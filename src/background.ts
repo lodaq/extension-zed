@@ -1,3 +1,5 @@
+import { installSystemSiteLimiter, reportSystemForeground, systemSiteLimiter } from "./lib/systemSiteLimiter"
+import { installSiteLimiter, updateSiteLimiter } from "./lib/siteLimiterWorker"
 import { changeSaved } from "./lib/saved"
 import { openSavedLink } from "./lib/links"
 import { executeShortcut } from "./lib/shortcutExecution"
@@ -17,6 +19,22 @@ async function showResult(result: PageActionResult) {
 
 chrome.runtime.onMessage.addListener((data, sender, reply) => {
   if (sender.id !== chrome.runtime.id) return
+  if (typeof data?.type === "string" && data.type.startsWith("limiter:")) {
+    if (sender.tab || sender.url !== chrome.runtime.getURL("index.html")) return
+    if (data.type === "limiter:system-status" || (data.type === "limiter:add" && data.system === true)) {
+      const run = async () => {
+        if (data.type === "limiter:add") await reportSystemForeground()
+        return systemSiteLimiter(data.type === "limiter:add" ? "add" : "status", data)
+      }
+      void run()
+        .then(rules => reply({ ok: true, rules }), error => reply({ ok: false, error: String(error) }))
+      return true
+    }
+    if (data.type !== "limiter:add" && data.type !== "limiter:list") return
+    void updateSiteLimiter(data.type === "limiter:add" ? data : undefined)
+      .then(rules => reply({ ok: true, rules }), error => reply({ ok: false, error: String(error) }))
+    return true
+  }
   if (["saved:add", "saved:remove"].includes(data?.type)) {
     void changeSaved(data).then(reply, error => reply({ ok: false, error: String(error) }))
     return true
@@ -97,3 +115,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       error => showResult({ ok: false, saved: false, tabId: tab?.id, error: String(error) }))
     .catch(console.error)
 })
+
+if (chrome.alarms && chrome.declarativeNetRequest) installSiteLimiter()
+
+if (chrome.alarms && chrome.declarativeNetRequest && typeof chrome.management?.getSelf === "function") installSystemSiteLimiter()

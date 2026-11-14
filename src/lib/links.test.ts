@@ -53,3 +53,27 @@ it("keeps the saved link when opening fails", async () => {
   await expect(openSavedLink({ url: "example.com", href: "https://example.com/", title: "Example" })).rejects.toThrow("Could not open")
   expect(set).not.toHaveBeenCalled()
 })
+
+it("includes existing saved Instagram reels in Links without duplicating URLs or including text", async () => {
+  const { includeSavedMedia } = await import("./links")
+  const href = "https://www.instagram.com/reel/DfZuwjTgpaY/"
+  const media = { id: "reel", kind: "link", text: href, url: href, createdAt: 1 }
+  const rows = includeSavedMedia([], [media, { ...media, id: "text", kind: "text", text: "A quote" }])
+  expect(rows).toEqual([{ url: "www.instagram.com/reel/DfZuwjTgpaY", href, title: "instagram.com", savedId: "reel" }])
+  const existing = { url: rows[0].url, href, title: "My reel" }
+  expect(includeSavedMedia([existing], [media])).toEqual([{ ...existing, savedId: "reel" }])
+  expect(existing).not.toHaveProperty("savedId")
+})
+
+it("removes opened reels in the worker while preserving saved text", async () => {
+  const href = "https://www.instagram.com/reel/DfZuwjTgpaY/"
+  const reel = { id: "reel", kind: "link", text: href, url: href, createdAt: 1 }
+  const text = { ...reel, id: "text", kind: "text", text: "Quote" }
+  const values: Record<string, unknown> = { savedItems: [reel, text], savedLinks: [] }
+  vi.stubGlobal("chrome", {
+    tabs: { create: async () => ({}) },
+    storage: { local: { get: async () => ({ ...values }), set: async (patch: object) => { Object.assign(values, patch) } } },
+  })
+  await openSavedLink({ url: "www.instagram.com/reel/DfZuwjTgpaY", href, title: "Reel" })
+  expect(values.savedItems).toEqual([text])
+})

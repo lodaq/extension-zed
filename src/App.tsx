@@ -1,3 +1,4 @@
+import SiteLimiter from "@/components/SiteLimiter"
 import SavedTab from "@/components/SavedTab"
 import { DEFAULT_PASSWORD_OPTIONS } from "@/lib/passwordGenerator"
 import { QUALITY_OPTIONS } from "@/lib/videoQuality"
@@ -26,6 +27,7 @@ import { DEFAULT_SHORTCUTS, readShortcuts, recordCombo } from "@/lib/shortcuts"
 import ShortcutsTab from "@/components/ShortcutsTab"
 
 const tools = [
+  { id: "limiter", title: "Site limiter", tooltip: "Locked website blocks and daily usage limits", component: SiteLimiter },
   { id: "playback", title: "Playback speed", tooltip: "Speed up or slow down video", component: ChangePlaybackRate },
   { id: "quality", title: "Video quality", tooltip: "Set a preferred resolution", component: VideoQualitySection },
   { id: "password", title: "Password generator", tooltip: "Random, customizable passwords", component: PasswordGenerator },
@@ -130,7 +132,7 @@ export default function App() {
     modes: modesOn ? `${modesOn} on` : undefined,
   }
   const orderedTools = [...tools].sort((a, b) =>
-    order.indexOf(a.id === "capture" ? "screenshot" : a.id) - order.indexOf(b.id === "capture" ? "screenshot" : b.id)
+    (a.id === "limiter" ? order.length : order.indexOf(a.id === "capture" ? "screenshot" : a.id)) - (b.id === "limiter" ? order.length : order.indexOf(b.id === "capture" ? "screenshot" : b.id))
   )
   const saveTab = () => void saveCurrentTab()
     .then(added => toast({ title: added ? "Saved to Links · tab closed" : "Already in Links · tab closed" }))
@@ -154,8 +156,8 @@ export default function App() {
       )}
       <div className="zed-tiles">
         {orderedTools.map(tool => (
-          <Tile key={tool.id} id={`zed-tool-${tool.id}`} title={tool.title} tooltip={tool.tooltip} icon={tool.id}
-            badge={badges[tool.id]} disabled={restricted && tool.id !== "password"}
+          <Tile key={tool.id} id={`zed-tool-${tool.id}`} title={tool.title} tooltip={tool.tooltip} icon={tool.id === "limiter" ? "modes" : tool.id}
+            badge={badges[tool.id]} disabled={restricted && tool.id !== "password" && tool.id !== "limiter"}
             onClick={() => setDetail(tool.id)} />
         ))}
         <Tile title="Save & close tab" tooltip="Save this tab’s URL to Links, then close the tab" icon="save" onClick={saveTab} />

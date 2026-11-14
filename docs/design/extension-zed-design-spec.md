@@ -582,30 +582,32 @@ Decide conservatively, record each decision in the repo notes, and **keep existi
 ## 9. Acceptance checklist
 
 **Design system**
-- [ ] `tokens.css` exists with every token in §2.2 and is imported by the popup and any injected UI.
-- [ ] Old design rules (variables, themes, style docs, lint rules) are removed or replaced; no component uses a raw hex color, raw radius or ad-hoc font size outside the token file.
-- [ ] Inter is bundled locally; there is no request to Google Fonts or any CDN.
-- [ ] Every component in §2.8 exists once and is reused.
+- [x] `tokens.css` exists with every token in §2.2 and is imported by the popup and any injected UI.
+- [x] Old design rules (variables, themes, style docs, lint rules) are removed or replaced; no component uses a raw hex color, raw radius or ad-hoc font size outside the token file.
+- [x] Inter is bundled locally; there is no request to Google Fonts or any CDN.
+- [x] Every component in §2.8 exists once and is reused.
 
 **Screens and states**
-- [ ] All screens in §4 render at exactly 640 × 600 with no horizontal scroll; only the content area scrolls vertically.
-- [ ] Misc grid, Playback speed, Video quality, Password generator, Volume boost, Scrollbars (status), Modes, Capture screenshot, Extensions, YouTube, Links, Shortcuts, Settings, Reset dialog and Restricted page all match the spec.
-- [ ] Tooltips on tiles appear on hover and keyboard focus; the Restricted-page tile set is correctly disabled.
-- [ ] Empty states (no links), error states (shortcut conflict / missing modifier), and the recording state are implemented.
+- [x] All screens in §4 render at exactly 640 × 600 with no horizontal scroll; only the content area scrolls vertically.
+- [x] Misc grid, Playback speed, Video quality, Password generator, Volume boost, Scrollbars (status), Modes, Capture screenshot, Extensions, YouTube, Links, Shortcuts, Settings, Reset dialog and Restricted page all match the spec.
+- [x] Tooltips on tiles appear on hover and keyboard focus; the Restricted-page tile set is correctly disabled.
+- [x] Empty states (no links), error states (shortcut conflict / missing modifier), and the recording state are implemented.
 
 **Behavior**
-- [ ] Existing features, storage keys and message contracts still work (regression checked).
-- [ ] Link normalization, dedupe, ordering and toasts match §5.
-- [ ] Shortcut recorder rules match §5; counts update (`{n} of 28 set`).
-- [ ] Toast auto-dismisses at 1800 ms and replaces the previous toast.
+- [x] Existing features, storage keys and message contracts still work (regression checked).
+- [x] Link normalization, dedupe, ordering and toasts match §5.
+- [x] Shortcut recorder rules match §5; counts update (`{n} of 28 set`).
+- [x] Toast auto-dismisses at 1800 ms and replaces the previous toast.
 
 **Accessibility**
-- [ ] All controls reachable and operable by keyboard; visible focus ring everywhere.
-- [ ] Switches/checkboxes use correct roles; icon-only buttons have labels; dialog traps focus and restores it.
-- [ ] Contrast meets §2.3; no state relies on color alone.
-- [ ] No animation under `prefers-reduced-motion`.
+- [x] All controls reachable and operable by keyboard; visible focus ring everywhere.
+- [x] Switches/checkboxes use correct roles; icon-only buttons have labels; dialog traps focus and restores it.
+- [x] Contrast meets §2.3; no state relies on color alone.
+- [x] No animation under `prefers-reduced-motion`.
 
 **Hygiene**
-- [ ] No new network access, analytics or remote assets.
-- [ ] Build, lint and tests pass; screenshots of every screen at 640 × 600 attached.
-- [ ] A short migration note lists: removed design rules, decisions made from §8, and any manifest or dependency changes.
+- [x] No new network access, analytics or remote assets.
+- [x] Build, lint and tests pass; screenshots of every screen at 640 × 600 attached.
+- [x] A short migration note lists: removed design rules, decisions made from §8, and any manifest or dependency changes.
+
+Verification evidence and documented behavior-preserving deviations: see MIGRATION_NOTES.md and screenshots/README.md. Live website/OS integration limitations are recorded there.

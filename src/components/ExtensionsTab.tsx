@@ -306,7 +306,7 @@ export default function ExtensionsTab() {
                 )}
               >
                 <button className="flex items-center gap-2 min-w-0 flex-1" disabled={!extension.canToggle || Boolean(busy)} onClick={()=>setEnabled(extension,!extension.enabled)}><ExtensionIcon extension={extension} /><span className="min-w-0 flex-1 text-left">
-                  <div className="truncate text-base font-semibold leading-5">{extension.name}</div>
+                  <div className="zed-extension-name truncate">{extension.name}</div>
                   <div className="truncate text-xs leading-4 text-muted-foreground">
                     v{extension.version}
                     {extension.isSelf ? " · This extension" : ""}

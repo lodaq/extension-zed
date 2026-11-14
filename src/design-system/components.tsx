@@ -10,12 +10,19 @@ export function SwitchRow({ label, description, checked, onChange, disabled }: {
 export function StatusPill({ active }: { active: boolean }) { return <span className={`zed-pill${active ? " zed-pill--active" : ""}`}>{active ? "Active" : "Off"}</span> }
 export function Card({ children, active = false }: { children: ReactNode; active?: boolean }) { return <div className={`zed-card${active ? " zed-card--active" : ""}`} style={{ padding: 16 }}>{children}</div> }
 export function IconButton({ label, icon, onClick, disabled }: { label: string; icon: IconName; onClick: () => void; disabled?: boolean }) { return <button type="button" className="zed-icon-button" aria-label={label} onClick={onClick} disabled={disabled}><Icon name={icon} size={18} /></button> }
-export function LetterAvatar({ title }: { title: string }) { return <span className="zed-avatar" style={{ background: `var(--zed-avatar-${title.length % 6 + 1})` }}>{title[0]?.toUpperCase()}</span> }
+export function LetterAvatar({ title, compact=false }: { title: string; compact?:boolean }) { return <span className={`zed-avatar${compact?" zed-avatar--link":""}`} style={{ background: `var(--zed-avatar-${title.length % 6 + 1})` }}>{title[0]?.toUpperCase()}</span> }
 export function Notice({ title, children }: { title: string; children: ReactNode }) { return <div className="zed-notice" role="alert"><Icon name="info" /><div><strong>{title}</strong><div className="zed-helper">{children}</div></div></div> }
 export function Dialog({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => { const previous = document.activeElement as HTMLElement | null; ref.current?.showModal(); ref.current?.querySelector<HTMLButtonElement>('button')?.focus(); return () => { previous?.focus() } }, [])
-  return <dialog ref={ref} className="zed-dialog" aria-labelledby="zed-dialog-title" onCancel={event => { event.preventDefault(); onClose() }}><h2 className="zed-title" id="zed-dialog-title">{title}</h2>{children}</dialog>
+  return <dialog ref={ref} className="zed-dialog" aria-modal="true" onKeyDown={event => {
+    if(event.key!=="Tab")return
+    const buttons=ref.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
+    if(!buttons?.length)return
+    const first=buttons[0],last=buttons[buttons.length-1]
+    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}
+    else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
+  }} aria-labelledby="zed-dialog-title" onCancel={event => { event.preventDefault(); onClose() }}><h2 className="zed-title" id="zed-dialog-title">{title}</h2>{children}</dialog>
 }
 
 export function CheckboxTile({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (checked: boolean) => void }) {

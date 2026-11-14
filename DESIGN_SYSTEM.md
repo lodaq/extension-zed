@@ -6,4 +6,4 @@ Use shared Button, SwitchRow, Tile, Card, StatusPill, IconButton, LetterAvatar, 
 
 No raw colors, radii or font sizes outside tokens.css. Use `--zed-*` tokens. Accent identifies selected/primary actions; warning identifies destructive/blocked states. Status always includes text or shape. Keep all controls keyboard accessible with visible focus, native disabled semantics and accessible names. Dialogs focus Cancel first, trap focus, close on Escape and restore focus. The popup is 640 × 600; only content scrolls. No remote assets.
 
-Repository no-motion requirement is retained: no transitions or animations, including tooltip and switch changes. The spec duration token and reduced-motion rule are retained verbatim for traceability.
+Motion follows spec §2: only tooltip opacity/transform and switch knob position transition over `--zed-dur`. Reduced motion sets that duration to zero. No other motion is used.

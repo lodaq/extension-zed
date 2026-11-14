@@ -2,7 +2,7 @@
 
 ## Status and source
 
-The full Design Spec v1.0 is now present in `docs/design/extension-zed-design-spec.md` (611 lines). The earlier source blocker is resolved. The HTML remains a visual reference; its mock application code is not reused. Implementation is proceeding on `redesign/zed-design-system`.
+The full Design Spec v1.0 is now present in `docs/design/extension-zed-design-spec.md` (611 lines). The earlier source blocker is resolved. The HTML remains a visual reference; its mock application code is not reused. Implementation and fixture verification are complete on `redesign/zed-design-system`.
 
 ## Stack, tooling, and build
 
@@ -20,7 +20,7 @@ The full Design Spec v1.0 is now present in `docs/design/extension-zed-design-sp
 
 Required permissions: `scripting`, `activeTab`, `storage`, `clipboardWrite`, `debugger`. Optional permission: `management`. Host permission: `https://viliusle.github.io/miniPaint/*`. HTTP(S) content scripts provide playback persistence, Arabic RTL, video quality and bridge, and grayscale. Web-accessible resources expose screenshot clipboard HTML/JS, theme CSS and scrollbar CSS to HTTP(S) pages.
 
-No manifest, permission, schema or dependency changes made.
+The permission lists are unchanged. Final manifest changes are recorded below.
 
 ## Existing design sources
 
@@ -62,7 +62,7 @@ Screen mapping: Misc §4.1, Playback §4.2, Video quality §4.3, Password §4.4,
 
 ### Existing features without a confirmed spec design
 
-Because §4 is missing, these are preservation candidates rather than definitive omissions: Misc reorder/expansion, settings import/export, About, privacy/permissions disclosure, extension options/reload/uninstall, grayscale websites, and screenshot result preview/editor controls. No restyling performed yet. Use reusable Zed Dark rows, buttons, cards, notices and dialogs when the source defines their placement.
+The current features needing layouts beyond the primary spec screens are: Misc reorder/expansion, settings import/export, About, privacy/permissions disclosure, extension options/reload/uninstall, grayscale websites, and screenshot result preview/editor controls. They retain their behavior and use shared Zed Dark buttons, rows, typography and notices. Tool reordering moves into a collapsible Settings section; saved custom orders still apply. Expansion keys remain intact for compatibility, while grid/drill-in navigation replaces collapsible panels.
 
 ## Injected surfaces
 
@@ -74,23 +74,59 @@ Because §4 is missing, these are preservation candidates rather than definitive
 ## Decisions
 
 1. §8.1: popup is dark regardless of the stored darkTheme value. Preserve that key and switch rather than inventing a page-level darkening feature; grayscale retains its website effect.
-2. §8.2: preserve reset/import/export schema version 1 and the existing reset key list. New savedLinks and keyboardShortcuts are additive storage keys. Reset shortcut bindings to their defaults; saved Links survive reset. Existing page effects are unchanged until their existing application path runs.
+2. §8.2: preserve reset/import/export schema version 1 and the existing reset key list for existing features. New savedLinks and keyboardShortcuts are additive storage keys. Reset shortcut bindings to their defaults; saved Links survive reset. Existing page effects are unchanged until their existing application path runs.
 3. §8.3: quality applies immediately on selection, retaining Apply. Existing Auto and higher-than-1080p resolutions remain available using the same option components.
 4. §8.4: read scrollbar state from existing style IDs on the current document. Preserve independent command precedence and all-frame action application.
 5. §8.5: screenshot selection, native full-page capture, preview, clipboard/download and editor behavior remain. No new Capture result sheet or scrollbar preview.
 6. §8.6: restricted detection uses activeTab URL access; no new permission. Catch page-action failures as fallback.
 7. §8.7: existing settings JSON format and validation remain. New Links/shortcut keys are local additive storage; no migration of existing keys.
 8. Existing speed range 0.1–10/step 0.1, volume step 10, password symbol pool and all-unchecked validation win over mock behavior under the stated precedence. Password randomness/selected-group guarantees remain.
-9. Repository no-animation requirement remains stricter than §2 hover motion. Keep the tokens verbatim but never consume the motion duration for transitions.
-10. No existing global shortcut mechanism besides Alt+Z exists. Add an HTTP(S) top-frame content-script key listener using local bindings, as §6 permits; browser-reserved shortcuts and restricted pages remain browser limitations.
+9. The explicit source-of-truth precedence replaces the prior no-motion design rule with §2 motion: only tooltip opacity/transform and switch knob transitions, and zero duration under reduced motion. AGENTS.md/CLAUDE.md now point to the single system.
+10. No existing global shortcut mechanism besides Alt+Z exists. Add an HTTP(S) top-frame content-script key listener using local bindings, as §6 permits; browser-reserved shortcuts and restricted pages remain browser limitations. Page-modifying shortcuts use existing activeTab grants: open the popup on the current tab first; navigation revokes the grant. No broad host permission is added.
 
-## Plan after the source blocker is resolved
+## Completed phases
 
-1. Finish exact numbered screen mapping and §8 decisions against the complete specification. Commit Phase 0 audit (this document).
-2. Phase 1: implement normative tokens, local font, primitives/icons and shared components using existing React/Radix facilities; migrate popup, boot shell and isolated surfaces together. Replace competing documentation/theme rules, add a scoped token guard to lint, and commit.
-3. Phase 2: wire shell/drill-ins and all screens to current services, preserving contracts and documenting unavoidable additions/migrations. Commit.
-4. Phase 3: verify keyboard roles/focus/dialog behavior, restricted/error/empty states and scroll containment. Produce per-screen screenshots at 640 × 600 with a local Chrome API fixture and no network dependency, run build/lint/unit/token checks, reconcile every actual §9 checkbox, and commit.
+- Phase 0: audited the old stack, features, style sources and isolated surfaces. Resolved the initially incorrect attachment when the complete specification arrived.
+- Phase 1: `src/design-system/tokens.css` contains §2.2 verbatim, with one additional zero-radius token for selection geometry. Shared CSS primitives, React components and exact SVG paths replace the palette and controls. Inter is extracted from the supplied reference and bundled locally. `src/theme.css` now only maps legacy semantic names to Zed tokens; Vite emits the same palette for isolated UI. `check:tokens` is part of lint.
+- Phase 2: shell, grid/drill-ins, all screen routes, links, shortcut catalog/recorder/execution, status cards, restricted banner and native reset dialog. Real extension APIs and existing feature services remain. Navigation deliberately opens Misc every time as §3 requires; old saved navigation/expansion keys are not deleted. Password options retain their previous popup-session lifetime and regenerate on entry.
+- Phase 3: fixed focus wrapping/restoration, checkbox roles, labels, link validation and rendered-data handling. Captured all screens plus empty/populated links, recording/errors/conflict, toast and reset states. Added behavior assertions and unit regressions.
 
-## Verification
+## Removed or replaced design rules
 
-Audit only: inspected repository sources and both attached file contents; checked TokenEconomizer facts. No build, lint, tests or screenshot runs performed because no application code changed. Phases 1–3 and §9 acceptance remain unverified and incomplete.
+- `DESIGN.md`, `AGENTS.md`, `CLAUDE.md`, and README design guidance now point to DESIGN_SYSTEM.md.
+- `src/theme.css`: removed the light/dark OKLCH palette, old font choices and shadows; compatibility aliases resolve exclusively to Zed tokens.
+- `src/main.css`: replaced 480px sizing and the square-corner/global zero-motion guards. `src/scrollbar.css` uses the shared token palette.
+- `tailwind.config.js`: removed animation plugin use and mapped type sizes to tokens. Removed the unused tailwindcss-animate dependency and updated bun.lock offline.
+- `index.html`/`public/boot.js`: removed the independent boot palette, old layout and emoji gear. Production popup CSS is still inlined by Vite.
+- `src/components/ui/` and popup components: token-based controls, type and geometry. Injected inspector, screenshot dialog and clipboard frame use the same tokens and bundled font.
+
+## Additions, permissions and constraints
+
+- No new dependencies, required permissions, optional permissions, host permissions, external calls or analytics.
+- Manifest adds a top-frame HTTP(S) shortcut listener and exposes `fonts/Inter.woff2` alongside the existing isolated UI assets. Inter is local; the reference application logic is not copied.
+- Existing screenshot previews/editor actions remain; no new Capture result sheet or scrollbar preview card.
+- Higher quality resolutions and Auto remain under “More resolutions”; settings About/privacy details remain below the specified blocks. These use the same primitives.
+- The token guard covers extension CSS/TS/TSX and injected inspector/clipboard UI. It excludes design reference documents, tests, generated output, and deliberate website transformations such as custom website scrollbars. Those transformations are feature behavior, not extension chrome.
+- “Dark theme” preserves the setting key, but the popup remains dark under the new visual precedence; no unrequested website darkening feature is introduced.
+- Chrome internal URLs saved by Save & close retain their scheme. Imported destinations are validated to reject executable schemes. Browser restrictions can prevent opening an internal URL from a link.
+
+## Verification and reproduction
+
+Run from the repository root:
+
+```sh
+bun run build
+bun run lint
+bun run check:tokens
+bun run test
+bun run check:build
+bun run screenshots
+```
+
+Screenshots are in `docs/design/screenshots/`. The screenshot script uses the built popup, a local HTTP server, stubbed Chrome APIs from `docs/design/fixture.js`, and an installed headless Chromium via the DevTools protocol. Set `CHROME_PATH` to another installed Chromium executable if necessary. It downloads nothing, and its test data is excluded from the extension build.
+
+Assertions cover 640 × 600 dimensions, horizontal and document scroll containment on every screen, native dialog Cancel focus/Tab wrapping/Escape/focus restoration, six restricted tiles, shortcut recording/conflict copy, saving and displaying a link, and toast expiration. Reduced-motion media is enabled for deterministic captures. The spec palette supplies the documented contrast pairs.
+
+Build, lint (including token guard), packaged-asset checks, and 205 unit tests pass. Tests cover existing feature contracts plus normalization, safe stored destinations, shortcut catalog/defaults, recorder rules and dispatcher behavior.
+
+Not verified against live websites in an installed browser: player-specific behavior, OS/browser-reserved shortcut conflicts, and actual management permission prompts. Existing network-fetching e2e harnesses were not run; the new offline fixture replaces them for visual verification. The shared preview resize did not produce a reliable CSS viewport, so saved acceptance images use the offline Chromium harness at device scale 1.

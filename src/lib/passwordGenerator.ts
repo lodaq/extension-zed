@@ -9,6 +9,8 @@ export type PasswordOptions = {
   symbols: boolean
 }
 
+export const DEFAULT_PASSWORD_OPTIONS: PasswordOptions = { length: 20, uppercase: true, lowercase: true, numbers: true, symbols: true }
+
 const CHARACTERS = {
   uppercase: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
   lowercase: "abcdefghijklmnopqrstuvwxyz",

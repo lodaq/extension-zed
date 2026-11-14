@@ -38,7 +38,7 @@ export default function VolumeBooster({ dragHandle, open, onOpenChange }: MiscSe
         value={boost}
         onChange={(event) => applyBoost(Number(event.target.value))}
         className="w-full accent-primary"
-        aria-label="Volume amplification"
+        aria-label="Amplification"
       />
       <p className="text-xs leading-relaxed text-muted-foreground">
         Boosts audio and video up to 2000%. High levels may cause distortion or damage speakers.

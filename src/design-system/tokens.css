@@ -1,0 +1,106 @@
+:root {
+  color-scheme: dark;
+
+  /* ── Surfaces (low → high) ── */
+  --zed-bg: #0E1218;               /* app background */
+  --zed-bg-inset: #0A0D12;         /* inputs, password readout (recessed) */
+  --zed-surface: #151A22;          /* cards, rows, tiles, back button */
+  --zed-surface-hover: #1A212B;    /* tile hover */
+  --zed-surface-raised: #1D2430;   /* secondary buttons, icon wells, key chips */
+  --zed-surface-overlay: #222B38;  /* tooltip, toast, dialog */
+  --zed-scrim: #06080CB8;          /* behind dialogs, ~72% */
+
+  /* ── Borders ── */
+  --zed-border-subtle: #1F2631;    /* cards, rows, tab bar divider */
+  --zed-border: #28303D;           /* secondary buttons, back button */
+  --zed-border-strong: #2F3846;    /* overlays, hover */
+  --zed-border-dashed: #3A4556;    /* "+ Add" affordance */
+  --zed-border-control: #6B7686;   /* text input, unchecked box, switch-off ring (3:1+) */
+
+  /* ── Text and icons ── */
+  --zed-text: #E8ECF2;
+  --zed-text-soft: #C9D1DC;        /* body copy on overlays/banners */
+  --zed-text-muted: #9AA4B2;       /* helper text, captions, inactive tabs */
+  --zed-icon: #AEB8C6;
+  --zed-icon-off: #6B7686;         /* icons of switched-off items */
+
+  /* ── Accent (change only --zed-accent; tints derive) ── */
+  --zed-accent: #5CE1C6;
+  --zed-on-accent: #0E1218;
+  --zed-accent-tint: color-mix(in srgb, var(--zed-accent) 14%, transparent);
+  --zed-accent-line: color-mix(in srgb, var(--zed-accent) 40%, transparent);
+
+  /* ── Attention (destructive, blocked) ── */
+  --zed-warn: #F08A5D;
+  --zed-on-warn: #0E1218;
+  --zed-warn-tint: color-mix(in srgb, var(--zed-warn) 12%, transparent);
+  --zed-warn-line: color-mix(in srgb, var(--zed-warn) 40%, transparent);
+
+  /* ── Switch ── */
+  --zed-switch-off: #2A3240;
+  --zed-knob-off: #AEB8C6;
+
+  /* ── Letter-avatar palette (text on it is --zed-on-accent) ── */
+  --zed-avatar-1: #7AA2FF;
+  --zed-avatar-2: #8FD9B6;
+  --zed-avatar-3: #F2B880;
+  --zed-avatar-4: #C9A7F0;
+  --zed-avatar-5: #F08A5D;
+  --zed-avatar-6: #7BD88F;
+  --zed-avatar-neutral: #C4C9D4;
+
+  /* ── Type ── */
+  --zed-font: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --zed-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --zed-fs-display: 48px;  /* speed readout */
+  --zed-fs-value: 40px;    /* amplification readout */
+  --zed-fs-title: 18px;
+  --zed-fs-lg: 16px;
+  --zed-fs-md: 15px;
+  --zed-fs-base: 14px;
+  --zed-fs-sm: 13px;
+  --zed-fs-xs: 12px;
+  --zed-fs-2xs: 11px;
+
+  /* ── Spacing (4 px base, with 2/6/10 for tight UI) ── */
+  --zed-space-0: 2px;  --zed-space-1: 4px;  --zed-space-2: 6px;  --zed-space-3: 8px;
+  --zed-space-4: 10px; --zed-space-5: 12px; --zed-space-6: 16px; --zed-space-7: 20px; --zed-space-8: 24px;
+
+  /* ── Radius ── */
+  --zed-radius-chip: 6px;       /* key chips */
+  --zed-radius-check: 7px;      /* checkbox box */
+  --zed-radius-inline: 8px;     /* 28 px inline buttons */
+  --zed-radius-sm: 9px;         /* tabs, back, icon wells, avatars, 36 px icon buttons */
+  --zed-radius-md: 10px;        /* inputs, 44 px buttons, shortcut rows, tooltip, toast */
+  --zed-radius-lg: 12px;        /* 52 px buttons, rows, banner */
+  --zed-radius-card: 14px;      /* cards, tiles */
+  --zed-radius-dialog: 16px;
+  --zed-radius-pill: 999px;     /* switch track, status pill */
+
+  /* ── Control heights ── */
+  --zed-h-inline: 28px;
+  --zed-h-control: 36px;
+  --zed-h-compact: 44px;
+  --zed-h-primary: 52px;
+  --zed-h-option: 64px;
+
+  /* ── Layout ── */
+  --zed-popup-w: 640px;
+  --zed-popup-h: 600px;
+  --zed-tabbar-h: 48px;
+  --zed-subbar-h: 52px;
+  --zed-page-pad: 12px;
+  --zed-gap: 8px;
+
+  /* ── Elevation and motion ── */
+  --zed-shadow-pop: 0 8px 20px rgba(0, 0, 0, .45);
+  --zed-shadow-dialog: 0 16px 40px rgba(0, 0, 0, .5);
+  --zed-dur: 140ms;
+  --zed-ease: ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --zed-dur: 0ms; }
+}
+
+:root { --zed-radius-none: 0; }

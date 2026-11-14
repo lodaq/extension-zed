@@ -10,4 +10,4 @@
 - Never introduce motion libraries (Framer Motion, React Spring, Motion One, etc.).
 
 ### Design System
-- Before creating, editing, or reviewing UI, read and follow [DESIGN.md](DESIGN.md). It governs shadcn/ui components, square corners, theme tokens, the unified scrollbar, and all injected extension surfaces.
+All UI uses the Zed Dark design system in `src/design-system/`; see DESIGN_SYSTEM.md. No raw colors, radii or font sizes outside tokens.css.

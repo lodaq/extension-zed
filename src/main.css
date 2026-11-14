@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "./scrollbar.css";
 @import "./theme.css";
+@import "./design-system/tokens.css";
+@import "./design-system/base.css";
 @config "../tailwind.config.js";
 
 
@@ -11,7 +13,7 @@
 
   html {
     font-family: var(--font-sans);
-    width: 480px;
+    width: 640px;
     height: 600px;
     min-height: 600px;
     max-height: 600px;
@@ -23,12 +25,12 @@
   body {
     @apply bg-background text-foreground antialiased;
     margin: 0;
-    width: 480px;
+    width: 640px;
     height: 600px;
     min-height: 600px;
     max-height: 600px;
     overflow-x: hidden;
-    font-size: 14px;
+    font-size: var(--zed-fs-base);
     user-select: none;
     -webkit-user-select: none;
   }
@@ -43,7 +45,7 @@
 
   #root {
     display: block;
-    width: 480px;
+    width: 640px;
     height: 600px;
     min-height: 600px;
     max-height: 600px;
@@ -56,7 +58,6 @@
 *,
 *::before,
 *::after {
-  border-radius: 0 !important;
   animation-duration: 0s !important;
   animation-delay: 0s !important;
   transition-duration: 0s !important;

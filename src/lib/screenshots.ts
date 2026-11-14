@@ -25,7 +25,7 @@ export async function handleScreenshotMessage(
     const { darkTheme = true } = await chrome.storage.local.get("darkTheme")
     await chrome.storage.session.set({ [key]: { token } })
     try {
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: runScreenshot, args: [data.mode as ScreenshotMode, token, themeCss + scrollbarCss, darkTheme !== false] })
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: runScreenshot, args: [data.mode as ScreenshotMode, token, `@font-face{font-family:Inter;font-weight:100 900;font-display:swap;src:url("${chrome.runtime.getURL("fonts/Inter.woff2")}") format("woff2")}` + themeCss.replace(/:root/g, ":root, :host").replace(/fonts\/Inter\.woff2/g, chrome.runtime.getURL("fonts/Inter.woff2")) + scrollbarCss, darkTheme !== false] })
     } catch {
       await chrome.storage.session.remove(key)
       throw new Error("This page does not allow screenshot selection or previews. Open a regular webpage and try again.")

@@ -14,6 +14,8 @@
   let speed = null;
   let settings = null;
   let applied = new WeakMap();
+  // YouTube identifies videos by ID; rebuffering must not reset its quality choice.
+  const youtubeApplied = new WeakMap();
   let retryTimers = [];
   const roots = new Set([document]);
   let observer;
@@ -62,15 +64,15 @@
     return heights.slice().reverse().find(function (height) { return height < target; }) || heights[0];
   }
 
-  function update(player, source, levels, select, force) {
+  function update(player, source, levels, select, force, cache = applied) {
     const auto = settings.quality === "auto";
     const height = auto ? 0 : chooseHeight(levels);
     if (!auto && !height) return null;
     const key = JSON.stringify([settings, source, levels.map(function (level) { return [level.id, level.height]; })]);
-    const previous = applied.get(player);
+    const previous = cache.get(player);
     if (!force && previous && previous.key === key) return previous.result;
-    const result = select(height, auto);
-    applied.set(player, { key, result });
+    const result = select(height, auto, previous && previous.source === source);
+    cache.set(player, { key, result, source });
     return result;
   }
 
@@ -79,8 +81,9 @@
     if (typeof player.setPlaybackQualityRange !== "function" && typeof player.setPlaybackQuality !== "function") return null;
     const levels = (player.getAvailableQualityLevels() || []).map(function (id) { return { id, height: QUALITY_HEIGHT[id] }; });
     const source = typeof player.getVideoData === "function" ? player.getVideoData().video_id : "";
-    return update(player, source, levels, function (height, auto) {
+    return update(player, source, levels, function (height, auto, sameVideo) {
       const chosen = auto ? "default" : levels.find(function (level) { return level.height === height; }).id;
+      if (!force && sameVideo && (auto || typeof player.getPlaybackQuality === "function" && player.getPlaybackQuality() === chosen)) return auto ? "auto" : chosen;
       if (typeof player.setPlaybackQualityRange === "function") player.setPlaybackQualityRange(chosen, chosen);
       if (typeof player.setPlaybackQuality === "function") player.setPlaybackQuality(chosen);
       try {
@@ -93,7 +96,7 @@
         }
       } catch (error) {}
       return auto ? "auto" : chosen;
-    }, force);
+    }, force, youtubeApplied);
   }
 
   function applyHls(video, force) {
@@ -247,7 +250,13 @@
   function setSpeed(value) {
     const next = Number(value);
     speed = Number.isFinite(next) && next >= 0.1 && next <= 10 ? Math.round(next * 10) / 10 : null;
-    if (isMeta) void applyAll(false);
+    if (!isMeta) return;
+    for (const video of queryAll("video")) {
+      try {
+        const controller = metaController(video);
+        if (controller) syncMetaSpeed(controller);
+      } catch (error) {}
+    }
   }
 
   function applyAll(force) {
@@ -321,13 +330,13 @@
   }
 
   if (window.__zedVideoQualityEngine) {
-    if (window.__zedVideoQualityEngine.version !== 7) {
+    if (window.__zedVideoQualityEngine.version !== 9) {
       window.__zedVideoQualityEngine.setSettings({ quality: "auto", fallback: "lower" }, { apply: false });
       throw new Error("Refresh this tab to replace the old video quality handler.");
     }
     return window.__zedVideoQualityEngine.apply(normalize(window.__zedVideoQualitySettings) || undefined);
   }
-  window.__zedVideoQualityEngine = { apply, applyAll, setSettings, getSettings: function () { return settings; }, version: 7 };
+  window.__zedVideoQualityEngine = { apply, applyAll, setSettings, getSettings: function () { return settings; }, version: 9 };
 
   function onMedia(event) {
     if (!event.target || event.target.tagName !== "VIDEO") return;

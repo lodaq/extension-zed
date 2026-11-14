@@ -1,6 +1,7 @@
-import { MISC_SECTION_ORDER, POPUP_TABS, type MiscSectionId, type PopupTab } from "./settings"
+import { readSetting, MISC_SECTION_ORDER, POPUP_TABS, type MiscSectionId, type PopupTab } from "./settings"
 
 export type BootState = {
+  location?: { tab: string; detail: string | null; settings: boolean }
   tab?: PopupTab
   dark?: boolean
   order?: readonly MiscSectionId[]
@@ -39,6 +40,7 @@ export function readBootState(): BootState {
     if (value === null || typeof value !== "object" || Array.isArray(value)) return memoryBootCache
     const record = value as Record<string, unknown>
     const result: BootState = {
+      location: readSetting("popupLocation", record.location, memoryBootCache.location),
       tab: isPopupTab(record.tab) ? record.tab : memoryBootCache.tab,
       dark: typeof record.dark === "boolean" ? record.dark : memoryBootCache.dark,
       order: isSectionOrder(record.order) ? record.order : memoryBootCache.order,
@@ -64,7 +66,8 @@ export function updateBootState(patch: BootState) {
 }
 
 export function mirrorBootValue(key: string, value: unknown) {
-  if (key === "darkTheme" && typeof value === "boolean") updateBootState({ dark: value })
+  if (key === "popupLocation") updateBootState({ location: readSetting(key, value, undefined) })
+  else if (key === "darkTheme" && typeof value === "boolean") updateBootState({ dark: value })
   else if (key === "miscSectionOrder" && isSectionOrder(value)) updateBootState({ order: value })
   else if (key === "miscExpandedSections" && isSectionList(value)) updateBootState({ expanded: value })
 }

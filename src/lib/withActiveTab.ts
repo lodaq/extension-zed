@@ -18,11 +18,22 @@ export async function sendPageAction(event: PageAction, successMessage = "Applie
   try {
     const response = (await chrome.runtime.sendMessage({ event, value })) as PageActionResult
     if (!response?.ok) throw new Error(response?.error || "Chrome could not modify this page")
-    report(response.message || successMessage, "success")
+    report(event === "applyVideoQuality" ? "Quality preference applied" : response.message || successMessage, "success")
     return true
   } catch (error) {
     const message = error instanceof Error ? error.message : "Chrome could not modify this page"
     report(message, "error")
     return false
+  }
+}
+
+export function isRestrictedPage(input: string): boolean {
+  try {
+    const url = new URL(input)
+    return !["http:", "https:"].includes(url.protocol)
+      || url.hostname === "chromewebstore.google.com"
+      || (url.hostname === "chrome.google.com" && (url.pathname === "/webstore" || url.pathname.startsWith("/webstore/")))
+  } catch {
+    return true
   }
 }

@@ -15,6 +15,10 @@ module.exports = {
       },
     },
     extend: {
+      fontSize: {
+        xs: "var(--zed-fs-xs)", sm: "var(--zed-fs-base)", base: "var(--zed-fs-lg)",
+        lg: "var(--zed-fs-title)", xl: "var(--zed-fs-title)",
+      },
       colors: {
         border: "var(--border)",
         input: "var(--input)",
@@ -91,5 +95,5 @@ module.exports = {
       animation: {},
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [],
 }

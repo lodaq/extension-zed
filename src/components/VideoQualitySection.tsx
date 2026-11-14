@@ -37,31 +37,9 @@ export default function VideoQualitySection({ dragHandle, open, onOpenChange }: 
       id="zed-quality-heading"
     >
       <div className="flex flex-col gap-2.5">
-        <div className="flex items-center gap-2">
-          <select
-            id="zed-video-quality-select"
-            aria-label="Preferred video quality"
-            value={quality}
-            onChange={(e) => void handleQualityChange(e.target.value)}
-            className="h-9 min-w-0 flex-1 rounded-none border border-input bg-background px-2.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            <option value="auto">Auto</option>
-            {QUALITY_OPTIONS.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <Button
-            type="button"
-            size="sm"
-            className="h-9 shrink-0 px-3"
-            onClick={handleApply}
-          >
-            Apply
-          </Button>
+        <div className="zed-quality-grid">
+          {[...QUALITY_OPTIONS].reverse().filter(opt=>opt.height<=1080).map(opt=><Button key={opt.id} aria-pressed={quality===opt.id} variant={quality===opt.id?"default":"outline"} onClick={()=>void handleQualityChange(opt.id)}>{opt.height}p</Button>)}
         </div>
-
         <div className="flex flex-col gap-1.5">
           <span className="text-xs text-muted-foreground">If unavailable</span>
           <div className="grid grid-cols-2 gap-2">
@@ -69,7 +47,7 @@ export default function VideoQualitySection({ dragHandle, open, onOpenChange }: 
               type="button"
               variant={fallback === "higher" ? "default" : "outline"}
               size="sm"
-              className="h-8 text-xs font-medium"
+
               onClick={() => void handleFallbackChange("higher")}
             >
               Prefer higher
@@ -78,13 +56,15 @@ export default function VideoQualitySection({ dragHandle, open, onOpenChange }: 
               type="button"
               variant={fallback === "lower" ? "default" : "outline"}
               size="sm"
-              className="h-8 text-xs font-medium"
+
               onClick={() => void handleFallbackChange("lower")}
             >
               Prefer lower
             </Button>
           </div>
         </div>
+        <Button variant="default" onClick={handleApply}>Apply</Button>
+        <details><summary className="zed-helper">More resolutions</summary><div className="zed-quality-grid">{QUALITY_OPTIONS.filter(opt=>opt.height>1080).map(opt=><Button key={opt.id} aria-pressed={quality===opt.id} variant={quality===opt.id?"default":"outline"} onClick={()=>void handleQualityChange(opt.id)}>{opt.label}</Button>)}<Button aria-pressed={quality==="auto"} variant={quality==="auto"?"default":"outline"} onClick={()=>void handleQualityChange("auto")}>Auto</Button></div></details>
       </div>
     </MiscSection>
   )

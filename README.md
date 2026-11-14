@@ -59,7 +59,7 @@ To create a portable build ZIP yourself, run `bun run package:store`. It creates
 
 ### Popup
 
-- Opens from the toolbar or with **Alt+Z**. The 400 × 600 popup remembers the selected tab and supports mouse-wheel scrolling across its tab strip.
+- Opens from the toolbar or with **Alt+Z**. The 640 × 600 popup remembers the selected tab and supports mouse-wheel scrolling across its tab strip.
 - Page actions show success or error notifications. A failed action also marks its browser tab with an error badge and tooltip; a later successful action clears the warning.
 
 ### Misc
@@ -96,7 +96,7 @@ The **Reload** action restarts an extension (for Extension Zed, it reloads the a
 
 ### Settings
 
-- Switch between dark and light themes.
+- The popup uses Zed Dark.
 - Export preferences to a JSON backup, import a backup, or reset preferences.
 - Import merges recognized settings; values not present in the backup are left unchanged.
 
@@ -110,8 +110,10 @@ Media features depend on the site's player. Some sites may change their player A
 
 ## More information
 
-- [Mandatory design system](DESIGN.md)
+- [Mandatory design system](DESIGN_SYSTEM.md)
 - [Full implemented feature inventory](FEATURES.md)
 - [Permissions and access rationale](PERMISSIONS.md)
 - [Chrome Web Store release status and process](CHROMEWEBSTORE.md)
 - [Development and contribution notes](CONTRIBUTING.md)
+
+All UI uses the Zed Dark design system in `src/design-system/`; see DESIGN_SYSTEM.md. No raw colors, radii or font sizes outside tokens.css.

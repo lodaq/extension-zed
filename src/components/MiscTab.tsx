@@ -158,7 +158,7 @@ export default function MiscTab() {
               key={id}
               data-misc-section-id={id}
               className={cn(
-                "relative rounded-none",
+                "relative rounded-[var(--zed-radius-lg)]",
                 isDragged && "opacity-40",
                 isDrop && !dropTarget?.after && "border-t-2 border-primary",
                 isDrop && dropTarget?.after && "border-b-2 border-primary"

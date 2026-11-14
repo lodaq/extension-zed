@@ -22,7 +22,7 @@
       <style>
         :host { all: initial; }
         .box { position: fixed; border: 2px solid var(--ring); background: transparent; box-sizing: border-box; }
-        .panel { position: fixed; width: 300px; max-height: min(420px, calc(100vh - 20px)); overflow: auto; padding: 10px; border: 1px solid var(--border); border-radius: 0; background: var(--card); color: var(--card-foreground); box-shadow: 0 8px 24px rgb(0 0 0 / 35%); font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
+        .panel { position: fixed; width: 300px; max-height: min(420px, calc(100vh - 20px)); overflow: auto; padding: 10px; border: 1px solid var(--border); border-radius: var(--zed-radius-card); background: var(--card); color: var(--card-foreground); box-shadow: 0 8px 24px var(--zed-scrim); font: var(--zed-fs-xs)/1.45 var(--zed-font); }
         .title { margin-bottom: 7px; color: var(--foreground); font-weight: 700; }
         .section { margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--border); color: var(--foreground); }
         .row { display: grid; grid-template-columns: 92px 1fr; gap: 8px; overflow-wrap: anywhere; }

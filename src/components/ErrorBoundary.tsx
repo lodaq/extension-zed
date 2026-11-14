@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div
           role="alert"
-          className="flex h-[600px] w-[400px] flex-col justify-between overflow-hidden rounded-none border border-destructive/40 bg-card p-6 text-card-foreground shadow-sm"
+          className="flex h-[600px] w-[400px] flex-col justify-between overflow-hidden rounded-[var(--zed-radius-lg)] border border-destructive/40 bg-card p-6 text-card-foreground shadow-sm"
         >
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2.5 text-destructive">
@@ -65,7 +65,7 @@ export class ErrorBoundary extends Component<Props, State> {
               Extension Zed encountered an unexpected error while rendering the popup.
             </p>
             {this.state.error?.message && (
-              <div className="max-h-40 overflow-y-auto rounded-none border border-border bg-muted/60 p-2.5 font-mono text-[11px] text-destructive">
+              <div className="max-h-40 overflow-y-auto rounded-[var(--zed-radius-lg)] border border-border bg-muted/60 p-2.5 font-mono text-[length:var(--zed-fs-2xs)] text-destructive">
                 {this.state.error.message}
               </div>
             )}

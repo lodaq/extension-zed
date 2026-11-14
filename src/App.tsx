@@ -1,3 +1,4 @@
+import SavedTab from "@/components/SavedTab"
 import ExtensionsTab from "@/components/ExtensionsTab"
 import MiscTab from "@/components/MiscTab"
 import SettingsTab from "@/components/SettingsTab"
@@ -145,6 +146,7 @@ function App() {
               <TabsTrigger value="extensions" className={tabTriggerClass}>
                 Extensions
               </TabsTrigger>
+              <TabsTrigger value="saved" className={tabTriggerClass}>Saved</TabsTrigger>
               <TabsTrigger value="youtube" className={tabTriggerClass}>
                 Youtube
               </TabsTrigger>
@@ -199,6 +201,7 @@ function App() {
         <TabsContent value="extensions" forceMount className={tabPanelClass}>
           <ExtensionsTab />
         </TabsContent>
+        <TabsContent value="saved" forceMount className={tabPanelClass}><SavedTab /></TabsContent>
         <TabsContent value="youtube" forceMount className={tabPanelClass}>
           <YoutubeTab />
         </TabsContent>

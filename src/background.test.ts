@@ -19,7 +19,8 @@ it("replies to runtime messages, reports failure badge, and clears badge on succ
     tabs: { query: async () => [{ id: 7 }] },
     scripting: { executeScript: inject },
     action: { setBadgeText: badge, setTitle: title },
-    runtime: { id: "zed", onMessage: { addListener: (listener: typeof message) => { message = listener } } },
+    contextMenus: { onClicked: { addListener: vi.fn() } },
+    runtime: { onInstalled: { addListener: vi.fn() }, id: "zed", onMessage: { addListener: (listener: typeof message) => { message = listener } } },
   })
   await import("./background")
 

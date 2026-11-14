@@ -1,10 +1,11 @@
+import { SAVED_KEY, readSaved } from "./saved"
 import { PLAYBACK_MAX, PLAYBACK_MIN } from "./playbackPresets"
 import { QUALITY_LEVEL_MAP } from "./videoQuality"
 
 export const CURRENT_SETTINGS_SCHEMA_VERSION = 1
 export const MAX_SETTINGS_FILE_SIZE = 512 * 1024 // 512 KB
 
-export const POPUP_TABS = ["misc", "extensions", "youtube", "settings"] as const
+export const POPUP_TABS = ["misc", "extensions", "youtube", "saved", "settings"] as const
 export type PopupTab = (typeof POPUP_TABS)[number]
 
 export const MISC_SECTION_ORDER = [
@@ -135,6 +136,7 @@ function isKnownSettingKey(key: string): key is KnownSettingKey {
 }
 
 export function readSetting<T>(key: string, value: unknown, fallback: T): T {
+  if (key === SAVED_KEY) return readSaved(value) as T
   if (isKnownSettingKey(key) && validators[key](value)) {
     if (key === "miscSectionOrder" && Array.isArray(value) && !value.includes("screenshot")) {
       return [...value, "screenshot"] as T

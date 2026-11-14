@@ -100,7 +100,8 @@
     "activeTab",
     "storage",
     "clipboardWrite",
-    "debugger"
+    "debugger",
+    "contextMenus"
   ],
   "host_permissions": [
     "https://viliusle.github.io/miniPaint/*"

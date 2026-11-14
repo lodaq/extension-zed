@@ -1,6 +1,6 @@
 import tokens from "../design-system/tokens.css?raw"
 import { readSaved, mediaUrl, SAVED_BUTTONS_KEY, SAVED_KEY, type SavedItem } from "../lib/saved"
-import { findMediaTargets, LINKEDIN_CARD } from "../lib/mediaTargets"
+import { findMediaTargets, findLinkedInActionRow, LINKEDIN_CARD } from "../lib/mediaTargets"
 
 type SaveEntry = { mount: HTMLElement; previousPosition: string | null; host: HTMLDivElement; button: HTMLButtonElement; url: string | null; busy: boolean }
 
@@ -95,6 +95,10 @@ function installSaveButtons() {
     }
     for (const [target, url] of targets) {
       if (entries.has(target)) continue
+      const linkedin = /^(?:www\.|m\.)?linkedin\.com$/.test(location.hostname)
+      const actions = linkedin ? findLinkedInActionRow(target) : null
+      // Wait for LinkedIn to hydrate the actions instead of adding a separate row.
+      if (linkedin && !actions) continue
       const host = document.createElement("div")
       host.setAttribute("data-zed-save-button", "")
       const card = target.matches(`article, [role=article], [data-pagelet^=FeedUnit], ${LINKEDIN_CARD}`)
@@ -102,11 +106,14 @@ function installSaveButtons() {
       const post = (card || facebook) && !/\/reels?\//.test(url ?? "")
       if (post && !card) host.setAttribute("data-zed-post-inline", "")
       if (post) host.setAttribute("data-zed-post", "")
+      if (actions) host.setAttribute("data-zed-post-action", "")
       const shadow = host.attachShadow({ mode: "closed" })
       const style = document.createElement("style")
       style.textContent = tokens.replace(/:root/g, ":host") + `:host { all: initial; position: absolute !important; top: var(--zed-space-3); right: var(--zed-space-3); z-index: 2147483647; animation: none !important; transition: none !important; }
         :host([data-zed-post]) { position: relative !important; display: block; top: auto; right: auto; padding: var(--zed-space-3); }
         :host([data-zed-post-inline]) { display: inline-flex; vertical-align: middle; }
+        :host([data-zed-post-action]) { display: inline-flex; flex: 0 0 auto; align-self: center; padding: 0 var(--zed-space-1); }
+        :host([data-zed-post-action]) button { padding-inline: var(--zed-space-3); font-size: var(--zed-fs-sm); white-space: nowrap; }
         :host([hidden]) { display: none !important; }
         *, *::before, *::after { box-sizing: border-box; animation: none !important; transition: none !important; }
         button { background: var(--zed-surface-raised); color: var(--zed-text); border: 1px solid var(--zed-border); border-radius: var(--zed-radius-md); font: 600 var(--zed-fs-base) var(--zed-font); height: var(--zed-h-compact); padding: 0 var(--zed-space-6); cursor: pointer; }
@@ -120,9 +127,10 @@ function installSaveButtons() {
       shadow.append(style, button)
       const previousPosition = !post && getComputedStyle(target).position === "static" ? target.style.position : null
       if (previousPosition !== null) target.style.position = "relative"
-      const mount = post ? target.parentElement : target
+      const mount = actions ?? (post ? target.parentElement : target)
       if (!mount) continue
-      if (post) target.before(host)
+      if (actions) actions.append(host)
+      else if (post) target.before(host)
       else target.append(host)
       const entry = { host, button, url, busy: false, previousPosition, mount }
       entries.set(target, entry)

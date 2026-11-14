@@ -88,3 +88,13 @@ export function findMediaTargets(root: Document, pageUrl: string): Map<HTMLEleme
   }
   return targets
 }
+
+export function findLinkedInActionRow(card: HTMLElement): HTMLElement | null {
+  const legacy = card.querySelector<HTMLElement>(".social-details-social-actions, .feed-shared-social-action-bar")
+  if (legacy) return legacy
+  const repost = card.querySelector<HTMLElement>('button[aria-label="Repost"], button[aria-label^="Repost "]')
+  for (let row = repost?.parentElement; row && row !== card; row = row.parentElement) {
+    if (row.querySelector('button[aria-label="Comment"], button[aria-label^="Comment "]')) return row
+  }
+  return null
+}

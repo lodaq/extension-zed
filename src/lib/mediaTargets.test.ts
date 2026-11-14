@@ -1,5 +1,5 @@
 import { expect, it } from "vitest"
-import { findMediaTargets } from "./mediaTargets"
+import { findMediaTargets, findLinkedInActionRow } from "./mediaTargets"
 
 it("binds each media card to its own URL and deduplicates title/thumbnail links", () => {
   const first = {} as HTMLElement
@@ -135,4 +135,17 @@ it("keeps controls on SDUI posts without DOM permalinks and ignores embedded ext
     [first, "https://www.linkedin.com/feed/update/urn:li:activity:123/"],
     [second, null],
   ])
+})
+
+it("finds the shared LinkedIn action row without selecting the comment thread", () => {
+  const actions = { querySelector: () => ({}) } as unknown as HTMLElement
+  const wrapper = { parentElement: actions, querySelector: () => null }
+  const repost = { parentElement: wrapper }
+  const card = { querySelector: (selector: string) => selector.startsWith(".") ? null : repost } as unknown as HTMLElement
+  expect(findLinkedInActionRow(card)).toBe(actions)
+})
+
+it("waits for LinkedIn actions when they are not rendered yet", () => {
+  const card = { querySelector: () => null } as unknown as HTMLElement
+  expect(findLinkedInActionRow(card)).toBeNull()
 })

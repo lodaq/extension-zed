@@ -85,19 +85,19 @@ it.each(["missing", "throwing"])("ignores deferred startup with a %s runtime", a
 })
 
 
-it("mounts post controls outside the card with bundled styles and removes them on invalidation", async () => {
+it("mounts LinkedIn controls beside post actions with bundled styles and removes them on invalidation", async () => {
   const callbacks: Record<string, () => void> = {}
   const disconnect = vi.fn()
   const runtime: { id?: string } = { id: "zed" }
   const styles: { textContent?: string }[] = []
   const shadowAppend = vi.fn()
-  const parent = {}
+  const parent = { append: vi.fn() }
   const host = {
     setAttribute: vi.fn(), attachShadow: () => ({ append: shadowAppend }),
     classList: { toggle: vi.fn() }, isConnected: true,
     hasAttribute: vi.fn(() => true), remove: vi.fn(), parentElement: parent,
   }
-  const target = { parentElement: parent, before: vi.fn(), append: vi.fn(), matches: () => true, prepend: vi.fn(), style: { position: "" } }
+  const target = { querySelector: () => parent, parentElement: parent, before: vi.fn(), append: vi.fn(), matches: () => true, prepend: vi.fn(), style: { position: "" } }
   const button = { setAttribute: vi.fn(), addEventListener: vi.fn() }
   vi.mocked(findMediaTargets).mockReturnValue(new Map([[target as unknown as HTMLElement, "https://www.linkedin.com/feed/update/urn:li:activity:123/"]]))
   const win = {
@@ -120,7 +120,9 @@ it("mounts post controls outside the card with bundled styles and removes them o
   vi.stubGlobal("chrome", { runtime, storage: { local: { get: async () => ({}) }, onChanged: { addListener: vi.fn(), removeListener: vi.fn() } } })
   delete (globalThis as { __zedSaveInstalled?: boolean }).__zedSaveInstalled
   await import("./savedPage")
-  expect(target.before).toHaveBeenCalledWith(host)
+  expect(parent.append).toHaveBeenCalledWith(host)
+  expect(target.before).not.toHaveBeenCalled()
+  expect(host.setAttribute).toHaveBeenCalledWith("data-zed-post-action", "")
   expect(target.prepend).not.toHaveBeenCalled()
   expect(target.append).not.toHaveBeenCalled()
   expect(target.style.position).toBe("")

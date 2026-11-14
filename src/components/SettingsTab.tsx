@@ -5,12 +5,10 @@ import { Button } from "@/components/ui/button"
 import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
 import { cn } from "@/lib/utils"
 import { toast } from "@/components/ui/use-toast"
-import { ChangeEvent, useEffect, useRef, useState } from "react"
-import { readBootState, updateBootState } from "@/lib/bootCache"
+import { ChangeEvent, useRef, useState } from "react"
 import {
   exportSettings,
   importSettings,
-  readSetting,
   resetSettings,
   MAX_SETTINGS_FILE_SIZE,
   type MiscSectionId,
@@ -30,14 +28,7 @@ function downloadSettings(backup: Awaited<ReturnType<typeof exportSettings>>) {
 }
 
 export default function SettingsTab() {
-  const [dark, setDark] = useStoredValue<boolean>("darkTheme", () => {
-    const boot = readBootState()
-    if (typeof boot.dark === "boolean") return boot.dark
-    if (typeof document !== "undefined" && document.documentElement) {
-      return document.documentElement.classList.contains("dark")
-    }
-    return true
-  })
+  const [dark, setDark] = useStoredValue("darkTheme", true)
   const [blackAndWhite, setBlackAndWhite] = useStoredValue<boolean>("blackAndWhite", false)
   const [order,setOrder] = useStoredValue<readonly MiscSectionId[]>("miscSectionOrder", DEFAULT_TOOL_ORDER)
   const [busy, setBusy] = useState(false)
@@ -45,13 +36,8 @@ export default function SettingsTab() {
   const [showPrivacy, setShowPrivacy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", readSetting("darkTheme", dark, true))
-  }, [dark])
-
   const toggle = (enabled: boolean) => {
     document.documentElement.classList.toggle("dark", enabled)
-    updateBootState({ dark: enabled })
     void setDark(enabled).catch((error) =>
       toast({ title: "Theme could not be saved", description: String(error), variant: "destructive" })
     )

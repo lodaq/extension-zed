@@ -35,6 +35,7 @@ export const RESET_SETTINGS_KEYS = [
   "designMode",
   "arabicRtlMode",
   "popupActiveTab",
+  "popupLocation",
   "miscSectionOrder",
   "miscExpandedSections",
   "keyboardShortcuts",
@@ -121,6 +122,10 @@ function isShortcutMap(value: unknown): boolean {
 }
 
 const validators: Record<KnownSettingKey, SettingValidator> = {
+  popupLocation: value => isRecord(value) &&
+    ["Misc", "Extensions", "YouTube", "Links", "Shortcuts"].includes(value.tab as string) &&
+    (value.detail === null || ["playback", "quality", "password", "volume", "scrollbars", "modes", "capture"].includes(value.detail as string)) &&
+    typeof value.settings === "boolean",
   keyboardShortcuts: isShortcutMap,
   savedLinks: isSavedLinks,
   speed: isValidSpeed,

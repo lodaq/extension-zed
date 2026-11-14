@@ -19,10 +19,17 @@ export async function addLink(input: string, title?: string, fromTab = false) {
   return true
 }
 
-export async function saveCurrentTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+export async function saveCurrentTab(tab?: chrome.tabs.Tab) {
+  tab ??= (await chrome.tabs.query({ active: true, currentWindow: true }))[0]
   if (!tab?.url || tab.id === undefined) throw new Error("Current tab is unavailable")
   const added = await addLink(tab.url, tab.title, true)
   await chrome.tabs.remove(tab.id)
   return added
+}
+
+export async function openSavedLink(link: SavedLink) {
+  await chrome.tabs.create({ url: link.href })
+  const stored = await chrome.storage.local.get("savedLinks")
+  const links: SavedLink[] = Array.isArray(stored.savedLinks) ? stored.savedLinks : []
+  await chrome.storage.local.set({ savedLinks: links.filter(item => item.url !== link.url) })
 }

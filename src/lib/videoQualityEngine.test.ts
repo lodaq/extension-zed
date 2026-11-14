@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest"
 
 const source = readFileSync(new URL("../../public/scripts/applyVideoQuality.js", import.meta.url), "utf8")
 
-function page(videos: object[], extra: Record<string, unknown> = {}) {
+function page(videos: object[], extra: Record<string, unknown> = {}, youtubePlayers: object[] = []) {
   const listeners = new Map<string, (event: { type: string; target: object; detail?: unknown }) => void>()
   const win = {
     __zedVideoQualitySettings: { quality: "hd1080", fallback: "lower" },
@@ -14,7 +14,7 @@ function page(videos: object[], extra: Record<string, unknown> = {}) {
     window: win,
     document: {
       getElementById: () => null,
-      querySelectorAll: (selector: string) => selector === "video" ? videos : [],
+      querySelectorAll: (selector: string) => selector === "video" ? videos : selector === ".html5-video-player" ? youtubePlayers : [],
       addEventListener: (type: string, listener: (event: { type: string; target: object; detail?: unknown }) => void) => listeners.set(type, listener),
     },
     setTimeout: vi.fn(), clearTimeout: vi.fn(),
@@ -23,6 +23,51 @@ function page(videos: object[], extra: Record<string, unknown> = {}) {
 }
 
 describe("programmatic video quality", () => {
+  it.each(["hd720", "auto"])("does not reapply YouTube quality %s during playback reload events", async quality => {
+    const setPlaybackQualityRange = vi.fn()
+    const setPlaybackQuality = vi.fn()
+    let videoId = "first"
+    const player = {
+      getVideoData: () => ({ video_id: videoId }),
+      getAvailableQualityLevels: () => ["hd720", "medium"],
+      getPlaybackQuality: () => "hd720",
+      setPlaybackQualityRange, setPlaybackQuality,
+    }
+    const video = { tagName: "VIDEO" }
+    const p = page([video], { __zedVideoQualitySettings: { quality, fallback: "lower" } }, [player])
+    await p.run()
+    p.event("zed-playback-speed-changed", video, 2)
+    p.event("emptied", video)
+    p.event("loadstart", video)
+    p.event("loadedmetadata", video)
+    p.event("playing", video)
+    expect(setPlaybackQualityRange).toHaveBeenCalledTimes(1)
+    expect(setPlaybackQuality).toHaveBeenCalledTimes(1)
+    videoId = "next"
+    p.event("loadedmetadata", video)
+    expect(setPlaybackQuality).toHaveBeenCalledTimes(2)
+    // Explicit quality actions must still apply, even on the same video.
+    await p.run()
+    expect(setPlaybackQuality).toHaveBeenCalledTimes(3)
+  })
+
+  it("does not rewrite an already selected YouTube quality when available levels change", async () => {
+    const levels = ["hd720", "medium"]
+    const setPlaybackQuality = vi.fn()
+    const player = {
+      getVideoData: () => ({ video_id: "first" }),
+      getAvailableQualityLevels: () => levels,
+      getPlaybackQuality: () => "hd720",
+      setPlaybackQuality,
+    }
+    const video = { tagName: "VIDEO" }
+    const p = page([video], { __zedVideoQualitySettings: { quality: "hd720", fallback: "lower" } }, [player])
+    await p.run()
+    levels.push("hd1080")
+    p.event("playing", video)
+    expect(setPlaybackQuality).toHaveBeenCalledTimes(1)
+  })
+
   it("finds Facebook's controller through the root tree when host video expandos are absent", async () => {
     const state = { availableVideoQualities: ["240p", "720p"], selectedVideoQuality: "auto" }
     const container = { __reactContainer$test: { stateNode: { current: { child: {} } } } }
@@ -111,6 +156,24 @@ describe("programmatic video quality", () => {
     expect(setPlaybackRate).toHaveBeenCalledTimes(1)
     p.event("playing", video)
     expect(setPlaybackRate).toHaveBeenCalledTimes(1)
+    expect(selectVideoQuality).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["www.facebook.com", "www.instagram.com"])("preserves quality when changing speed on %s after a media reset", async hostname => {
+    const state = { availableVideoQualities: ["360p", "720p"], selectedVideoQuality: "auto", targetPlaybackRate: 1 }
+    const video = { tagName: "VIDEO", __reactFiber$test: {} }
+    const selectVideoQuality = vi.fn((quality: string) => { state.selectedVideoQuality = quality })
+    const setPlaybackRate = vi.fn((rate: number) => { state.targetPlaybackRate = rate })
+    video.__reactFiber$test = { memoizedProps: { value: {
+      getCurrentState: () => state, internal_getVideoElement: () => video, selectVideoQuality, setPlaybackRate,
+    } } }
+    const p = page([video], { location: { hostname }, __zedVideoQualitySettings: { quality: "tiny", fallback: "lower" } })
+    await p.run()
+    state.selectedVideoQuality = "720p"
+    p.event("loadstart", video)
+    p.event("zed-playback-speed-changed", video, 2)
+    expect(state.targetPlaybackRate).toBe(2)
+    expect(state.selectedVideoQuality).toBe("720p")
     expect(selectVideoQuality).toHaveBeenCalledTimes(1)
   })
 

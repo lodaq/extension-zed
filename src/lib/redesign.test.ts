@@ -2,7 +2,7 @@ import { isRestrictedPage } from "./withActiveTab"
 import { describe, expect, it } from "vitest"
 import { readSetting } from "./settings"
 import { normalizeLink } from "./links"
-import { recordCombo, SHORTCUT_ACTIONS, DEFAULT_SHORTCUTS } from "./shortcuts"
+import { readShortcuts, recordCombo, SHORTCUT_ACTIONS, DEFAULT_SHORTCUTS } from "./shortcuts"
 describe('redesign data rules',()=>{
  it('normalizes URL identity without losing its destination',()=>{
   expect(normalizeLink(' https://www.example.com/ ')).toEqual({url:'www.example.com',href:'https://www.example.com/',title:'example.com'})
@@ -24,10 +24,20 @@ describe('redesign data rules',()=>{
   expect(isRestrictedPage('https://example.com')).toBe(false)
  })
  it('provides 28 actions and 11 defaults',()=>{expect(SHORTCUT_ACTIONS).toHaveLength(28);expect(Object.values(DEFAULT_SHORTCUTS).filter(Boolean)).toHaveLength(11)})
- it('uses physical letter codes and rejects Meta alone',()=>{
+ it('uses physical letter codes and accepts Cmd shortcuts',()=>{
   const event={key:'ф',code:'KeyA',ctrlKey:false,altKey:true,shiftKey:true,metaKey:false}
   expect(recordCombo(event)).toBe('Alt+Shift+A')
-  expect(()=>recordCombo({...event,altKey:false,shiftKey:false,metaKey:true})).toThrow('Add Ctrl, Alt or Shift')
+  expect(recordCombo({...event,altKey:false,shiftKey:false,metaKey:true})).toBe("Cmd+A")
   expect(recordCombo({...event,key:'Shift',code:'ShiftLeft'})).toBeNull()
  })
+})
+
+it("validates popup locations including nested tools", () => {
+ const location = { tab: "Misc", detail: "playback", settings: false }
+ expect(readSetting("popupLocation", location, null)).toEqual(location)
+ expect(readSetting("popupLocation", { ...location, detail: "unknown" }, null)).toBeNull()
+})
+
+it("preserves save shortcuts edited inside Zed", () => {
+ expect(readShortcuts({ action20: "Alt+Shift+S" }).action20).toBe("Alt+Shift+S")
 })

@@ -60,7 +60,8 @@ const YOUTUBE_TOGGLES: readonly YoutubeToggleConfig[] = [
 ]
 
 function YoutubeToggleItem({ config }: { config: YoutubeToggleConfig }) {
-  const [checked] = useStoredValue<boolean>(config.storageKey, false)
+  const [checked, , loaded] = useStoredValue<boolean>(config.storageKey, false)
+  if (!loaded) return null
 
   const handleToggle = (next: boolean) => {
     void sendPageAction(config.action, config.formatToast(next), next)

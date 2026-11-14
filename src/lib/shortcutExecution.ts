@@ -1,7 +1,7 @@
+import { saveCurrentTab } from "./links"
 import { handlePageAction } from "./pageActions"
 import { handleScreenshotMessage } from "./screenshots"
 import { generatePassword } from "./passwordGenerator"
-import { addLink } from "./links"
 import { SHORTCUT_ACTIONS, readShortcuts } from "./shortcuts"
 import { MODE_KEYS, BOOLEAN_KEYS, type PageActionRequest } from "./actionRegistry"
 
@@ -29,7 +29,7 @@ export async function executeShortcut(id: string, tabId: number) {
     case "action11": return page("hideAllScrollBars")
     case "action12": await page("resetCustomScrollbar"); await page("resetMainScrollBar"); return page("resetAllScrollBars")
     case "action16": case "action17": case "action18": case "action19": return handleScreenshotMessage({ type: "screenshot:start", mode: ({ action16: "area", action17: "visible", action18: "full", action19: "element" } as Record<string, string>)[id] }, { url: chrome.runtime.getURL("index.html") })
-    case "action20": { const tab = await chrome.tabs.get(tabId); if (!tab.url) throw new Error("Current tab is unavailable"); await addLink(tab.url, tab.title, true); return chrome.tabs.remove(tabId) }
+    case "action20": return saveCurrentTab(await chrome.tabs.get(tabId))
     case "action26": return chrome.storage.local.set({ darkTheme: stored.darkTheme === false })
     case "action27": return chrome.storage.local.set({ blackAndWhite: !stored.blackAndWhite })
   }

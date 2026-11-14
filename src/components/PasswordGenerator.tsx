@@ -79,7 +79,7 @@ export default function PasswordGenerator({ dragHandle, open, onOpenChange, init
         />
       </div>
 
-      </Card><div className="grid grid-cols-2 gap-2 pt-1">
+      </Card><div className="zed-grid pt-1">
         {CHARACTER_OPTIONS.map(([key,label,hint])=><CheckboxTile key={key} label={label} hint={hint} checked={options[key]} onChange={checked=>update({[key]:checked})}/>)}
       </div>
     </MiscSection>

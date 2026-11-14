@@ -32,9 +32,9 @@ function ExtensionIcon({ extension }: { extension: ManagedExtension }) {
     <img
       src={extension.iconUrl}
       alt=""
-      width={36}
-      height={36}
-      className={cn("h-9 w-9 shrink-0", !extension.enabled && "grayscale")}
+      width={28}
+      height={28}
+      className={cn("h-7 w-7 shrink-0", !extension.enabled && "grayscale")}
       onError={() => setFailed(true)}
     />
   )
@@ -209,7 +209,7 @@ export default function ExtensionsTab() {
   const disabledCount = extensions ? extensions.length - enabledCount : 0
 
   return (
-    <div className={cn(popupSectionStack, "px-0.5 pb-2 pt-3")}>
+    <div className={cn(popupSectionStack, "zed-extensions px-0.5 pb-2 pt-3")}>
       <div className="flex items-center justify-between gap-1.5 px-1">
         <div className="flex items-center gap-1 min-w-0">
           <p className={popupDescription}>Click an extension to turn it on or off.</p>
@@ -220,10 +220,10 @@ export default function ExtensionsTab() {
             aria-label="Open brave://extensions/ in a new tab"
             title="Open brave://extensions/ in a new tab"
           >
-            <Icon name="open" size={18}/>
+            <Icon name="open" size={16}/>
           </button>
         </div>
-        {extensions && extensions.length > 0 && (
+        {permissionState === "granted" && extensions && extensions.length > 0 && (
           <span className="shrink-0 text-[length:var(--zed-fs-2xs)] tabular-nums text-muted-foreground">
             {enabledCount} on · {disabledCount} off
           </span>
@@ -281,11 +281,11 @@ export default function ExtensionsTab() {
         <p className="px-1 text-xs text-muted-foreground">Loading extensions…</p>
       )}
 
-      {extensions?.length === 0 && (
+      {permissionState === "granted" && extensions?.length === 0 && (
         <p className="px-1 text-xs text-muted-foreground">No extensions found.</p>
       )}
 
-      {extensions && extensions.length > 0 && (
+      {permissionState === "granted" && extensions && extensions.length > 0 && (
         <ul className="space-y-1">
           {extensions.map((extension) => {
             const busy = pending[extension.id]
@@ -335,7 +335,7 @@ export default function ExtensionsTab() {
                       openSettings(extension)
                     }}
                   >
-                    <Icon name="settings" size={18}/>
+                    <Icon name="settings" size={16}/>
                   </Button>
 
                   <Button
@@ -355,7 +355,7 @@ export default function ExtensionsTab() {
                       reload(extension)
                     }}
                   >
-                    <Icon name="reload" size={18}/>
+                    <Icon name="reload" size={16}/>
                   </Button>
 
                   <Button
@@ -371,7 +371,7 @@ export default function ExtensionsTab() {
                       uninstall(extension)
                     }}
                   >
-                    <Icon name="delete" size={18}/>
+                    <Icon name="delete" size={16}/>
                   </Button>
 
                   <Switch

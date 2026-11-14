@@ -102,7 +102,10 @@
       "js": [
         "scripts/shortcuts.js"
       ],
-      "run_at": "document_idle"
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
     }
   ],
   "permissions": [
@@ -110,10 +113,12 @@
     "activeTab",
     "storage",
     "clipboardWrite",
-    "debugger"
+    "debugger",
+    "tabs"
   ],
   "host_permissions": [
-    "https://viliusle.github.io/miniPaint/*"
+    "http://*/*",
+    "https://*/*"
   ],
   "optional_permissions": [
     "management"

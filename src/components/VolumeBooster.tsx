@@ -25,7 +25,7 @@ export default function VolumeBooster({ dragHandle, open, onOpenChange }: MiscSe
 
   return (
     <MiscSection dragHandle={dragHandle} open={open} onOpenChange={onOpenChange} title="Volume boost" id="zed-volume-heading">
-      <Card><div className="flex items-center justify-between gap-3">
+      <Card><div className="flex flex-wrap items-center justify-between gap-3">
         <label htmlFor="zed-volume-boost" className="text-sm font-medium">Amplification</label>
         <output htmlFor="zed-volume-boost" className="zed-volume">{boost}%</output>
       </div>

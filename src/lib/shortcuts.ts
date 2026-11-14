@@ -19,7 +19,7 @@ export const SHORTCUT_ACTIONS = [
   { id: "action17", group: 'Capture screenshot', name: 'Visible area', combo: '' },
   { id: "action18", group: 'Capture screenshot', name: 'Full page', combo: '' },
   { id: "action19", group: 'Capture screenshot', name: 'Element', combo: '' },
-  { id: "action20", group: 'Tabs', name: 'Save URL and close tab', combo: 'Alt+Shift+W' },
+  { id: "action20", group: 'Tabs', name: 'Save URL and close tab', combo: 'Ctrl+Cmd+S' },
   { id: "action21", group: 'YouTube', name: 'Focus mode', combo: 'Alt+Shift+F' },
   { id: "action22", group: 'YouTube', name: 'Hide progress bar', combo: '' },
   { id: "action23", group: 'YouTube', name: 'Hide time & duration', combo: '' },
@@ -31,7 +31,7 @@ export const SHORTCUT_ACTIONS = [
 export const DEFAULT_SHORTCUTS: Record<string, string> = Object.fromEntries(SHORTCUT_ACTIONS.map(action => [action.id, action.combo]))
 export function recordCombo(event: { key: string; code: string; ctrlKey: boolean; altKey: boolean; shiftKey: boolean; metaKey: boolean }): string | null {
   if (["Control", "Alt", "Shift", "Meta"].includes(event.key)) return null
-  if (!event.ctrlKey && !event.altKey && !event.shiftKey) throw new Error("Add Ctrl, Alt or Shift")
+  if (!event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey) throw new Error("Add Ctrl, Alt, Shift or Cmd")
   const aliases: Record<string, string> = { ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→", " ": "Space" }
   const key = aliases[event.key] ?? (/^(Key|Digit)/.test(event.code) ? event.code.replace(/^(Key|Digit)/, "") : event.key.length === 1 ? event.key.toUpperCase() : event.key)
   return [event.ctrlKey && "Ctrl", event.altKey && "Alt", event.shiftKey && "Shift", event.metaKey && "Cmd", key].filter(Boolean).join("+")

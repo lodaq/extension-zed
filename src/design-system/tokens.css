@@ -41,6 +41,7 @@
   --zed-knob-off: #AEB8C6;
 
   /* ── Letter-avatar palette (text on it is --zed-on-accent) ── */
+  --zed-avatar-text: #0E1218;
   --zed-avatar-1: #7AA2FF;
   --zed-avatar-2: #8FD9B6;
   --zed-avatar-3: #F2B880;
@@ -104,3 +105,33 @@
 }
 
 :root { --zed-radius-none: 0; }
+
+/* Keep this selector valid in both the popup and injected Shadow DOM. */
+html:not(.dark), :host(:not(.dark)) {
+  color-scheme: light;
+  --zed-bg: #F5F7FA;
+  --zed-bg-inset: #EDF1F5;
+  --zed-surface: #FFFFFF;
+  --zed-surface-hover: #EAF0F5;
+  --zed-surface-raised: #E4EAF1;
+  --zed-surface-overlay: #FFFFFF;
+  --zed-scrim: #14203366;
+  --zed-border-subtle: #D4DCE6;
+  --zed-border: #C0CBD8;
+  --zed-border-strong: #8B9BAE;
+  --zed-border-dashed: #899AAF;
+  --zed-border-control: #718196;
+  --zed-text: #182434;
+  --zed-text-soft: #33445A;
+  --zed-text-muted: #53657B;
+  --zed-icon: #4A5E76;
+  --zed-icon-off: #718196;
+  --zed-accent: #08766C;
+  --zed-on-accent: #FFFFFF;
+  --zed-warn: #A63E13;
+  --zed-on-warn: #FFFFFF;
+  --zed-switch-off: #CDD6E1;
+  --zed-knob-off: #53657B;
+  --zed-shadow-pop: 0 8px 20px #14203324;
+  --zed-shadow-dialog: 0 16px 40px #14203333;
+}

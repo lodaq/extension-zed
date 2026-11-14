@@ -1,6 +1,7 @@
+import { DEFAULT_TOOL_ORDER } from "@/lib/popupLayout"
+import { moveMiscSection } from "@/lib/miscSectionOrder"
+import { Dialog, SwitchRow } from "@/design-system/components"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
 import { cn } from "@/lib/utils"
 import { toast } from "@/components/ui/use-toast"
@@ -12,6 +13,7 @@ import {
   readSetting,
   resetSettings,
   MAX_SETTINGS_FILE_SIZE,
+  type MiscSectionId,
 } from "@/lib/settings"
 import { useStoredValue } from "@/lib/useStoredValue"
 
@@ -37,21 +39,15 @@ export default function SettingsTab() {
     return true
   })
   const [blackAndWhite, setBlackAndWhite] = useStoredValue<boolean>("blackAndWhite", false)
+  const [order,setOrder] = useStoredValue<readonly MiscSectionId[]>("miscSectionOrder", DEFAULT_TOOL_ORDER)
   const [busy, setBusy] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [showPrivacy, setShowPrivacy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", readSetting("darkTheme", dark, true))
   }, [dark])
-
-  useEffect(() => {
-    return () => {
-      if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
-    }
-  }, [])
 
   const toggle = (enabled: boolean) => {
     document.documentElement.classList.toggle("dark", enabled)
@@ -80,7 +76,7 @@ export default function SettingsTab() {
 
     if (file.size > MAX_SETTINGS_FILE_SIZE) {
       toast({
-        title: "Import rejected",
+        title: "Couldn’t import that file",
         description: `File is too large (${Math.round(file.size / 1024)} KB). Maximum allowed size is 512 KB.`,
         variant: "destructive",
       })
@@ -104,7 +100,7 @@ export default function SettingsTab() {
       })
     } catch (error) {
       toast({
-        title: "Import failed",
+        title: "Couldn’t import that file",
         description: error instanceof Error ? error.message : "The settings file could not be read.",
         variant: "destructive",
       })
@@ -114,16 +110,6 @@ export default function SettingsTab() {
   }
 
   const handleResetClick = async () => {
-    if (!confirmReset) {
-      setConfirmReset(true)
-      if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
-      resetTimerRef.current = setTimeout(() => {
-        setConfirmReset(false)
-      }, 4000)
-      return
-    }
-
-    if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
     setConfirmReset(false)
     setBusy(true)
     try {
@@ -146,30 +132,10 @@ export default function SettingsTab() {
   return (
     <section className={cn(popupPanel, popupSectionInner)}>
       <h2 className={popupSectionTitle}>Appearance</h2>
-      <div
-        className="flex cursor-pointer items-center justify-between rounded-none px-2 py-2 hover:bg-muted/60"
-        onClick={() => toggle(!dark)}
-      >
-        <Label className="cursor-pointer text-sm font-medium">Dark theme</Label>
-        <Switch
-          id="dark-theme"
-          aria-label="Dark theme"
-          checked={dark}
-          onClick={(event) => event.stopPropagation()}
-          onCheckedChange={toggle}
-        />
-      </div>
+      <SwitchRow label="Dark theme" checked={dark} onChange={toggle}/>
+      <SwitchRow label="Black and white" description="Show all websites in grayscale." checked={blackAndWhite} onChange={enabled=>void setBlackAndWhite(enabled).catch(error=>toast({title:String(error),variant:"destructive"}))}/>
 
-      <div className="flex items-center justify-between px-2 py-2">
-        <Label htmlFor="black-and-white">Black and white</Label>
-        <Switch id="black-and-white" checked={blackAndWhite}
-          onCheckedChange={(enabled) => void setBlackAndWhite(enabled).catch((error) =>
-            toast({ title: "Theme could not be saved", description: String(error), variant: "destructive" })
-          )} />
-      </div>
-      <p className="text-xs text-muted-foreground">Show all websites in grayscale.</p>
-
-      <h2 className={popupSectionTitle}>Settings</h2>
+      <h2 className={popupSectionTitle}>Backup and reset</h2>
       <div className="flex gap-2">
         <Button
           type="button"
@@ -195,11 +161,11 @@ export default function SettingsTab() {
         <Button
           type="button"
           disabled={busy}
-          variant={confirmReset ? "destructive" : "outline"}
-          className="w-full"
-          onClick={() => void handleResetClick()}
+          variant="outline"
+          className="w-full zed-btn--warn-outline"
+          onClick={() => setConfirmReset(true)}
         >
-          {confirmReset ? "Click again to confirm reset" : "Reset settings to defaults"}
+          Reset settings to defaults
         </Button>
       </div>
 
@@ -210,6 +176,8 @@ export default function SettingsTab() {
         className="hidden"
         onChange={(event) => void onImport(event)}
       />
+
+      <details><summary className="zed-helper">Tool order</summary><div className="zed-stack">{order.map((id,index)=><div className="zed-row" key={id}><span className="flex-1">{({password:"Password generator",playback:"Playback speed",volume:"Volume boost",quality:"Video quality",scrollbars:"Scrollbars",modes:"Modes",screenshot:"Capture screenshot"})[id]}</span>{[-1,1].map(delta=><Button size="sm" key={delta} disabled={index+delta<0||index+delta>=order.length} aria-label={`Move ${id} ${delta<0?"up":"down"}`} onClick={()=>{const next=moveMiscSection(order,index,index+delta);void setOrder(next).catch(error=>toast({title:String(error),variant:"destructive"}))}}>{delta<0?"↑":"↓"}</Button>)}</div>)}</div></details>
 
       <section aria-labelledby="zed-about-heading" className="flex flex-col gap-2 border-t border-border pt-3">
         <h2 id="zed-about-heading" className={popupSectionTitle}>About Extension Zed</h2>
@@ -243,7 +211,7 @@ export default function SettingsTab() {
           <span>{showPrivacy ? "−" : "+"}</span>
         </Button>
         {showPrivacy && (
-          <div className="mt-2 space-y-1.5 rounded-none bg-muted/40 p-2.5 text-xs text-muted-foreground leading-relaxed">
+          <div className="mt-2 space-y-1.5 rounded-[var(--zed-radius-lg)] bg-muted/40 p-2.5 text-xs text-muted-foreground leading-relaxed">
             <p className="font-semibold text-foreground">Local & Private by Design</p>
             <p>
               Extension Zed executes exclusively in your browser. No telemetry, browsing history, or personal data is collected or sent to external servers.
@@ -260,6 +228,7 @@ export default function SettingsTab() {
           </div>
         )}
       </div>
+      {confirmReset&&<Dialog title="Reset settings to defaults?" onClose={()=>setConfirmReset(false)}><p>Every option and keyboard shortcut goes back to its default. This can’t be undone.</p><div className="zed-grid"><Button size="sm" onClick={()=>setConfirmReset(false)}>Cancel</Button><Button size="sm" variant="destructive" disabled={busy} onClick={()=>void handleResetClick()}>Reset settings</Button></div></Dialog>}
     </section>
   )
 }

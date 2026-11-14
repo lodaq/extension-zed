@@ -1,10 +1,9 @@
 import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { useState } from "react"
-import { ReloadIcon } from "@radix-ui/react-icons"
+import { Icon } from "@/design-system/Icon"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
+import { Card, CheckboxTile } from "@/design-system/components"
 import { toast } from "@/components/ui/use-toast"
-import { popupDescription } from "@/lib/popupLayout"
 import { generatePassword, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, type PasswordOptions } from "@/lib/passwordGenerator"
 
 const DEFAULT_OPTIONS: PasswordOptions = { length: 20, uppercase: true, lowercase: true, numbers: true, symbols: true }
@@ -23,9 +22,9 @@ function generate(options: PasswordOptions) {
   }
 }
 
-export default function PasswordGenerator({ dragHandle, open, onOpenChange }: MiscSectionProps) {
-  const [{ options, password, error }, setState] = useState(() => generate(DEFAULT_OPTIONS))
-  const update = (patch: Partial<PasswordOptions>) => setState(generate({ ...options, ...patch }))
+export default function PasswordGenerator({ dragHandle, open, onOpenChange, length=20, onLengthChange }: MiscSectionProps & {length?:number;onLengthChange?:(length:number)=>void}) {
+  const [{ options, password, error }, setState] = useState(() => generate({...DEFAULT_OPTIONS,length}))
+  const update = (patch: Partial<PasswordOptions>) => { if(patch.length)onLengthChange?.(patch.length);setState(generate({ ...options, ...patch })) }
 
   const copy = async () => {
     try {
@@ -41,7 +40,7 @@ export default function PasswordGenerator({ dragHandle, open, onOpenChange }: Mi
       <div className="flex items-center gap-2">
         <input
           aria-label="Generated password"
-          className="h-10 min-w-0 flex-1 select-text rounded-none border border-input bg-background px-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="zed-input zed-password flex-1 min-w-0"
           value={password}
           placeholder="Choose character types"
           readOnly
@@ -49,10 +48,10 @@ export default function PasswordGenerator({ dragHandle, open, onOpenChange }: Mi
           autoCapitalize="off"
           spellCheck={false}
         />
-        <Button variant="outline" size="icon" onClick={() => update({})} aria-label="Generate a new password">
-          <ReloadIcon className="h-4 w-4" />
+        <Button variant="outline" size="icon" onClick={() => update({})} aria-label="Generate new password">
+          <Icon name="reload"/>
         </Button>
-        <Button onClick={copy}>Copy</Button>
+        <Button variant="default" className="px-5" disabled={!password} onClick={copy}>Copy</Button>
       </div>
 
       {error ? (
@@ -61,7 +60,7 @@ export default function PasswordGenerator({ dragHandle, open, onOpenChange }: Mi
         </p>
       ) : null}
 
-      <div className="space-y-1.5">
+      <Card><div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs">
           <span>Length: {options.length}</span>
           <span className="text-muted-foreground">({PASSWORD_MIN_LENGTH}–{PASSWORD_MAX_LENGTH})</span>
@@ -77,28 +76,8 @@ export default function PasswordGenerator({ dragHandle, open, onOpenChange }: Mi
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2 pt-1">
-        {CHARACTER_OPTIONS.map(([key, label, hint]) => {
-          const checked = options[key]
-          return (
-            <label
-              key={key}
-              className="flex cursor-pointer items-start gap-2 rounded-none border border-border/70 p-2 text-xs hover:bg-muted/40"
-            >
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={(event) => update({ [key]: event.target.checked })}
-                aria-label={`Include ${label.toLowerCase()} characters`}
-                className="mt-0.5 h-3.5 w-3.5 rounded-none border-input accent-primary"
-              />
-              <div className="flex flex-col">
-                <Label className="cursor-pointer text-xs font-medium leading-none">{label}</Label>
-                <span className={popupDescription}>{hint}</span>
-              </div>
-            </label>
-          )
-        })}
+      </Card><div className="grid grid-cols-2 gap-2 pt-1">
+        {CHARACTER_OPTIONS.map(([key,label,hint])=><CheckboxTile key={key} label={label} hint={hint} checked={options[key]} onChange={checked=>update({[key]:checked})}/>)}
       </div>
     </MiscSection>
   )

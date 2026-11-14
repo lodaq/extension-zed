@@ -1,6 +1,6 @@
 import { defineConfig } from "vite"
 
-export default defineConfig({
+const playback = defineConfig({
   publicDir: false,
   build: {
     emptyOutDir: false,
@@ -12,3 +12,5 @@ export default defineConfig({
     },
   },
 })
+
+export default defineConfig(({mode}) => mode === "shortcuts" ? { ...playback, build: { ...playback.build, lib: { entry: "src/content/shortcuts.ts", formats: ["iife"], name: "ZedShortcuts", fileName: () => "scripts/shortcuts.js" } } } : playback)

@@ -93,6 +93,16 @@
         "scripts/blackAndWhite.js"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "js": [
+        "scripts/shortcuts.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "permissions": [
@@ -114,7 +124,8 @@
         "screenshot-clipboard.html",
         "screenshot-clipboard.js",
         "theme.css",
-        "scrollbar.css"
+        "scrollbar.css",
+        "fonts/Inter.woff2"
       ],
       "matches": [
         "http://*/*",

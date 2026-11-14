@@ -1,3 +1,4 @@
+import { Card } from "@/design-system/components"
 import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { Button } from "@/components/ui/button"
 import { popupControlRow } from "@/lib/popupLayout"
@@ -24,9 +25,9 @@ export default function VolumeBooster({ dragHandle, open, onOpenChange }: MiscSe
 
   return (
     <MiscSection dragHandle={dragHandle} open={open} onOpenChange={onOpenChange} title="Volume boost" id="zed-volume-heading">
-      <div className="flex items-center justify-between gap-3">
+      <Card><div className="flex items-center justify-between gap-3">
         <label htmlFor="zed-volume-boost" className="text-sm font-medium">Amplification</label>
-        <output htmlFor="zed-volume-boost" className="min-w-14 text-right text-sm font-semibold">{boost}%</output>
+        <output htmlFor="zed-volume-boost" className="zed-volume">{boost}%</output>
       </div>
       <input
         id="zed-volume-boost"
@@ -42,8 +43,8 @@ export default function VolumeBooster({ dragHandle, open, onOpenChange }: MiscSe
       <p className="text-xs leading-relaxed text-muted-foreground">
         Boosts audio and video up to 2000%. High levels may cause distortion or damage speakers.
       </p>
-      <div className={popupControlRow}>
-        <Button type="button" size="sm" className="flex-1" onClick={() => applyBoost(MIN_BOOST)}>
+      </Card><div className={popupControlRow}>
+        <Button type="button" className="flex-1" onClick={() => applyBoost(MIN_BOOST)}>
           Reset to 100%
         </Button>
       </div>

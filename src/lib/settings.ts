@@ -37,6 +37,7 @@ export const RESET_SETTINGS_KEYS = [
   "popupActiveTab",
   "miscSectionOrder",
   "miscExpandedSections",
+  "keyboardShortcuts",
 ] as const
 export type KnownSettingKey = (typeof RESET_SETTINGS_KEYS)[number]
 
@@ -107,7 +108,12 @@ function isValidMiscExpandedSections(value: unknown): boolean {
 
 type SettingValidator = (value: unknown) => boolean
 
+function isShortcutMap(value: unknown): boolean {
+  return isRecord(value) && Object.entries(value).every(([key, combo]) => /^action(?:[0-9]|1[0-9]|2[0-7])$/.test(key) && typeof combo === "string" && combo.length <= 100)
+}
+
 const validators: Record<KnownSettingKey, SettingValidator> = {
+  keyboardShortcuts: isShortcutMap,
   speed: isValidSpeed,
   volumeBoost: isValidVolumeBoost,
   darkTheme: isBoolean,

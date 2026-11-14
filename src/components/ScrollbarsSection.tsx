@@ -1,97 +1,18 @@
-import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
-import { Button } from "@/components/ui/button"
-import {
-  popupControlRow,
-  popupDescription,
-  popupSubhead,
-} from "@/lib/popupLayout"
+import { useEffect, useState } from "react"
+import MiscSection, { type MiscSectionProps } from "./MiscSection"
+import { Button } from "./ui/button"
+import { Card, StatusPill } from "@/design-system/components"
 import { sendPageAction } from "@/lib/withActiveTab"
-
-const ScrollbarsSection = ({ dragHandle, open, onOpenChange }: MiscSectionProps) => {
-  return (
-    <MiscSection dragHandle={dragHandle} open={open} onOpenChange={onOpenChange} title="Scrollbars" id="zed-scrollbars-heading">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <div>
-            <p className={popupSubhead}>Custom style</p>
-            <p className={popupDescription}>Sleek, unobtrusive modern scrollbars without layout shifting.</p>
-          </div>
-          <div className={popupControlRow}>
-            <Button
-              type="button"
-              size="sm"
-              className="min-h-10 flex-1 sm:flex-none"
-              onClick={() => void sendPageAction("applyCustomScrollbar", "Custom scrollbar applied")}
-            >
-              Apply
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="min-h-10 flex-1 sm:flex-none"
-              onClick={() => void sendPageAction("resetCustomScrollbar", "Custom scrollbar reset")}
-            >
-              Reset
-            </Button>
-          </div>
-        </div>
-
-        <div className="border-t border-border/70 pt-4">
-          <div className="flex flex-col gap-2">
-            <div>
-              <p className={popupSubhead}>Main scrollbar</p>
-              <p className={popupDescription}>Only the document / viewport scrollbar.</p>
-            </div>
-            <div className={popupControlRow}>
-              <Button
-                type="button"
-                size="sm"
-                className="min-h-10 flex-1 sm:flex-none"
-                onClick={() => void sendPageAction("hideMainScrollBar", "Main scrollbar hidden")}
-              >
-                Hide
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="min-h-10 flex-1 sm:flex-none"
-                onClick={() => void sendPageAction("resetMainScrollBar", "Main scrollbar reset")}
-              >
-                Reset
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-border/70 pt-4">
-          <div className="flex flex-col gap-2">
-            <div>
-              <p className={popupSubhead}>All scrollbars</p>
-              <p className={popupDescription}>Every scrollable region, including nested areas.</p>
-            </div>
-            <div className={popupControlRow}>
-              <Button
-                type="button"
-                size="sm"
-                className="min-h-10 flex-1 sm:flex-none"
-                onClick={() => void sendPageAction("hideAllScrollBars", "All scrollbars hidden")}
-              >
-                Hide
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="min-h-10 flex-1 sm:flex-none"
-                onClick={() => void sendPageAction("resetAllScrollBars", "All scrollbars reset")}
-              >
-                Reset
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </MiscSection>
-  )
+import type { PageAction } from "@/lib/actionRegistry"
+const cards: { title: string; description: string; apply: PageAction; reset: PageAction; label: string; styleId: string }[] = [
+  { title: "Custom style", description: "Sleek, unobtrusive modern scrollbars without layout shifting.", apply: "applyCustomScrollbar", reset: "resetCustomScrollbar", label: "Apply", styleId: "zed-custom-scrollbar" },
+  { title: "Main scrollbar", description: "Only the document / viewport scrollbar.", apply: "hideMainScrollBar", reset: "resetMainScrollBar", label: "Hide", styleId: "zed-hide-main-scrollbar" },
+  { title: "All scrollbars", description: "Every scrollable region, including nested areas.", apply: "hideAllScrollBars", reset: "resetAllScrollBars", label: "Hide", styleId: "zed-hide-all-scrollbars" },
+]
+export default function ScrollbarsSection(props: MiscSectionProps) {
+  const [active, setActive] = useState<boolean[]>([false, false, false])
+  const [busy, setBusy] = useState(false)
+  async function refresh() { const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }); if (tab?.id === undefined) return; const result = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: (ids: string[]) => ids.map(id => !!document.getElementById(id)), args: [cards.map(c => c.styleId)] }); if (result[0]?.result) setActive(result[0].result) }
+  useEffect(() => { void Promise.resolve().then(refresh).catch(() => { }) }, [])
+  return <MiscSection {...props} title="Scrollbars" id="scrollbars">{cards.map((card, i) => <Card key={card.title} active={active[i]}><div className="flex items-center gap-3"><div className="flex-1"><div className="flex items-center gap-2"><strong>{card.title}</strong><StatusPill active={active[i]} /></div><p className="zed-helper">{card.description}</p></div><Button size="sm" disabled={busy} onClick={() => { setBusy(true); void sendPageAction(active[i] ? card.reset : card.apply).then(() => refresh()).catch(() => { }).finally(() => setBusy(false)) }}>{active[i] ? "Restore" : card.label}</Button></div></Card>)}<p className="zed-helper">Changes apply to the current tab.</p></MiscSection>
 }
-
-export default ScrollbarsSection

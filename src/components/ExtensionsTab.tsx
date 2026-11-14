@@ -1,5 +1,7 @@
+import { Icon } from "@/design-system/Icon"
+import { LetterAvatar } from "@/design-system/components"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ExternalLinkIcon, GearIcon, LockClosedIcon, ReloadIcon, TrashIcon } from "@radix-ui/react-icons"
+import { LockClosedIcon } from "@radix-ui/react-icons"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
@@ -23,23 +25,16 @@ function ExtensionIcon({ extension }: { extension: ManagedExtension }) {
   const [failed, setFailed] = useState(false)
 
   if (!extension.iconUrl || failed) {
-    return (
-      <span
-        aria-hidden="true"
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-none bg-muted text-[10px] font-semibold text-muted-foreground"
-      >
-        {extension.name.slice(0, 1).toUpperCase()}
-      </span>
-    )
+    return <LetterAvatar title={extension.name}/>
   }
 
   return (
     <img
       src={extension.iconUrl}
       alt=""
-      width={20}
-      height={20}
-      className={cn("h-5 w-5 shrink-0 rounded-none", !extension.enabled && "grayscale")}
+      width={36}
+      height={36}
+      className={cn("h-9 w-9 shrink-0", !extension.enabled && "grayscale")}
       onError={() => setFailed(true)}
     />
   )
@@ -220,16 +215,16 @@ export default function ExtensionsTab() {
           <p className={popupDescription}>Click an extension to turn it on or off.</p>
           <button
             type="button"
-            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-none text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-[var(--zed-radius-lg)] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             onClick={() => void handleOpenBraveExtensions()}
             aria-label="Open brave://extensions/ in a new tab"
             title="Open brave://extensions/ in a new tab"
           >
-            <ExternalLinkIcon className="h-3 w-3" />
+            <Icon name="open" size={18}/>
           </button>
         </div>
         {extensions && extensions.length > 0 && (
-          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+          <span className="shrink-0 text-[length:var(--zed-fs-2xs)] tabular-nums text-muted-foreground">
             {enabledCount} on · {disabledCount} off
           </span>
         )}
@@ -240,22 +235,22 @@ export default function ExtensionsTab() {
       )}
 
       {permissionState === "missing" && (
-        <div className="space-y-2 rounded-none border border-border/70 bg-muted/40 p-3">
+        <div className="space-y-2 rounded-[var(--zed-radius-lg)] border border-border/70 bg-muted/40 p-3">
           <div>
             <p className="text-xs font-medium">Allow extension management</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-1 text-[length:var(--zed-fs-2xs)] leading-relaxed text-muted-foreground">
               Grant access to list and manage your installed extensions. The browser will ask you to confirm.
             </p>
           </div>
           {permissionError && (
-            <p role="alert" className="text-[11px] text-destructive">
+            <p role="alert" className="text-[length:var(--zed-fs-2xs)] text-destructive">
               {permissionError}
             </p>
           )}
           <Button
             type="button"
             size="sm"
-            className="h-7 text-[11px]"
+            className="h-7 text-[length:var(--zed-fs-2xs)]"
             disabled={requestingPermission}
             onClick={() => void requestManagementPermission()}
           >
@@ -267,14 +262,14 @@ export default function ExtensionsTab() {
       {error && (
         <div
           role="alert"
-          className="flex items-center justify-between gap-2 rounded-none border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-600 dark:text-amber-400"
+          className="flex items-center justify-between gap-2 rounded-[var(--zed-radius-lg)] border border-[var(--zed-warn-line)] bg-[var(--zed-warn-tint)] px-2 py-1.5 text-[length:var(--zed-fs-2xs)] text-[var(--zed-warn)] "
         >
           <span className="min-w-0 flex-1">{error}</span>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="h-6 shrink-0 px-2 text-[10px]"
+            className="h-6 shrink-0 px-2 text-[length:var(--zed-fs-2xs)]"
             onClick={() => void load()}
           >
             Retry
@@ -304,25 +299,20 @@ export default function ExtensionsTab() {
                 key={extension.id}
                 aria-busy={busy ? true : undefined}
                 title={rowTitle}
-                onClick={() => {
-                  if (extension.canToggle && !busy) setEnabled(extension, !extension.enabled)
-                }}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-none border border-border/70 bg-card px-2 py-1",
+                  "zed-row",
                   extension.canToggle && !busy && "cursor-pointer hover:bg-muted/60",
-                  !extension.enabled && "opacity-60"
+                  !extension.enabled && "text-muted-foreground"
                 )}
               >
-                <ExtensionIcon extension={extension} />
-
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-xs font-medium leading-4">{extension.name}</div>
-                  <div className="truncate text-[10px] leading-4 text-muted-foreground">
+                <button className="flex items-center gap-2 min-w-0 flex-1" disabled={!extension.canToggle || Boolean(busy)} onClick={()=>setEnabled(extension,!extension.enabled)}><ExtensionIcon extension={extension} /><span className="min-w-0 flex-1 text-left">
+                  <div className="truncate text-base font-semibold leading-5">{extension.name}</div>
+                  <div className="truncate text-xs leading-4 text-muted-foreground">
                     v{extension.version}
                     {extension.isSelf ? " · This extension" : ""}
                     {locked ? " · Managed by policy" : ""}
                   </div>
-                </div>
+                </span></button>
 
                 {locked && (
                   <LockClosedIcon
@@ -336,7 +326,7 @@ export default function ExtensionsTab() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
+                    className="zed-row-action"
                     aria-label={`Open settings for ${extension.name}`}
                     title="Settings"
                     disabled={Boolean(busy)}
@@ -345,14 +335,14 @@ export default function ExtensionsTab() {
                       openSettings(extension)
                     }}
                   >
-                    <GearIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                    <Icon name="settings" size={18}/>
                   </Button>
 
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
+                    className="zed-row-action"
                     aria-label={`Reload ${extension.name}`}
                     title={
                       extension.isSelf
@@ -365,17 +355,14 @@ export default function ExtensionsTab() {
                       reload(extension)
                     }}
                   >
-                    <ReloadIcon
-                      aria-hidden="true"
-                      className="h-3.5 w-3.5"
-                    />
+                    <Icon name="reload" size={18}/>
                   </Button>
 
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 shrink-0 rounded-none text-muted-foreground hover:text-destructive"
+                    className="zed-row-action"
                     aria-label={`Uninstall ${extension.name}`}
                     title="Uninstall"
                     disabled={!extension.canUninstall || Boolean(busy)}
@@ -384,7 +371,7 @@ export default function ExtensionsTab() {
                       uninstall(extension)
                     }}
                   >
-                    <TrashIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                    <Icon name="delete" size={18}/>
                   </Button>
 
                   <Switch

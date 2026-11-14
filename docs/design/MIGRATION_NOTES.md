@@ -1,12 +1,8 @@
 # Zed Dark migration notes
 
-## Status and source blocker
+## Status and source
 
-Phase 0 audit recorded on 2026-11-14. No application code changed. Phases 1–3 are blocked on the actual design specification.
-
-Both `docs/design/extension-zed-design-spec.md` and the attached Markdown contain the task prompt, headed “Prompt for Codex”. They refer to sections 2–9 but contain none of those sections. In particular, the verbatim tokens (§2.2), normative icons (§2.7), screen definitions (§4.1–§4.16), behavior rules (§5), shortcut catalog/defaults (§6), real-data guidance (§7), decisions (§8), and acceptance checklist (§9) are absent.
-
-The supplied HTML is a design reference with embedded tokens, Inter font data, and mock screens. It provides useful visual evidence but cannot establish the missing normative requirements. Do not treat its mock behavior as the specification or copy its application code. Exact numbered screen mapping and acceptance sign-off remain pending the missing document.
+The full Design Spec v1.0 is now present in `docs/design/extension-zed-design-spec.md` (611 lines). The earlier source blocker is resolved. The HTML remains a visual reference; its mock application code is not reused. Implementation is proceeding on `redesign/zed-design-system`.
 
 ## Stack, tooling, and build
 
@@ -43,7 +39,7 @@ No manifest, permission, schema or dependency changes made.
 
 ## Feature and screen mapping
 
-Exact §4 subsection numbers cannot be assigned because those sections are missing. Mapping below uses the screen names in the supplied task.
+Screen mapping: Misc §4.1, Playback §4.2, Video quality §4.3, Password §4.4, Volume §4.5, Scrollbars §4.6, Modes §4.7, Capture §4.8, Extensions §4.9, YouTube §4.10, Links §4.11, Shortcuts §4.12, Settings §4.13, Reset §4.14, Toast §4.15, Restricted §4.16. The table records the pre-migration implementation.
 
 | Requested screen | Current implementation / behavior |
 | --- | --- |
@@ -77,11 +73,16 @@ Because §4 is missing, these are preservation candidates rather than definitive
 
 ## Decisions
 
-1. Preserve all current runtime/storage/message contracts. `src/lib/settings.ts` defines schema version 1, reset/import/export key validation, saved tab/section state and existing settings migration. `src/lib/actionRegistry.ts` defines page message actions. New Links/Shortcuts behavior needs the missing spec before designing new storage contracts.
-2. Do not infer §8 decisions from mock HTML. Existing speed, password and volume ranges above are the evidence to compare with the full specification.
-3. Do not replace the mandatory current design rules with invented rules. No production styles or design instructions changed during audit.
-4. No new Capture result sheet or scrollbar preview card will be added. Existing screenshot preview preservation needs reconciliation with the actual screen definitions.
-5. Source blocker requires the actual §§2–9, not approval of a plan. The HTML reference alone does not support claiming verbatim compliance or checking §9.
+1. §8.1: popup is dark regardless of the stored darkTheme value. Preserve that key and switch rather than inventing a page-level darkening feature; grayscale retains its website effect.
+2. §8.2: preserve reset/import/export schema version 1 and the existing reset key list. New savedLinks and keyboardShortcuts are additive storage keys. Reset shortcut bindings to their defaults; saved Links survive reset. Existing page effects are unchanged until their existing application path runs.
+3. §8.3: quality applies immediately on selection, retaining Apply. Existing Auto and higher-than-1080p resolutions remain available using the same option components.
+4. §8.4: read scrollbar state from existing style IDs on the current document. Preserve independent command precedence and all-frame action application.
+5. §8.5: screenshot selection, native full-page capture, preview, clipboard/download and editor behavior remain. No new Capture result sheet or scrollbar preview.
+6. §8.6: restricted detection uses activeTab URL access; no new permission. Catch page-action failures as fallback.
+7. §8.7: existing settings JSON format and validation remain. New Links/shortcut keys are local additive storage; no migration of existing keys.
+8. Existing speed range 0.1–10/step 0.1, volume step 10, password symbol pool and all-unchecked validation win over mock behavior under the stated precedence. Password randomness/selected-group guarantees remain.
+9. Repository no-animation requirement remains stricter than §2 hover motion. Keep the tokens verbatim but never consume the motion duration for transitions.
+10. No existing global shortcut mechanism besides Alt+Z exists. Add an HTTP(S) top-frame content-script key listener using local bindings, as §6 permits; browser-reserved shortcuts and restricted pages remain browser limitations.
 
 ## Plan after the source blocker is resolved
 

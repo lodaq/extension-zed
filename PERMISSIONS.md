@@ -7,7 +7,7 @@ This document audits all permissions requested by Extension Zed, maps each permi
 Extension Zed declares five required permissions and requests `management` only when the user chooses the Extensions tab:
 
 ```json
-"permissions": ["scripting", "activeTab", "storage", "clipboardWrite", "debugger"],
+"permissions": ["scripting", "activeTab", "storage", "clipboardWrite", "debugger", "tabs", "contextMenus"],
 "optional_permissions": ["management"]
 ```
 
@@ -17,9 +17,11 @@ Extension Zed declares five required permissions and requests `management` only 
 |---|---|---|
 | `activeTab` | Grants temporary, user-invoked execution access to the active tab when opening the action popup. | Does **not** grant background access to tabs. Access expires on navigation to another origin or when the tab closes; screenshot capture also checks that the intended tab remains active in the focused window. |
 | `scripting` | Programmatically executes on-demand content actions (`chrome.scripting.executeScript`) when the user applies design mode, scrollbar toggles, focus mode, element inspector, volume boost, or video quality. | Only used on target tabs matching active user intent. Restricted Chrome internal URLs (`chrome://`, webstore, extensions gallery) are caught and protected with safe user messaging. |
-| `storage` | Persists user preferences (`chrome.storage.local`) such as dark theme, playback speed presets, section order, and mode toggles. | Synced locally only on the device; no remote transmission. Includes export/import validation. |
-| `clipboardWrite` | Writes a captured PNG only when the user clicks Copy to clipboard in Screenshot preview. | No clipboard reading. Chrome/Brave 157+ copies in the extension worker; older browsers use native image-document copy. Neither path opens a tab or window. |
+| `storage` | Persists user preferences (`chrome.storage.local`) such as dark theme, playback speed presets, section order, mode toggles, and locally saved text/links. | Synced locally only on the device; no remote transmission. Includes export/import validation. |
+| `clipboardWrite` | Writes a captured PNG only when the user clicks Copy to clipboard in Screenshot preview, or when copying saved item links. | No clipboard reading. Chrome/Brave 157+ copies in the extension worker; older browsers use native image-document copy. Neither path opens a tab or window. |
 | `debugger` | Captures the full rendered page with Page.captureScreenshot; temporary viewport expansion handles locked app shells. | Chrome does not support this as an optional permission. Zed attaches only to the requested tab for full-page capture and detaches in finally, including failures. No network or cookie inspection is performed. The browser may show a debugging indicator while attached. |
+| `tabs` | Queries current tab metadata and URLs for navigation, active tab actions, and contextual saving. | Used strictly for local tab coordination; does not log or transmit browsing history. |
+| `contextMenus` | Provides right-click browser menu actions ("Save text to Zed" for selections and "Save link to Zed" for supported media links). | Handled entirely locally in background worker; adds items to local `savedItems` storage. |
 | `management` (optional) | Lists and manages installed extensions from the Extensions tab. | Requested only after the user presses **Allow access** in that tab. |
 
 ### Screenshot data
@@ -60,6 +62,16 @@ Declared in `manifest.json`:
    - Runs at `document_idle` on `http://*/*` and `https://*/*`, including frames, in the isolated world.
    - Purpose: Reads the saved video-quality preference from `chrome.storage.local` and passes it to the main-world engine through a DOM attribute and custom event.
    - Security: Only exposes the user's own quality preference to the page's main world; no page data is collected or sent anywhere.
+
+5. `scripts/blackAndWhite.js`:
+   - Runs at `document_start` on `http://*/*` and `https://*/*`.
+   - Purpose: Applies grayscale CSS filter mode when enabled by the user.
+   - Security: Reversible page styling only, no network requests or external scripts.
+
+6. `scripts/shortcuts.js`:
+   - Runs at `document_start` on `http://*/*` and `https://*/*`, including frames.
+   - Purpose: Listens for user-configured keyboard shortcuts to trigger Zed actions and detects media cards/feed posts on YouTube, Facebook, and Instagram to render in-page Save buttons.
+   - Security: Runs in isolated world, interacts with local extension storage and messages background worker; does not transmit keystrokes or page data remotely.
 
 ## 3. High-Risk Capabilities Guardrails
 

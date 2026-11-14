@@ -56,6 +56,20 @@ export default function App() {
   }, [])
   const [location, setLocation] = useStoredValue("popupLocation", DEFAULT_LOCATION)
   const { tab, detail, settings } = location
+  const viewTitle = useRef<HTMLHeadingElement>(null)
+  const previousView = useRef({ tab, detail, settings })
+  useLayoutEffect(() => {
+    const previous = previousView.current
+    previousView.current = { tab, detail, settings }
+    if (previous.tab === tab && previous.detail === detail && previous.settings === settings) return
+    // Only repair focus when navigation removed the focused control.
+    if (document.activeElement !== document.body) return
+    const returningToTools = tab === "Misc" && !settings && !detail && previous.detail
+    const target = returningToTools
+      ? document.getElementById(`zed-tool-${previous.detail}`)
+      : viewTitle.current ?? tabbar.current?.querySelector<HTMLElement>('[aria-current="page"]')
+    target?.focus()
+  }, [tab, detail, settings])
   const restoreScroll = useCallback((node: HTMLDivElement | null) => {
     if (node) node.scrollTop = getStoredScrollPosition(`${tab}-${detail}-${settings}`)
   }, [tab, detail, settings])
@@ -65,7 +79,7 @@ export default function App() {
     const listener = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat) return
       if (event.key === "Escape") {
-        if (document.querySelector('[role="dialog"]')) return
+        if (document.querySelector('dialog[open], [role="dialog"]')) return
         if (settings || detail || tab !== "Misc") {
           event.preventDefault()
           event.stopPropagation()
@@ -140,7 +154,7 @@ export default function App() {
       )}
       <div className="zed-tiles">
         {orderedTools.map(tool => (
-          <Tile key={tool.id} title={tool.title} tooltip={tool.tooltip} icon={tool.id}
+          <Tile key={tool.id} id={`zed-tool-${tool.id}`} title={tool.title} tooltip={tool.tooltip} icon={tool.id}
             badge={badges[tool.id]} disabled={restricted && tool.id !== "password"}
             onClick={() => setDetail(tool.id)} />
         ))}
@@ -167,7 +181,7 @@ export default function App() {
           <button className="zed-back" onClick={() => void setLocation({ ...location, settings: false, detail: settings ? detail : null })}>
             <Icon name="back" size={18} />Back
           </button>
-          <h1 className="zed-title">{settings ? "Settings" : selected?.title}</h1>
+          <h1 ref={viewTitle} tabIndex={-1} className="zed-title">{settings ? "Settings" : selected?.title}</h1>
         </div>
       )}
       <div className="zed-content zed-scroll"

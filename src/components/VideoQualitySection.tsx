@@ -46,6 +46,7 @@ export default function VideoQualitySection({ dragHandle, open, onOpenChange }: 
             <Button
               type="button"
               variant={fallback === "higher" ? "default" : "outline"}
+              aria-pressed={fallback === "higher"}
               size="sm"
 
               onClick={() => void handleFallbackChange("higher")}
@@ -55,6 +56,7 @@ export default function VideoQualitySection({ dragHandle, open, onOpenChange }: 
             <Button
               type="button"
               variant={fallback === "lower" ? "default" : "outline"}
+              aria-pressed={fallback === "lower"}
               size="sm"
 
               onClick={() => void handleFallbackChange("lower")}

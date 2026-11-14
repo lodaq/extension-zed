@@ -1,14 +1,22 @@
 import "./savedPage"
 import { installSavedIndicator } from "./savedIndicator"
-import { DEFAULT_SHORTCUTS, readShortcuts, recordCombo } from "../lib/shortcuts"
+import { readShortcuts, recordCombo } from "../lib/shortcuts"
 // Install/update backfill can reach a frame that already has the declarative script.
 const state = globalThis as typeof globalThis & { __zedShortcutsInstalled?: boolean }
 if (!state.__zedShortcutsInstalled) {
   state.__zedShortcutsInstalled = true
   if (window === window.top) installSavedIndicator()
-  let combos = { ...DEFAULT_SHORTCUTS }
-  void chrome.storage.local.get("keyboardShortcuts").then(result => { combos = readShortcuts(result.keyboardShortcuts) })
-  chrome.storage.onChanged.addListener((changes, area) => { if (area === "local" && changes.keyboardShortcuts) combos = readShortcuts(changes.keyboardShortcuts.newValue) })
+  // Don't consume page keys until the user's assignments are known.
+  let combos: Record<string, string> = {}
+  let acceptInitialRead = true
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.keyboardShortcuts) return
+    acceptInitialRead = false
+    combos = readShortcuts(changes.keyboardShortcuts.newValue)
+  })
+  void chrome.storage.local.get("keyboardShortcuts").then(result => {
+    if (acceptInitialRead) combos = readShortcuts(result.keyboardShortcuts)
+  }).catch(console.error)
   window.addEventListener("keydown", event => {
     // Reloaded extensions leave disconnected listeners in already-open pages.
     if (!chrome.runtime?.id || event.repeat || event.isComposing) return

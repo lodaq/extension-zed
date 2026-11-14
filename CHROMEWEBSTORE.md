@@ -64,11 +64,15 @@ English
 
 | Permission | Type | Justification |
 |------------|------|---------------|
-| `storage` | permissions | Needed to persist user preferences such as playback speed presets, theme mode, and scrollbar settings locally on the user's browser. |
+| `storage` | permissions | Needed to persist user preferences (playback speed presets, theme mode, scrollbar settings) and user-saved items (selected text, bookmarked links/reels) locally in browser storage. |
 | `activeTab` | permissions | Needed to access the current active page only when the user invokes an action from the popup, such as applying scrollbar styles, volume boost, or YouTube modes. |
 | `scripting` | permissions | Needed to dynamically apply and reset CSS styling rules, playback rate updates, and element inspection on the active tab upon user request. |
+| `clipboardWrite` | permissions | Needed to copy captured screenshots or saved item URLs to the clipboard upon explicit user action. |
+| `debugger` | permissions | Needed for Page.captureScreenshot to capture high-fidelity full-page screenshots without scrolling distortion. |
+| `tabs` | permissions | Needed to query active tab URL and navigation state for tab actions, link shortcuts, and contextual saving. |
+| `contextMenus` | permissions | Needed to provide "Save text to Zed" and "Save link to Zed" context menu options on right-click. |
 | `management` | optional_permissions | Requested only when the user opens the Extensions tab; needed to list installed extensions and let the user enable, disable, reload, or uninstall them. |
-| `content_scripts` (`https://*/*`, `http://*/*`) | host_permissions | Required to persist user-selected playback speeds, optional RTL text direction, and the preferred video quality across page reloads and navigations on visited web pages. |
+| `content_scripts` / `host_permissions` (`https://*/*`, `http://*/*`) | host_permissions | Required to persist user-selected playback speeds, optional RTL text direction, preferred video quality, keyboard shortcuts, and in-page save indicators across page reloads and navigations on visited web pages. |
 
 ## Privacy & Data Use
 
@@ -76,7 +80,7 @@ English
 
 **Does the extension collect user data?** No
 
-Extension Zed does not collect, log, or transmit any personally identifiable information, browsing history, user activity, or content. All settings are stored strictly in local browser storage (`chrome.storage.local`).
+Extension Zed does not collect, log, or transmit any personally identifiable information, browsing history, user activity, or content to external servers. All user preferences, custom shortcuts, and saved items (selected text snippets and media links saved by the user) are stored strictly on the user's device in local browser storage (`chrome.storage.local`).
 
 ### Data Use Certification
 - [x] Data is NOT sold to third parties

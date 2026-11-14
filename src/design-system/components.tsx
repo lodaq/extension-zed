@@ -1,8 +1,8 @@
 import { useEffect, useRef, type ReactNode } from "react"
 import { Icon, type IconName } from "./Icon"
 
-export function Tile({ title, tooltip, icon, badge, disabled, onClick }: { title: string; tooltip: string; icon: IconName; badge?: string; disabled?: boolean; onClick: () => void }) {
-  return <button className="zed-tile" disabled={disabled} onClick={onClick}><span className="zed-tile-top"><span className="zed-well"><Icon name={icon} /></span><span>{badge}</span></span><span>{title}</span><span className="zed-tooltip" role="tooltip">{tooltip}</span></button>
+export function Tile({ id, title, tooltip, icon, badge, disabled, onClick }: { id?: string; title: string; tooltip: string; icon: IconName; badge?: string; disabled?: boolean; onClick: () => void }) {
+  return <button id={id} className="zed-tile" disabled={disabled} onClick={onClick}><span className="zed-tile-top"><span className="zed-well"><Icon name={icon} /></span><span>{badge}</span></span><span>{title}</span><span className="zed-tooltip" role="tooltip">{tooltip}</span></button>
 }
 export function SwitchRow({ label, description, checked, onChange, disabled }: { label: string; description?: string; checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
   return <button type="button" className="zed-switch-row" role="switch" aria-checked={checked} disabled={disabled} onClick={() => onChange(!checked)}><span>{label}{description && <span className="zed-helper" style={{ display: "block" }}>{description}</span>}</span><span className="zed-switch" /></button>

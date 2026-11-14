@@ -4,7 +4,7 @@ Prioritized backlog for the Chrome extension. Keep this file focused on work tha
 
 ## Current Product
 
-Current popup tabs: **Misc**, **Extensions**, **YouTube**, and **Settings**.
+Current popup tabs: **Misc**, **Extensions**, **YouTube**, **Links**, **Saved**, and **Shortcuts**, plus **Settings**.
 
 Implemented capabilities:
 
@@ -15,7 +15,10 @@ Implemented capabilities:
 - Video quality selector with fallback options (prefer higher / prefer lower quality)
 - Installed extensions management tab with search, status toggles, reload, and uninstall flows
 - YouTube focus mode, progress-bar controls, duration hiding, and half-screen layout
-- Persistent dark theme, defaulting to dark
+- Saved tab with in-page Save to Zed indicators on YouTube, Facebook, and Instagram media cards/feed posts, plus right-click context menu saves
+- Shortcuts tab for configuring in-page keyboard shortcuts
+- Links tab for quick link management
+- Persistent dark theme adhering to Zed Dark design tokens
 - Success/error toast feedback for page actions
 - Settings schema versioning (v1), file size & JSON validation, export/import, and factory reset flow
 - Full Chrome Web Store metadata and permissions documentation (`CHROMEWEBSTORE.md`)

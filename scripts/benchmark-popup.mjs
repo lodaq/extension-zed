@@ -115,7 +115,12 @@ async function run() {
     for (let j = 0; j < 200; j++) {
       state = await popup.evaluate(`(() => {
         const paints = Object.fromEntries(performance.getEntriesByType('paint').map(e => [e.name, +e.startTime.toFixed(1)]));
-        const ready = document.querySelectorAll('[role="tab"]').length === 4 && document.querySelectorAll('details').length === 6;
+        const navigation = [...document.querySelectorAll('nav button')];
+        const tiles = [...document.querySelectorAll('.zed-tile')];
+        const ready = ['Misc', 'Extensions', 'YouTube', 'Links', 'Saved', 'Shortcuts'].every(name =>
+          navigation.some(button => button.textContent === name)) &&
+          ['Playback speed', 'Video quality', 'Password generator', 'Volume boost', 'Scrollbars', 'Modes', 'Capture screenshot', 'Save & close tab'].every(name =>
+            tiles.some(button => button.textContent.includes(name)));
         const nav = performance.getEntriesByType('navigation')[0];
         const marks = Object.fromEntries(performance.getEntriesByType('mark').map(m => [m.name, +m.startTime.toFixed(1)]));
         return {

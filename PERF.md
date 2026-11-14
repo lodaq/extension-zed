@@ -1,5 +1,31 @@
 # Performance evidence
 
+## 2026-11-14 performance skill pass
+
+Repaired the toolbar benchmark's readiness check after the popup redesign. It
+now requires all six navigation buttons and all eight tool tiles, instead of
+four ARIA tabs and six accordion elements that no longer exist. The existing
+median LCP budget of 1,000 ms and missing-paint assertions remain intact.
+
+Two separate runs of `node scripts/benchmark-popup.mjs` against the same fresh
+production build recorded LCP samples of 200, 116, 176 ms and 276, 180, 108 ms.
+Each run launches an isolated Brave profile and measures three real toolbar
+popups after opening an extension tab. Run medians were 176 and 180 ms; all six
+samples were below budget. These are local lab measurements with shared assets
+warmed by the extension tab, without CPU or network throttling. They are not
+field INP, cold-start measurements, or evidence of an application speedup.
+
+No application optimization was attempted: current measurements meet the
+startup budget and do not justify additional caching, memoization, or lazy
+loading. Popup JavaScript is 317.05 kB raw / 99.82 kB gzip; gzip is a bundle
+comparison metric for this locally installed extension.
+
+Validation: production build, benchmark script syntax, and whitespace checks
+pass. A temporary copy with a zero-ms timing limit exited 1 at the LCP assertion,
+confirming the budget still rejects a measured violation. No telemetry or field monitoring was added; real-site content-script
+performance and interaction latency were not measured in this pass. The
+benchmark still depends on this machine's extension path, ID, and Brave.
+
 ## Performance optimization budget guard
 
 The stricter keep/revert review found no new measured bottleneck and does not

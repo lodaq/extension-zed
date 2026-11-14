@@ -18,8 +18,52 @@ beforeEach(() => {
   })
 })
 afterEach(() => {
+  vi.restoreAllMocks()
   delete (globalThis as typeof globalThis & { __zedShortcutsInstalled?: boolean }).__zedShortcutsInstalled
   vi.unstubAllGlobals()
+})
+
+it("does not intercept default shortcuts before preferences load", async () => {
+  let resolve!: (value: object) => void
+  const initial = new Promise<object>(done => { resolve = done })
+  vi.stubGlobal("chrome", { ...chrome, storage: { ...chrome.storage, local: { get: () => initial } } })
+  await import("./shortcuts")
+  const event = key({ key: "ArrowRight", code: "ArrowRight", ctrlKey: false, metaKey: false, altKey: true, shiftKey: true })
+  target.dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(false)
+  expect(send).not.toHaveBeenCalled()
+  resolve({ keyboardShortcuts: { action0: "" } })
+  await initial
+})
+
+it("keeps newer shortcut changes when an older initial read completes", async () => {
+  let resolve!: (value: object) => void
+  const initial = new Promise<object>(done => { resolve = done })
+  vi.stubGlobal("chrome", { ...chrome, storage: { ...chrome.storage, local: { get: () => initial } } })
+  await import("./shortcuts")
+  const changed = vi.mocked(chrome.storage.onChanged.addListener).mock.calls[0][0]
+  changed({ keyboardShortcuts: { newValue: { action13: "", action20: "" } } }, "local")
+  resolve({ keyboardShortcuts: { action13: "Ctrl+Cmd+S" } })
+  await initial
+  const event = key()
+  target.dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(false)
+  expect(send).not.toHaveBeenCalled()
+})
+
+it("handles a failed initial read and recovers on a storage change", async () => {
+  const error = new Error("Storage unavailable")
+  const log = vi.spyOn(console, "error").mockImplementation(() => {})
+  vi.stubGlobal("chrome", { ...chrome, storage: { ...chrome.storage, local: { get: async () => { throw error } } } })
+  await import("./shortcuts")
+  await vi.waitFor(() => expect(log).toHaveBeenCalledWith(error))
+  const event = key({ key: "ArrowRight", code: "ArrowRight", ctrlKey: false, metaKey: false, altKey: true, shiftKey: true })
+  target.dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(false)
+  const changed = vi.mocked(chrome.storage.onChanged.addListener).mock.calls[0][0]
+  changed({ keyboardShortcuts: { newValue: { action13: "Ctrl+Cmd+S" } } }, "local")
+  target.dispatchEvent(key())
+  expect(send).toHaveBeenCalledExactlyOnceWith({ type: "zed:shortcut", id: "action13" })
 })
 
 function key(overrides: Record<string, unknown> = {}) {

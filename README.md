@@ -49,11 +49,14 @@ To create a portable build ZIP yourself, run `bun run package:store`. It creates
 
 ## How to use it
 
-- Open Extension Zed by clicking its toolbar icon, or press **Alt+Z**. The tab strip scrolls horizontally with the mouse wheel. Misc sections can be collapsed, expanded, and reordered.
-- **Misc** contains page and media tools. Open a section to use it; changes that are saved as preferences are stored in this browser profile.
+- Open Extension Zed by clicking its toolbar icon, or press **Alt+Z**. The tab strip navigation lets you switch between **Misc**, **Extensions**, **YouTube**, **Links**, **Saved**, and **Shortcuts**, plus **Settings**.
+- **Misc** contains page and media tools. Open a section or tool tile to use it; changes that are saved as preferences are stored in this browser profile.
 - **Extensions** asks for optional management access the first time you use it. Choose **Allow access** and confirm the browser prompt to list and manage other extensions. You can decline and grant it later.
-- **YouTube** tools are intended for use while watching a YouTube video. Video markers become available when a video is open.
-- **Settings**, opened with the gear tab, controls the theme, supports settings transfer/reset, and includes About with the feature list and overlapping extension alternatives.
+- **YouTube** tools are intended for use while watching a YouTube video. Video markers and layout controls become available when a video is open.
+- **Links** organizes quick links and shortcuts to common destinations.
+- **Saved** collects bookmarked media links (YouTube videos, Facebook & Instagram reels/posts) and text snippets. You can toggle in-page "Save to Zed" buttons directly on media cards and feed posts, or use the browser right-click context menu to save selections and links.
+- **Shortcuts** provides configurable in-page keyboard shortcuts to trigger Zed actions quickly without opening the popup.
+- **Settings**, opened with the gear button, controls the theme, supports settings transfer/reset, and includes About with the feature list and overlapping extension alternatives.
 
 ## Features
 
@@ -94,17 +97,34 @@ YouTube layout preferences are saved in the browser. A YouTube player is needed 
 
 The **Reload** action restarts an extension (for Extension Zed, it reloads the active extension; for other extensions, it restarts the extension to apply updates Chrome has already downloaded).
 
+### Links
+
+- Manage custom links and shortcuts for fast one-click navigation to frequently used destinations.
+
+### Saved
+
+- **Save media:** Automatically mount in-page "Save to Zed" buttons on YouTube video cards, Instagram Reels & posts, and Facebook Reels, posts, and timestamp links. Buttons toggle between Save and Remove states.
+- **Save text:** Select any text on a page, right-click, and choose **Save text to Zed** to store it locally with its source page URL.
+- **Save links:** Right-click post timestamp links or video URLs and choose **Save link to Zed**.
+- **In-page button toggle:** A "Show Save to Zed buttons" switch in the Saved tab lets you hide or show in-page controls without losing saved items.
+- **Manage items:** View, copy links, open in new tab, and delete saved items in the Saved tab.
+
+### Shortcuts
+
+- Configure custom keyboard shortcuts for page actions (playback speed changes, volume boost, focus mode, and saving items).
+- Shortcuts are intercepted safely by the content script and sync across tabs upon preference change.
+
 ### Settings
 
-- The popup uses Zed Dark.
+- The popup uses Zed Dark with keyboard-accessible navigation and focus management.
 - Export preferences to a JSON backup, import a backup, or reset preferences.
 - Import merges recognized settings; values not present in the backup are left unchanged.
 
 ## Privacy and permissions
 
-Preferences stay in the local browser profile. Extension Zed has no account or cloud sync and does not send telemetry, browsing history, or personal data to an external server. Exported backups include saved website origins along with preferences, so keep backup files private.
+Preferences and saved items stay in the local browser profile. Extension Zed has no account or cloud sync and does not send telemetry, browsing history, or personal data to an external server. Exported backups include saved website origins along with preferences, so keep backup files private.
 
-The extension needs `scripting`, `activeTab`, `storage`, `clipboardWrite`, and `debugger` for page actions and local preferences. Its automatic playback and Arabic text features run on HTTP and HTTPS pages, so the browser may show a broad site-access warning. **Management** is optional and is requested only when you choose to use the Extensions tab. Browser-internal and other protected pages generally do not allow page actions. Chrome requires debugger access to be declared at install/update; it cannot be granted as an optional runtime permission. Read [Permissions](PERMISSIONS.md) for details.
+The extension needs `scripting`, `activeTab`, `storage`, `clipboardWrite`, `debugger`, `tabs`, and `contextMenus` for page actions, context menu saving, tab navigation, and local preferences. Its automatic playback, video quality, shortcuts, and in-page save features run on HTTP and HTTPS pages, so the browser may show a broad site-access warning. **Management** is optional and is requested only when you choose to use the Extensions tab. Browser-internal and other protected pages generally do not allow page actions. Chrome requires debugger access to be declared at install/update; it cannot be granted as an optional runtime permission. Read [Permissions](PERMISSIONS.md) for details.
 
 Media features depend on the site's player. Some sites may change their player APIs, inaccessible frames may remain unchanged, and unsupported players may not accept speed or quality changes.
 

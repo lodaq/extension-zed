@@ -5,9 +5,9 @@ This inventory describes implemented capabilities. See [RECOMMENDATIONS.md](RECO
 ## Popup
 
 - Keyboard shortcut `Alt+Z` immediately toggles the popup control panel from anywhere in Chrome.
-- Misc, Extensions, YouTube, and Settings tabs; the last selected tab is saved locally.
-- Scrollable 400 × 600 layout with saved dark/light appearance; dark is the default.
-- The first HTML frame already contains the tab bar and collapsed Misc section headers at the final 400 × 600 size, so the popup does not show a placeholder or resize while settings load.
+- **Misc**, **Extensions**, **YouTube**, **Links**, **Saved**, and **Shortcuts** navigation tabs, plus **Settings**; the last selected tab is saved locally.
+- 640 × 600 layout built with the Zed Dark design system, accessible keyboard navigation, and focus management on view changes.
+- Tool tiles in Misc provide quick access to Playback speed, Video quality, Password generator, Volume boost, Scrollbars, Modes, Capture screenshot, and Save & close tab.
 - Page actions show success/error toasts. Action failures show a per-tab `!` badge and error tooltip; a successful action clears them.
 - Saved preferences differ from applied page state. Application failure retains the preference and reports the failure. Storage failure prevents application.
 
@@ -67,6 +67,33 @@ Preferences are global and saved locally.
 
 Sources: `src/components/YoutubeFocusMode.tsx`, `public/scripts/youtube*.js`.
 
+## Links tab
+
+- Manage user-defined links and quick shortcuts with custom titles and URLs.
+- Filter, search, visit, and remove saved links directly within the popup.
+
+Sources: `src/components/LinksTab.tsx`, `src/lib/links.ts`.
+
+## Saved tab
+
+- **Media detection:** In-page "Save to Zed" buttons automatically attach to YouTube video cards, Instagram Reels & posts, and Facebook Reels, posts, photos, and group permalinks. Clicking toggles between Save and Remove states.
+- **Timestamp links:** Detects Facebook post timestamp links (including posts without standard wrappers) for reliable inline bookmarking.
+- **Context menu saves:**
+  - Right-click selected text: **Save text to Zed** saves the text snippet along with its source page URL.
+  - Right-click media/feed links: **Save link to Zed** extracts and normalizes the link to store in the Saved tab.
+- **Show buttons toggle:** A "Show Save to Zed buttons" switch in the Saved tab toggles live visibility of in-page save indicators on supported sites without affecting stored items.
+- **Saved items management:** View, search, open links, copy URLs, and delete saved items.
+- **Local persistence:** Stored entirely in `chrome.storage.local` under `savedItems`.
+
+Sources: `src/components/SavedTab.tsx`, `src/content/savedPage.ts`, `src/content/savedIndicator.ts`, `src/lib/saved.ts`, `src/lib/mediaTargets.ts`.
+
+## Shortcuts tab
+
+- Configure custom keyboard shortcuts for extension actions (e.g., speed adjustments, volume boost, focus mode, and quick save).
+- Content script listeners intercept configured key combinations without conflicting with text input or typing, and safely synchronize with updated preferences.
+
+Sources: `src/components/ShortcutsTab.tsx`, `src/content/shortcuts.ts`, `src/lib/shortcuts.ts`.
+
 ## Settings About
 
 Settings uses an accessible gear tab and includes an About section with the toolbox features and task-level alternatives: GoFullPage, Video Speed Controller, Volume Master, Enhancer for YouTube, and Extensity. It describes overlap rather than promising every feature of those tools. All extension UI follows DESIGN.md, shared square-corner shadcn controls, and one scrollbar stylesheet.
@@ -83,9 +110,9 @@ Sources: `src/lib/settings.ts`, `src/components/SettingsTab.tsx`, `src/lib/useSt
 
 ## Permissions and limitations
 
-- Manifest V3; required `scripting`, `activeTab`, and `storage` permissions. Optional `management` permission is requested only when the Extensions tab is used. No new host permissions or backend.
-- Playback and RTL content scripts match HTTP(S) pages and all frames. The video-quality engine and its settings bridge also match HTTP(S) pages and all frames. On-demand actions attempt all frames where appropriate, with main-frame fallback. Inaccessible frames may remain unchanged.
+- Manifest V3; required `scripting`, `activeTab`, `storage`, `clipboardWrite`, `debugger`, `tabs`, and `contextMenus` permissions. Optional `management` permission is requested only when the Extensions tab is used.
+- Static content scripts match HTTP(S) pages (`scripts/playbackRatePersist.js`, `scripts/arabicRtlMode.js`, `scripts/applyVideoQuality.js`, `scripts/videoQualityBridge.js`, `scripts/blackAndWhite.js`, `scripts/shortcuts.js`).
 - Chrome internal pages, the Chrome Web Store, and other protected documents generally reject injection.
-- Preferences are local; no account or cloud sync.
+- Preferences and saved content are local to the browser; no account or cloud sync.
 - Closed shadow roots and unusual media pipelines may need site-specific support. Reused MediaSource URLs without normal loading events can hide a media-item change.
 - Web Audio amplification can fail for cross-origin or already-connected media and autoplay restrictions. High gain can distort audio.

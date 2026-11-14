@@ -67,7 +67,6 @@ async function installShortcutsInOpenTabs(tabId?: number) {
 }
 chrome.runtime.onInstalled.addListener(() => {
   void installShortcutsInOpenTabs().catch(console.error)
-  installSaveMenu()
 })
 chrome.runtime.onStartup.addListener(() => { void installShortcutsInOpenTabs().catch(console.error) })
 
@@ -86,6 +85,8 @@ function installSaveMenu() {
     chrome.contextMenus.create({ id: "zed-save-text", title: "Save text to Zed", contexts: ["selection"] })
   })
 }
+// A worker restart also repairs menus missing after an unpacked reload.
+installSaveMenu()
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== "zed-save-text") return
   void changeSaved({ type: "saved:text", text: info.selectionText, url: info.frameUrl || info.pageUrl })

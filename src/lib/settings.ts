@@ -40,6 +40,7 @@ export const RESET_SETTINGS_KEYS = [
   "miscSectionOrder",
   "miscExpandedSections",
   "keyboardShortcuts",
+  "savedButtonsEnabled",
 ] as const
 export type KnownSettingKey = (typeof RESET_SETTINGS_KEYS)[number] | "savedLinks"
 
@@ -128,6 +129,7 @@ const validators: Record<KnownSettingKey, SettingValidator> = {
     (value.detail === null || ["playback", "quality", "password", "volume", "scrollbars", "modes", "capture"].includes(value.detail as string)) &&
     typeof value.settings === "boolean",
   keyboardShortcuts: isShortcutMap,
+  savedButtonsEnabled: isBoolean,
   savedLinks: isSavedLinks,
   speed: isValidSpeed,
   volumeBoost: isValidVolumeBoost,

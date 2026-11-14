@@ -301,6 +301,7 @@ export default function ExtensionsTab() {
                 title={rowTitle}
                 className={cn(
                   "zed-row",
+                  extension.isSelf && "zed-extension-self",
                   extension.canToggle && !busy && "cursor-pointer hover:bg-muted/60",
                   !extension.enabled && "text-muted-foreground"
                 )}

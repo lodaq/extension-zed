@@ -141,3 +141,6 @@ input[type=range] { width: 100%; accent-color: var(--zed-accent); }
 .zed-saved-item { min-width: 0; overflow-wrap: anywhere; grid-template-columns: minmax(0, 1fr); padding: var(--zed-space-5); display: grid; gap: var(--zed-gap); }
 .zed-saved-link { color: var(--zed-accent); }
 .zed-saved-error { color: var(--zed-warn); }
+
+.zed-extension-self { background: var(--zed-accent-tint); border-color: var(--zed-accent-line); border-inline-start: 3px solid var(--zed-accent); }
+.zed-extension-self .zed-extension-name { color: var(--zed-accent); }

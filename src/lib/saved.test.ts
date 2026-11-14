@@ -28,3 +28,26 @@ it("serializes concurrent saves, deduplicates, and removes", async () => {
   expect(values[SAVED_KEY]).toHaveLength(1)
   await expect(changeSaved({ type: "saved:add", url: "https://example.com" })).rejects.toThrow()
 })
+it("saves post permalinks without tracking or confusing profiles with posts", () => {
+  expect(mediaUrl("https://instagram.com/p/Photo123/?igsh=tracking")).toBe("https://www.instagram.com/p/Photo123/")
+  expect(mediaUrl("https://www.facebook.com/person/posts/pfbid123/?ref=feed")).toBe("https://www.facebook.com/person/posts/pfbid123/")
+  expect(mediaUrl("https://facebook.com/groups/123/posts/456/?ref=feed")).toBe("https://www.facebook.com/groups/123/posts/456/")
+  expect(mediaUrl("https://facebook.com/story.php?story_fbid=456&id=123&ref=feed")).toBe("https://www.facebook.com/permalink.php?story_fbid=456&id=123")
+  expect(mediaUrl("https://facebook.com/share/p/ABC/?tracking=1")).toBe("https://www.facebook.com/share/p/ABC/")
+  expect(mediaUrl("https://instagram.com/profile/")).toBeNull()
+  expect(mediaUrl("https://facebook.com/profile.php?id=123")).toBeNull()
+})
+
+it("recognizes Facebook photo posts without saving their tracking parameters", () => {
+  expect(mediaUrl("https://www.facebook.com/photo.php?fbid=123456&set=a.42&tracking=feed")).toBe("https://www.facebook.com/photo/?fbid=123456")
+  expect(mediaUrl("https://facebook.com/photo/?fbid=123456")).toBe("https://www.facebook.com/photo/?fbid=123456")
+  expect(mediaUrl("https://facebook.com/photo/?fbid=bad")).toBeNull()
+})
+it("normalizes group timestamp links and permanent post links to the same URL", () => {
+  const expected = "https://www.facebook.com/groups/903875570211711/posts/2183355815597007/"
+  expect(mediaUrl("https://www.facebook.com/groups/903875570211711/?multi_permalinks=2183355815597007&tracking=1")).toBe(expected)
+  expect(mediaUrl("https://www.facebook.com/groups/903875570211711/permalink/2183355815597007/")).toBe(expected)
+  expect(mediaUrl(expected)).toBe(expected)
+  expect(mediaUrl("https://facebook.com/groups/123/?multi_permalinks=1,2")).toBeNull()
+  expect(readSetting("savedButtonsEnabled", false, true)).toBe(false)
+})

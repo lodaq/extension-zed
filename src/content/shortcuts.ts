@@ -1,3 +1,4 @@
+import "./savedPage"
 import { installSavedIndicator } from "./savedIndicator"
 import { DEFAULT_SHORTCUTS, readShortcuts, recordCombo } from "../lib/shortcuts"
 // Install/update backfill can reach a frame that already has the declarative script.

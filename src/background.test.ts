@@ -80,6 +80,7 @@ it("backfills shortcut listeners on worker load, install and startup without a p
     scripting: { executeScript: inject },
   })
   await import("./background")
+  expect(chrome.contextMenus.create).toHaveBeenCalledWith({ id: "zed-save-text", title: "Save text to Zed", contexts: ["selection"] })
   await vi.waitFor(() => expect(inject).toHaveBeenCalledTimes(2))
   inject.mockRejectedValueOnce(new Error("Protected page"))
   events.install()

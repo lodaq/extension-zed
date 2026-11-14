@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import react from "@vitejs/plugin-react"
 import { defineConfig, type Plugin } from "vite"
 
@@ -36,7 +37,14 @@ function escapeRegExp(value: string) {
 }
 
 export default defineConfig({
-  plugins: [react(), inlinePopupCss()],
+  plugins: [react(), inlinePopupCss(), {
+    name: "extension-ui-styles",
+    generateBundle() {
+      for (const name of ["theme", "scrollbar"]) {
+        this.emitFile({ type: "asset", fileName: `${name}.css`, source: readFileSync(`src/${name}.css`, "utf8") })
+      }
+    },
+  }],
   build: {
     rollupOptions: {
       input: { popup: "index.html", background: "src/background.ts" },

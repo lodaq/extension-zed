@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Toaster } from "@/components/ui/toast"
 import { toast } from "@/components/ui/use-toast"
 import { PAGE_ACTION_FEEDBACK_EVENT } from "@/lib/withActiveTab"
-import { Cross1Icon, ExclamationTriangleIcon } from "@radix-ui/react-icons"
+import { Cross1Icon, ExclamationTriangleIcon, GearIcon } from "@radix-ui/react-icons"
 import { useCallback, useEffect, useState } from "react"
 import { readBootState, updateBootState } from "@/lib/bootCache"
 import { POPUP_TABS, readSetting } from "@/lib/settings"
@@ -24,7 +24,7 @@ function isTabValue(v: string): v is TabValue {
 const tabPanelClass =
   "mt-0 overflow-visible outline-none data-[state=inactive]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 const tabTriggerClass =
-  "shrink-0 rounded-md px-2 text-xs font-medium text-foreground/75 hover:bg-background/50 hover:text-foreground data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/70"
+  "shrink-0 rounded-none px-2 text-xs font-medium text-foreground/75 hover:bg-background/50 hover:text-foreground data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/70"
 
 function App() {
   const [tab, setTab] = useState<TabValue>(() => readBootState().tab ?? "misc")
@@ -121,42 +121,46 @@ function App() {
         if (!isTabValue(v)) return
         commitTab(v)
       }}
-      className="flex h-[600px] w-[400px] flex-col overflow-hidden rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm select-none"
+      className="flex h-[600px] w-[480px] flex-col overflow-hidden rounded-none border border-border bg-card p-0 text-card-foreground shadow-sm select-none"
     >
-      <div className="sticky top-0 z-10 shrink-0 bg-card pb-1">
-        <div
-          className="popup-scrollbar -mx-1 overflow-x-auto overscroll-x-contain px-1"
-          onWheel={(event) => {
-            const strip = event.currentTarget
-            if (
-              strip.scrollWidth > strip.clientWidth &&
-              Math.abs(event.deltaY) > Math.abs(event.deltaX)
-            ) {
-              strip.scrollLeft += event.deltaY
-              event.preventDefault()
-            }
-          }}
-        >
-          <TabsList aria-label="Extension navigation tabs" className="flex h-9 w-max min-w-full justify-start gap-0.5 rounded-lg border border-border/70 bg-muted/50 p-0.5">
-            <TabsTrigger value="misc" className={tabTriggerClass}>
-              Misc
-            </TabsTrigger>
-            <TabsTrigger value="extensions" className={tabTriggerClass}>
-              Extensions
-            </TabsTrigger>
-            <TabsTrigger value="youtube" className={tabTriggerClass}>
-              Youtube
-            </TabsTrigger>
-            <TabsTrigger value="settings" className={tabTriggerClass}>
-              Settings
-            </TabsTrigger>
-          </TabsList>
+      <div className="sticky top-0 z-10 shrink-0 bg-card">
+        <div className="flex items-center gap-2">
+          <div
+            className="popup-scrollbar min-w-0 flex-1 overflow-x-auto overscroll-x-contain"
+            onWheel={(event) => {
+              const strip = event.currentTarget
+              if (
+                strip.scrollWidth > strip.clientWidth &&
+                Math.abs(event.deltaY) > Math.abs(event.deltaX)
+              ) {
+                strip.scrollLeft += event.deltaY
+                event.preventDefault()
+              }
+            }}
+          >
+            <TabsList aria-label="Extension navigation tabs" className="flex h-9 w-max min-w-full justify-start gap-0.5 rounded-none border border-border/70 bg-muted/50 p-0.5">
+              <TabsTrigger value="misc" className={tabTriggerClass}>
+                Misc
+              </TabsTrigger>
+              <TabsTrigger value="extensions" className={tabTriggerClass}>
+                Extensions
+              </TabsTrigger>
+              <TabsTrigger value="youtube" className={tabTriggerClass}>
+                Youtube
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          <Button variant="ghost" size="icon" aria-label="Settings" title="Settings"
+            aria-pressed={tab === "settings"} onClick={() => commitTab("settings")}
+            className="shrink-0 data-[active=true]:bg-muted" data-active={tab === "settings"}>
+            <GearIcon aria-hidden="true" className="size-4" />
+          </Button>
         </div>
 
         {storageError && (
           <div
             role="alert"
-            className="mt-1.5 flex items-center justify-between gap-1.5 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-600 dark:text-amber-400"
+            className="mt-1.5 flex items-center justify-between gap-1.5 rounded-none border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-600 dark:text-amber-400"
           >
             <div className="flex items-center gap-1.5 truncate">
               <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0" />
@@ -187,7 +191,7 @@ function App() {
       <ScrollArea
         scrollKey={tab}
         preserveScroll
-        className="mt-2 min-h-0 flex-1 pr-1"
+        className="min-h-0 flex-1"
       >
         <TabsContent value="misc" forceMount className={tabPanelClass}>
           <MiscTab />
@@ -198,9 +202,9 @@ function App() {
         <TabsContent value="youtube" forceMount className={tabPanelClass}>
           <YoutubeTab />
         </TabsContent>
-        <TabsContent value="settings" forceMount className={tabPanelClass}>
+        <div hidden={tab !== "settings"} className={tabPanelClass}>
           <SettingsTab />
-        </TabsContent>
+        </div>
       </ScrollArea>
       <Toaster />
     </Tabs>

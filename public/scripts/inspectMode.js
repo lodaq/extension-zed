@@ -7,7 +7,7 @@
     delete window[CLEANUP_KEY];
   }
 
-  return chrome.storage.local.get(["inspectMode"]).then((r) => {
+  return chrome.storage.local.get(["inspectMode", "darkTheme"]).then((r) => {
     const on = String(r?.inspectMode).toLowerCase() === "on";
     if (!on) return;
 
@@ -16,21 +16,28 @@
     overlay.style.cssText =
       "position:fixed;inset:0;z-index:2147483647;pointer-events:none;" +
       "font-family:ui-monospace,SFMono-Regular,Consolas,monospace;";
+    overlay.classList.toggle("dark", r.darkTheme !== false);
     const shadow = overlay.attachShadow({ mode: "open" });
     shadow.innerHTML = `
       <style>
         :host { all: initial; }
-        .box { position: fixed; border: 2px solid rgb(239 68 68); background: rgb(239 68 68 / 8%); box-sizing: border-box; }
-        .panel { position: fixed; width: 300px; max-height: min(420px, calc(100vh - 20px)); overflow: auto; padding: 10px; border: 1px solid rgb(239 68 68); border-radius: 6px; background: rgb(17 24 39 / 96%); color: rgb(243 244 246); box-shadow: 0 8px 24px rgb(0 0 0 / 35%); font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
-        .title { margin-bottom: 7px; color: rgb(252 165 165); font-weight: 700; }
-        .section { margin-top: 8px; padding-top: 7px; border-top: 1px solid rgb(156 163 175 / 30%); color: rgb(209 213 219); }
+        .box { position: fixed; border: 2px solid var(--ring); background: transparent; box-sizing: border-box; }
+        .panel { position: fixed; width: 300px; max-height: min(420px, calc(100vh - 20px)); overflow: auto; padding: 10px; border: 1px solid var(--border); border-radius: 0; background: var(--card); color: var(--card-foreground); box-shadow: 0 8px 24px rgb(0 0 0 / 35%); font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
+        .title { margin-bottom: 7px; color: var(--foreground); font-weight: 700; }
+        .section { margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--border); color: var(--foreground); }
         .row { display: grid; grid-template-columns: 92px 1fr; gap: 8px; overflow-wrap: anywhere; }
-        .key { color: rgb(156 163 175); }
-        .value { color: rgb(243 244 246); }
+        .key { color: var(--muted-foreground); }
+        .value { color: var(--foreground); }
       </style>
       <div class="box" hidden></div>
       <div class="panel" hidden></div>
     `;
+    for (const name of ["theme", "scrollbar"]) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = chrome.runtime.getURL(`${name}.css`);
+      shadow.appendChild(link);
+    }
     document.documentElement.appendChild(overlay);
     const box = shadow.querySelector(".box");
     const panel = shadow.querySelector(".panel");

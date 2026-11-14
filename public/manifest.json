@@ -34,22 +34,37 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*/*", "http://*/*"],
-      "js": ["scripts/playbackRatePersist.js"],
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "js": [
+        "scripts/playbackRatePersist.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true,
       "match_about_blank": true,
       "match_origin_as_fallback": true
     },
     {
-      "matches": ["https://*/*", "http://*/*"],
-      "js": ["scripts/arabicRtlMode.js"],
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "js": [
+        "scripts/arabicRtlMode.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true
     },
     {
-      "matches": ["https://*/*", "http://*/*"],
-      "js": ["scripts/applyVideoQuality.js"],
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "js": [
+        "scripts/applyVideoQuality.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true,
       "match_about_blank": true,
@@ -57,14 +72,54 @@
       "world": "MAIN"
     },
     {
-      "matches": ["https://*/*", "http://*/*"],
-      "js": ["scripts/videoQualityBridge.js"],
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "js": [
+        "scripts/videoQualityBridge.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true,
       "match_about_blank": true,
       "match_origin_as_fallback": true
+    },
+    {
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "js": [
+        "scripts/blackAndWhite.js"
+      ],
+      "run_at": "document_start"
     }
   ],
-  "permissions": ["scripting", "activeTab", "storage"],
-  "optional_permissions": ["management"]
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "storage",
+    "clipboardWrite",
+    "debugger"
+  ],
+  "host_permissions": [
+    "https://viliusle.github.io/miniPaint/*"
+  ],
+  "optional_permissions": [
+    "management"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "screenshot-clipboard.html",
+        "screenshot-clipboard.js",
+        "theme.css",
+        "scrollbar.css"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ]
 }

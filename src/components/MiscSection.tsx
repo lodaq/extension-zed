@@ -19,7 +19,7 @@ export default function MiscSection({ title, id, children, dragHandle, open, onO
         className={cn(popupPanel, "group")}
         aria-labelledby={id}
       >
-        <summary className={cn("-m-3 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg py-3 pr-3 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden", dragHandle ? "pl-12" : "pl-3")}>
+        <summary className={cn("-m-3 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-none py-3 pr-3 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden", dragHandle ? "pl-12" : "pl-3")}>
           <h2 id={id} className={cn(popupSectionTitle, "flex-1")}>{title}</h2>
           <ChevronDownIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground group-open:rotate-180" />
         </summary>

@@ -14,6 +14,7 @@ export const MISC_SECTION_ORDER = [
   "quality",
   "scrollbars",
   "modes",
+  "screenshot",
 ] as const
 export type MiscSectionId = (typeof MISC_SECTION_ORDER)[number]
 
@@ -21,6 +22,7 @@ export const RESET_SETTINGS_KEYS = [
   "speed",
   "volumeBoost",
   "darkTheme",
+  "blackAndWhite",
   "youtubeFocus",
   "youtubeHideProgress",
   "youtubeHideControls",
@@ -88,9 +90,10 @@ function isValidPopupTab(value: unknown): boolean {
 function isValidMiscSectionOrder(value: unknown): boolean {
   return (
     Array.isArray(value) &&
-    value.length === MISC_SECTION_ORDER.length &&
+    (value.length === MISC_SECTION_ORDER.length || value.length === MISC_SECTION_ORDER.length - 1) &&
     new Set(value).size === value.length &&
-    MISC_SECTION_ORDER.every((id) => value.includes(id))
+    MISC_SECTION_ORDER.every((id) => id === "screenshot" || value.includes(id)) &&
+    value.every((id) => MISC_SECTION_ORDER.includes(id))
   )
 }
 
@@ -108,6 +111,7 @@ const validators: Record<KnownSettingKey, SettingValidator> = {
   speed: isValidSpeed,
   volumeBoost: isValidVolumeBoost,
   darkTheme: isBoolean,
+  blackAndWhite: isBoolean,
   youtubeFocus: isBoolean,
   youtubeHideProgress: isBoolean,
   youtubeHideControls: isBoolean,
@@ -132,6 +136,9 @@ function isKnownSettingKey(key: string): key is KnownSettingKey {
 
 export function readSetting<T>(key: string, value: unknown, fallback: T): T {
   if (isKnownSettingKey(key) && validators[key](value)) {
+    if (key === "miscSectionOrder" && Array.isArray(value) && !value.includes("screenshot")) {
+      return [...value, "screenshot"] as T
+    }
     return value as T
   }
   return fallback
@@ -144,7 +151,7 @@ function recognizedSettings(input: Record<string, unknown>): Record<string, unkn
       if (!validators[key](value)) {
         throw new Error(`Invalid setting: ${key}`)
       }
-      settings[key] = value
+      settings[key] = readSetting(key, value, value)
     }
   }
   return settings

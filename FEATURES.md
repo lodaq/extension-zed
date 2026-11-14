@@ -31,10 +31,11 @@ Sources: `src/components/ExtensionsTab.tsx`, `src/lib/extensionManager.ts`, `pub
 
 ## Misc tab
 
-Each section can be expanded or collapsed with its heading using the mouse, Enter, or Space. Sections default to collapsed; their open/closed state is saved locally and included in settings backups. Drag the handle inside the left side of a section’s title row to reorder it; the insertion line shows its destination. Keyboard users can focus a handle and press Up/Down to move that section. The order is saved locally and included in settings backups; invalid saved orders fall back to the default.
+Each section can be expanded or collapsed with its heading using the mouse, Enter, or Space. Sections default to collapsed; their open/closed state is saved locally and included in settings backups. Drag the handle inside the left side of a section’s title row to reorder it; the insertion line shows its destination. Keyboard users can focus a handle and press Up/Down to move that section. The order is saved locally and included in settings backups; older saved orders gain Screenshot capture at the end; invalid saved orders fall back to the default.
 
 | Feature | Behavior | Persistence/reset |
 | --- | --- | --- |
+| Screenshot capture | Selected area, Visible area, Full page, and Element; bounded page-overlay preview with Copy to clipboard, PNG Download, and Edit in a separate miniPaint tab | Full page combines native browser image strips without walking the page in scroll steps; locked app shells temporarily render at a taller viewport and are restored. Requires debugger permission and may display a browser debugging indicator. Other modes retain activeTab capture; tall elements may scroll. No image storage/history. Images above 64 million pixels or a 32,767-pixel side are rejected |
 | Password generator | Length 4–128 (default 20); uppercase, lowercase, numbers, and symbols; regenerate and copy | Cryptographic randomness; includes each enabled type. Passwords/options are session-only and excluded from settings backups. Clipboard is changed only on Copy |
 | Video speed | 0.1–10× in 0.1× steps; slower/faster, normal, and double-speed controls | One global local preference; applies to new videos, metadata reloads, and playback starts; unsupported rates on one video do not block others. Facebook speed applies to media elements and synchronizes through its native controller when available to keep player state consistent |
 | Player overrides | Website player speed changes remain until playback starts again or metadata reloads | Do not change saved speed; metadata reloads, playback starts, new media, or explicit Zed actions restore saved speed, including repeated same-speed actions |
@@ -65,6 +66,10 @@ Sources: `src/components/MiscTab.tsx`, `src/components/VideoQualitySection.tsx`,
 Preferences are global and saved locally.
 
 Sources: `src/components/YoutubeFocusMode.tsx`, `public/scripts/youtube*.js`.
+
+## Settings About
+
+Settings uses an accessible gear tab and includes an About section with the toolbox features and task-level alternatives: GoFullPage, Video Speed Controller, Volume Master, Enhancer for YouTube, and Extensity. It describes overlap rather than promising every feature of those tools. All extension UI follows DESIGN.md, shared square-corner shadcn controls, and one scrollbar stylesheet.
 
 ## Settings transfer
 

@@ -4,10 +4,10 @@ This document audits all permissions requested by Extension Zed, maps each permi
 
 ## 1. Manifest Permissions Audit
 
-Extension Zed declares three required permissions and requests `management` only when the user chooses the Extensions tab:
+Extension Zed declares five required permissions and requests `management` only when the user chooses the Extensions tab:
 
 ```json
-"permissions": ["scripting", "activeTab", "storage"],
+"permissions": ["scripting", "activeTab", "storage", "clipboardWrite", "debugger"],
 "optional_permissions": ["management"]
 ```
 
@@ -15,14 +15,24 @@ Extension Zed declares three required permissions and requests `management` only
 
 | Permission | Justification & Features Using It | Least-Privilege Verification |
 |---|---|---|
-| `activeTab` | Grants temporary, user-invoked execution access to the active tab when opening the action popup. | Does **not** grant background access to tabs. Access expires as soon as navigation occurs or the user switches tabs. |
+| `activeTab` | Grants temporary, user-invoked execution access to the active tab when opening the action popup. | Does **not** grant background access to tabs. Access expires on navigation to another origin or when the tab closes; screenshot capture also checks that the intended tab remains active in the focused window. |
 | `scripting` | Programmatically executes on-demand content actions (`chrome.scripting.executeScript`) when the user applies design mode, scrollbar toggles, focus mode, element inspector, volume boost, or video quality. | Only used on target tabs matching active user intent. Restricted Chrome internal URLs (`chrome://`, webstore, extensions gallery) are caught and protected with safe user messaging. |
 | `storage` | Persists user preferences (`chrome.storage.local`) such as dark theme, playback speed presets, section order, and mode toggles. | Synced locally only on the device; no remote transmission. Includes export/import validation. |
+| `clipboardWrite` | Writes a captured PNG only when the user clicks Copy to clipboard in Screenshot preview. | No clipboard reading. A small extension-origin button embedded in the preview supports both HTTP and HTTPS pages. |
+| `debugger` | Captures the full rendered page with Page.captureScreenshot; temporary viewport expansion handles locked app shells. | Chrome does not support this as an optional permission. Zed attaches only to the requested tab for full-page capture and detaches in finally, including failures. No network or cookie inspection is performed. The browser may show a debugging indicator while attached. |
 | `management` (optional) | Lists and manages installed extensions from the Extensions tab. | Requested only after the user presses **Allow access** in that tab. |
+
+### Screenshot data
+
+Screenshot selection, stitching, preview, and download run on demand in the top frame. The background verifies a per-capture token, checks the active tab and window, and throttles viewport `captureVisibleTab` calls to Chrome's limit. Full page instead combines browser-native image strips without walking the page in scroll steps and restores any temporary viewport expansion. Session storage holds only the authorization token; images remain in memory until the preview closes or the page unloads. No image history, network upload, clipboard-read, offscreen, or downloads permission is added. The required debugger capability is used only for native full-page capture.
+
+Edit sends the original PNG in memory through the background worker and a page-context script in miniPaint’s own tab, using its image-opening function. It does not embed the editor, compress images, or upload to an extension server. miniPaint receives the image when the user clicks Edit. PNG data URLs above 48 MiB are rejected before transfer to stay below Chrome’s message limit; Download remains available.
+
+The clipboard frame, its script, and the shared theme/scrollbar styles are exposed as web-accessible resources. The embedded button accepts a PNG from its parent and writes only on a trusted user click. It cannot read the clipboard or request background captures. Escape also closes the preview when focus is inside the button's frame.
 
 ### Host Permissions Audit
 
-- **Explicit `host_permissions` field**: **None**.
+- **Explicit `host_permissions` field**: `https://viliusle.github.io/miniPaint/*`, used only to send a screenshot to a newly opened miniPaint tab after clicking Edit.
 - The manifest's static content scripts match all HTTP and HTTPS pages. Those match patterns grant access to those sites even though they are declared under `content_scripts`, not `host_permissions`.
 - This broad access currently supports automatic playback-rate persistence, optional RTL mode, and saved video-quality preferences across sites. `activeTab` still scopes user-triggered page actions, but it does not limit these static content scripts.
 - This broad site access can show a significant Chrome permission warning and needs a clear Store justification. Narrow the patterns or move features to optional host access only if the product is willing to ask users for site access and/or limit automatic behavior.

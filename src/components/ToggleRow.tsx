@@ -12,7 +12,7 @@ export interface ToggleRowProps {
 export function ToggleRow({ id, label, checked, ariaLabel, onToggle }: ToggleRowProps) {
   return (
     <div
-      className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
+      className="flex cursor-pointer items-center justify-between rounded-none px-2 py-2 hover:bg-muted/60"
       onClick={() => onToggle(!checked)}
     >
       <Label htmlFor={id} className="cursor-pointer text-sm font-medium">

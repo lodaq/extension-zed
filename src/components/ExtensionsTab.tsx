@@ -26,7 +26,7 @@ function ExtensionIcon({ extension }: { extension: ManagedExtension }) {
     return (
       <span
         aria-hidden="true"
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold text-muted-foreground"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-none bg-muted text-[10px] font-semibold text-muted-foreground"
       >
         {extension.name.slice(0, 1).toUpperCase()}
       </span>
@@ -39,7 +39,7 @@ function ExtensionIcon({ extension }: { extension: ManagedExtension }) {
       alt=""
       width={20}
       height={20}
-      className={cn("h-5 w-5 shrink-0 rounded", !extension.enabled && "grayscale")}
+      className={cn("h-5 w-5 shrink-0 rounded-none", !extension.enabled && "grayscale")}
       onError={() => setFailed(true)}
     />
   )
@@ -220,7 +220,7 @@ export default function ExtensionsTab() {
           <p className={popupDescription}>Click an extension to turn it on or off.</p>
           <button
             type="button"
-            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-none text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             onClick={() => void handleOpenBraveExtensions()}
             aria-label="Open brave://extensions/ in a new tab"
             title="Open brave://extensions/ in a new tab"
@@ -240,7 +240,7 @@ export default function ExtensionsTab() {
       )}
 
       {permissionState === "missing" && (
-        <div className="space-y-2 rounded-md border border-border/70 bg-muted/40 p-3">
+        <div className="space-y-2 rounded-none border border-border/70 bg-muted/40 p-3">
           <div>
             <p className="text-xs font-medium">Allow extension management</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
@@ -267,7 +267,7 @@ export default function ExtensionsTab() {
       {error && (
         <div
           role="alert"
-          className="flex items-center justify-between gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-600 dark:text-amber-400"
+          className="flex items-center justify-between gap-2 rounded-none border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-600 dark:text-amber-400"
         >
           <span className="min-w-0 flex-1">{error}</span>
           <Button
@@ -308,7 +308,7 @@ export default function ExtensionsTab() {
                   if (extension.canToggle && !busy) setEnabled(extension, !extension.enabled)
                 }}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md border border-border/70 bg-card px-2 py-1",
+                  "flex items-center gap-1.5 rounded-none border border-border/70 bg-card px-2 py-1",
                   extension.canToggle && !busy && "cursor-pointer hover:bg-muted/60",
                   !extension.enabled && "opacity-60"
                 )}
@@ -336,7 +336,7 @@ export default function ExtensionsTab() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 shrink-0 rounded text-muted-foreground hover:text-foreground"
+                    className="h-5 w-5 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
                     aria-label={`Open settings for ${extension.name}`}
                     title="Settings"
                     disabled={Boolean(busy)}
@@ -352,7 +352,7 @@ export default function ExtensionsTab() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 shrink-0 rounded text-muted-foreground hover:text-foreground"
+                    className="h-5 w-5 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
                     aria-label={`Reload ${extension.name}`}
                     title={
                       extension.isSelf
@@ -375,7 +375,7 @@ export default function ExtensionsTab() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 shrink-0 rounded text-muted-foreground hover:text-destructive"
+                    className="h-5 w-5 shrink-0 rounded-none text-muted-foreground hover:text-destructive"
                     aria-label={`Uninstall ${extension.name}`}
                     title="Uninstall"
                     disabled={!extension.canUninstall || Boolean(busy)}

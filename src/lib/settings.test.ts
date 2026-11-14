@@ -22,11 +22,20 @@ function storage(initial: Record<string, unknown>) {
 }
 
 describe("settings transfer", () => {
-  it("preserves section order in backups and partial imports", async () => {
+  it("appends screenshots to legacy section orders in backups, reads, and partial imports", async () => {
     const order = ["modes", "password", "playback", "volume", "quality", "scrollbars"]
     storage({ miscSectionOrder: order })
+    expect((await exportSettings()).settings.miscSectionOrder).toEqual([...order, "screenshot"])
+    await importSettings({ version: 1, settings: { miscSectionOrder: order } })
+    expect(readSetting("miscSectionOrder", order, [])).toEqual([...order, "screenshot"])
+  })
+
+  it("preserves the new screenshot section wherever the user placed it", async () => {
+    const order = ["screenshot", "modes", "password", "playback", "volume", "quality", "scrollbars"]
+    const p = storage({ miscSectionOrder: order })
     expect((await exportSettings()).settings.miscSectionOrder).toEqual(order)
     await importSettings({ version: 1, settings: { miscSectionOrder: order } })
+    expect(p.values.miscSectionOrder).toEqual(order)
     expect(readSetting("miscSectionOrder", order, [])).toEqual(order)
   })
 
@@ -138,4 +147,14 @@ describe("settings transfer", () => {
     expect(RESET_SETTINGS_KEYS).toContain("videoQuality")
     expect(RESET_SETTINGS_KEYS).toContain("videoQualityFallback")
   })
+})
+
+it("exports, validates, imports and resets the website grayscale preference", async () => {
+  const saved = storage({ blackAndWhite: true })
+  expect((await exportSettings()).settings.blackAndWhite).toBe(true)
+  await expect(importSettings({ version: 1, settings: { blackAndWhite: "true" } })).rejects.toThrow("blackAndWhite")
+  await importSettings({ version: 1, settings: { blackAndWhite: false } })
+  expect(saved.values.blackAndWhite).toBe(false)
+  await resetSettings()
+  expect(saved.values.blackAndWhite).toBeUndefined()
 })

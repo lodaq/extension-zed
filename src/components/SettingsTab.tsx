@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
@@ -35,6 +36,7 @@ export default function SettingsTab() {
     }
     return true
   })
+  const [blackAndWhite, setBlackAndWhite] = useStoredValue<boolean>("blackAndWhite", false)
   const [busy, setBusy] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [showPrivacy, setShowPrivacy] = useState(false)
@@ -145,7 +147,7 @@ export default function SettingsTab() {
     <section className={cn(popupPanel, popupSectionInner)}>
       <h2 className={popupSectionTitle}>Appearance</h2>
       <div
-        className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted/60"
+        className="flex cursor-pointer items-center justify-between rounded-none px-2 py-2 hover:bg-muted/60"
         onClick={() => toggle(!dark)}
       >
         <Label className="cursor-pointer text-sm font-medium">Dark theme</Label>
@@ -158,40 +160,47 @@ export default function SettingsTab() {
         />
       </div>
 
-      <h2 className={popupSectionTitle}>Data</h2>
+      <div className="flex items-center justify-between px-2 py-2">
+        <Label htmlFor="black-and-white">Black and white</Label>
+        <Switch id="black-and-white" checked={blackAndWhite}
+          onCheckedChange={(enabled) => void setBlackAndWhite(enabled).catch((error) =>
+            toast({ title: "Theme could not be saved", description: String(error), variant: "destructive" })
+          )} />
+      </div>
+      <p className="text-xs text-muted-foreground">Show all websites in grayscale.</p>
+
+      <h2 className={popupSectionTitle}>Settings</h2>
       <div className="flex gap-2">
-        <button
+        <Button
           type="button"
           disabled={busy}
-          className="flex-1 rounded-md border border-input px-3 py-2 text-sm hover:bg-muted"
+          variant="outline"
+          className="flex-1"
           onClick={() => void onExport()}
         >
-          Export settings
-        </button>
-        <button
+          Export
+        </Button>
+        <Button
           type="button"
           disabled={busy}
-          className="flex-1 rounded-md border border-input px-3 py-2 text-sm hover:bg-muted"
+          variant="outline"
+          className="flex-1"
           onClick={() => fileInputRef.current?.click()}
         >
-          Import settings
-        </button>
+          Import
+        </Button>
       </div>
 
       <div className="pt-1">
-        <button
+        <Button
           type="button"
           disabled={busy}
-          className={cn(
-            "w-full rounded-md border px-3 py-2 text-sm",
-            confirmReset
-              ? "border-destructive bg-destructive/10 text-destructive font-medium hover:bg-destructive/20"
-              : "border-input text-muted-foreground hover:bg-muted hover:text-foreground"
-          )}
+          variant={confirmReset ? "destructive" : "outline"}
+          className="w-full"
           onClick={() => void handleResetClick()}
         >
           {confirmReset ? "Click again to confirm reset" : "Reset settings to defaults"}
-        </button>
+        </Button>
       </div>
 
       <input
@@ -202,17 +211,39 @@ export default function SettingsTab() {
         onChange={(event) => void onImport(event)}
       />
 
+      <section aria-labelledby="zed-about-heading" className="flex flex-col gap-2 border-t border-border pt-3">
+        <h2 id="zed-about-heading" className={popupSectionTitle}>About Extension Zed</h2>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          A local browser toolbox for screenshots, video speed and quality, volume boost,
+          YouTube layout, password generation, page inspection and editing, scrollbars, Arabic text,
+          and extension management. Your settings and captures stay on your device.
+        </p>
+        <h3 className="text-sm font-medium">Tools it can replace</h3>
+        <ul className="flex list-disc flex-col gap-1 pl-4 text-xs leading-relaxed text-muted-foreground">
+          <li><strong className="text-foreground">GoFullPage:</strong> full-page screenshots.</li>
+          <li><strong className="text-foreground">Video Speed Controller:</strong> adjusting video playback speed.</li>
+          <li><strong className="text-foreground">Volume Master:</strong> boosting tab media volume.</li>
+          <li><strong className="text-foreground">Enhancer for YouTube:</strong> video speed, volume, quality, and larger-player controls.</li>
+          <li><strong className="text-foreground">Extensity:</strong> enabling and disabling extensions.</li>
+        </ul>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          These are overlapping tasks, not every feature of those extensions. Website and player support varies.
+        </p>
+      </section>
+
       <div className="border-t border-border/70 pt-3">
-        <button
+        <Button
           type="button"
-          className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground"
+          variant="ghost"
+          className="w-full justify-between"
+          aria-expanded={showPrivacy}
           onClick={() => setShowPrivacy(!showPrivacy)}
         >
           <span>Privacy & Permissions</span>
           <span>{showPrivacy ? "−" : "+"}</span>
-        </button>
+        </Button>
         {showPrivacy && (
-          <div className="mt-2 space-y-1.5 rounded-md bg-muted/40 p-2.5 text-xs text-muted-foreground leading-relaxed">
+          <div className="mt-2 space-y-1.5 rounded-none bg-muted/40 p-2.5 text-xs text-muted-foreground leading-relaxed">
             <p className="font-semibold text-foreground">Local & Private by Design</p>
             <p>
               Extension Zed executes exclusively in your browser. No telemetry, browsing history, or personal data is collected or sent to external servers.
@@ -221,9 +252,10 @@ export default function SettingsTab() {
               <li>
                 <strong className="text-foreground">storage:</strong> stores your theme and playback preferences locally on this device.
               </li>
-              <li>
-                <strong className="text-foreground">activeTab & scripting:</strong> injects styling and controls only into the active tab upon your direct request.
-              </li>
+              <li><strong className="text-foreground">activeTab & scripting:</strong> runs requested page tools. Automatic playback, quality, and Arabic text helpers also run on HTTP(S) pages.</li>
+              <li><strong className="text-foreground">clipboardWrite:</strong> copies a screenshot when you press Copy.</li>
+              <li><strong className="text-foreground">debugger:</strong> captures the full rendered page without scrolling, then disconnects.</li>
+              <li><strong className="text-foreground">management (optional):</strong> lists and manages extensions after you allow access.</li>
             </ul>
           </div>
         )}

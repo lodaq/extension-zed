@@ -1,0 +1,31 @@
+/* Shared by every extension document and injected preview. */
+.dark,
+:host {
+  --zed-scrollbar-color: oklch(0.6 0.03 269.46 / 0.4);
+  --zed-scrollbar-thumb: oklch(0.6 0.03 269.46 / 0.35);
+  --zed-scrollbar-hover: oklch(0.6 0.03 269.46 / 0.65);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--zed-scrollbar-color, oklch(0.5 0.03 268.53 / 0.4)) transparent;
+}
+
+.modular-scrollbar,
+.popup-scrollbar,
+.image {
+  scrollbar-gutter: stable;
+}
+
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--zed-scrollbar-thumb, oklch(0.5 0.03 268.53 / 0.35));
+  border-radius: 0;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--zed-scrollbar-hover, oklch(0.5 0.03 268.53 / 0.65));
+  background-clip: padding-box;
+}

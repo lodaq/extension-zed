@@ -1,6 +1,6 @@
 export const popupSectionStack = "flex flex-col gap-3"
 
-export const popupPanel = "rounded-lg border border-border/80 bg-card p-3"
+export const popupPanel = "rounded-none border border-border/80 bg-card p-3"
 
 export const popupSectionTitle = "text-base font-semibold leading-5 text-foreground"
 

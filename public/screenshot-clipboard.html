@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en" class="dark"><head><meta charset="utf-8"><title>Copy screenshot</title>
+<link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="scrollbar.css">
+<style>
+*{box-sizing:border-box;border-radius:0!important;animation:none!important;transition:none!important}
+html,body{overflow:hidden}body{margin:0;background:transparent;padding:4px}
+button{display:inline-flex;align-items:center;justify-content:center;height:36px;width:100%;font:500 14px/1.5 var(--font-sans);cursor:pointer;padding:8px 16px;border:1px solid var(--input);color:var(--foreground);background:transparent;white-space:nowrap}
+button:hover:not(:disabled){background:var(--accent);color:var(--accent-foreground)}
+button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}button:disabled{opacity:.5;cursor:default}
+</style></head><body><button type="button" disabled>Copy to clipboard</button><script src="screenshot-clipboard.js"></script></body></html>

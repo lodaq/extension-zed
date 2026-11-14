@@ -9,6 +9,7 @@ const sectionsMock: Record<MiscSectionId, { title: string }> = {
   quality: { title: "Video quality" },
   scrollbars: { title: "Scrollbars" },
   modes: { title: "Modes" },
+  screenshot: { title: "Capture screenshot" },
 }
 
 let storedValues: Record<string, unknown>
@@ -111,10 +112,10 @@ describe("useMiscSectionReorder", () => {
     slotIndex = 0
     hook = useMiscSectionReorder(sectionsMock)
 
-    expect(hook.announcement).toContain("Moved Password generator to position 2 of 6")
+    expect(hook.announcement).toContain("Moved Password generator to position 2 of 7")
     expect(storageSet).toHaveBeenCalledWith(
       expect.objectContaining({
-        miscSectionOrder: ["playback", "password", "volume", "quality", "scrollbars", "modes"],
+        miscSectionOrder: ["playback", "password", "volume", "quality", "scrollbars", "modes", "screenshot"],
       })
     )
   })

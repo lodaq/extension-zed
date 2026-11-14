@@ -4,6 +4,7 @@ import ChangePlaybackRate from "@/components/ChangePlaybackRate"
 import MiscSection from "@/components/MiscSection"
 import ModesSection from "@/components/ModesSection"
 import PasswordGenerator from "@/components/PasswordGenerator"
+import ScreenshotSection from "@/components/ScreenshotSection"
 import ScrollbarsSection from "@/components/ScrollbarsSection"
 import VideoQualitySection from "@/components/VideoQualitySection"
 import VolumeBooster from "@/components/VolumeBooster"
@@ -29,6 +30,7 @@ const sections: Record<MiscSectionId, { title: string; Component: ComponentType<
   quality: { title: "Video quality", Component: VideoQualitySection },
   scrollbars: { title: "Scrollbars", Component: ScrollbarsSection },
   modes: { title: "Modes", Component: ModesSection },
+  screenshot: { title: "Capture screenshot", Component: ScreenshotSection },
 }
 
 interface DragHandleProps {
@@ -156,7 +158,7 @@ export default function MiscTab() {
               key={id}
               data-misc-section-id={id}
               className={cn(
-                "relative rounded-md",
+                "relative rounded-none",
                 isDragged && "opacity-40",
                 isDrop && !dropTarget?.after && "border-t-2 border-primary",
                 isDrop && dropTarget?.after && "border-b-2 border-primary"

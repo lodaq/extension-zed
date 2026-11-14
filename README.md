@@ -53,7 +53,7 @@ To create a portable build ZIP yourself, run `bun run package:store`. It creates
 - **Misc** contains page and media tools. Open a section to use it; changes that are saved as preferences are stored in this browser profile.
 - **Extensions** asks for optional management access the first time you use it. Choose **Allow access** and confirm the browser prompt to list and manage other extensions. You can decline and grant it later.
 - **YouTube** tools are intended for use while watching a YouTube video. Video markers become available when a video is open.
-- **Settings** controls the theme and lets you export, import, or reset preferences.
+- **Settings**, opened with the gear tab, controls the theme, supports settings transfer/reset, and includes About with the feature list and overlapping extension alternatives.
 
 ## Features
 
@@ -63,6 +63,8 @@ To create a portable build ZIP yourself, run `bun run package:store`. It creates
 - Page actions show success or error notifications. A failed action also marks its browser tab with an error badge and tooltip; a later successful action clears the warning.
 
 ### Misc
+
+- **Screenshots:** capture a selected area, visible area, full page, or element. Full page uses the browser renderer without walking the page in scroll steps. Preview the image, copy it as PNG, download it, or click Edit to send the original PNG to miniPaint’s own tab. Edit requires miniPaint site access and supports PNG files up to about 36 MiB; larger files can be downloaded and opened manually. Locked app shells may briefly render at a taller viewport before restoration. Native full-page capture requires the debugger permission and may show the browser's debugging indicator.
 
 - **Password generator:** create 4–128 character passwords using any combination of uppercase letters, lowercase letters, numbers, and symbols. It uses cryptographic randomness. Copying is always a separate action; generated passwords and generator options are not saved or included in backups.
 - **Playback speed:** set video speed from 0.1× to 10×, or use slower, faster, normal, and 2× controls. The preference is saved and reapplied to new videos, when media reloads, and when playback starts.
@@ -102,12 +104,13 @@ The **Reload** action restarts an extension (for Extension Zed, it reloads the a
 
 Preferences stay in the local browser profile. Extension Zed has no account or cloud sync and does not send telemetry, browsing history, or personal data to an external server. Exported backups include saved website origins along with preferences, so keep backup files private.
 
-The extension needs `scripting`, `activeTab`, and `storage` for page actions and local preferences. Its automatic playback and Arabic text features run on HTTP and HTTPS pages, so the browser may show a broad site-access warning. **Management** is optional and is requested only when you choose to use the Extensions tab. Browser-internal and other protected pages generally do not allow page actions. Read [Permissions](PERMISSIONS.md) for details.
+The extension needs `scripting`, `activeTab`, `storage`, `clipboardWrite`, and `debugger` for page actions and local preferences. Its automatic playback and Arabic text features run on HTTP and HTTPS pages, so the browser may show a broad site-access warning. **Management** is optional and is requested only when you choose to use the Extensions tab. Browser-internal and other protected pages generally do not allow page actions. Chrome requires debugger access to be declared at install/update; it cannot be granted as an optional runtime permission. Read [Permissions](PERMISSIONS.md) for details.
 
 Media features depend on the site's player. Some sites may change their player APIs, inaccessible frames may remain unchanged, and unsupported players may not accept speed or quality changes.
 
 ## More information
 
+- [Mandatory design system](DESIGN.md)
 - [Full implemented feature inventory](FEATURES.md)
 - [Permissions and access rationale](PERMISSIONS.md)
 - [Chrome Web Store release status and process](CHROMEWEBSTORE.md)

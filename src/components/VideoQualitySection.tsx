@@ -43,7 +43,7 @@ export default function VideoQualitySection({ dragHandle, open, onOpenChange }: 
             aria-label="Preferred video quality"
             value={quality}
             onChange={(e) => void handleQualityChange(e.target.value)}
-            className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="h-9 min-w-0 flex-1 rounded-none border border-input bg-background px-2.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <option value="auto">Auto</option>
             {QUALITY_OPTIONS.map((opt) => (

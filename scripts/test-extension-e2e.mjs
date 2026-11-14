@@ -299,7 +299,7 @@ async function run() {
 
     // Switch to Settings tab using CDP click tool
     console.log("\n9. Testing Tab switching to Settings via click tool...");
-    const setMatch = snapshotText.match(/uid=([^\s]+)\s+tab\s+"Settings"/);
+    const setMatch = snapshotText.match(/uid=([^\s]+)\s+button\s+"Settings"/);
     if (setMatch) {
       await client.callTool("click", { pageId: 1, uid: setMatch[1] });
       await new Promise(r => setTimeout(r, 600));

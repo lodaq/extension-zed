@@ -34,7 +34,7 @@ const ChangePlaybackRate = ({ dragHandle, open, onOpenChange }: MiscSectionProps
           </Button>
           <select
             id="zed-playback-rate"
-            className="relative z-0 h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-center text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative z-0 h-9 min-w-0 flex-1 rounded-none border border-input bg-background px-2 text-center text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={String(speed)}
             onChange={(e) => onSelect(e.target.value)}
           >

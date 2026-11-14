@@ -41,7 +41,7 @@ export default function PasswordGenerator({ dragHandle, open, onOpenChange }: Mi
       <div className="flex items-center gap-2">
         <input
           aria-label="Generated password"
-          className="h-10 min-w-0 flex-1 select-text rounded-md border border-input bg-background px-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-10 min-w-0 flex-1 select-text rounded-none border border-input bg-background px-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           value={password}
           placeholder="Choose character types"
           readOnly
@@ -83,14 +83,14 @@ export default function PasswordGenerator({ dragHandle, open, onOpenChange }: Mi
           return (
             <label
               key={key}
-              className="flex cursor-pointer items-start gap-2 rounded-md border border-border/70 p-2 text-xs hover:bg-muted/40"
+              className="flex cursor-pointer items-start gap-2 rounded-none border border-border/70 p-2 text-xs hover:bg-muted/40"
             >
               <input
                 type="checkbox"
                 checked={checked}
                 onChange={(event) => update({ [key]: event.target.checked })}
                 aria-label={`Include ${label.toLowerCase()} characters`}
-                className="mt-0.5 h-3.5 w-3.5 rounded border-input accent-primary"
+                className="mt-0.5 h-3.5 w-3.5 rounded-none border-input accent-primary"
               />
               <div className="flex flex-col">
                 <Label className="cursor-pointer text-xs font-medium leading-none">{label}</Label>

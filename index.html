@@ -14,8 +14,8 @@
       html,
       body {
         margin: 0;
-        width: 400px;
-        min-width: 400px;
+        width: 480px;
+        min-width: 480px;
         background: oklch(0.99 0 0);
         user-select: none;
         -webkit-user-select: none;
@@ -25,7 +25,7 @@
         background: oklch(0.15 0.02 269.18);
       }
       #root {
-        width: 400px;
+        width: 480px;
         user-select: none;
         -webkit-user-select: none;
       }
@@ -33,9 +33,9 @@
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
-        width: 400px;
+        width: 480px;
         height: 600px;
-        padding: 12px;
+        padding: 0;
         overflow: hidden;
         border: 1px solid oklch(0.94 0.01 238.46);
         border-radius: 4px;
@@ -61,7 +61,7 @@
         flex: none;
         height: 36px;
         overflow-x: auto;
-        margin-inline: -4px;
+        margin-inline: 0;
         padding: 2px 6px;
         border-radius: 8px;
         background: oklch(0.9 0.02 240.73 / 0.7);
@@ -100,10 +100,10 @@
         flex-direction: column;
         gap: 12px;
         flex: none;
-        width: 360px;
+        width: 100%;
         margin-top: 8px;
-        margin-left: 2px;
-        padding: 12px 0 4px;
+        margin-left: 0;
+        padding: 0;
       }
       html:not([data-boot-tab="misc"]) .zed-boot-body {
         visibility: hidden;
@@ -161,7 +161,7 @@
           <div class="zed-boot-tab" data-boot-tab="misc">Misc</div>
           <div class="zed-boot-tab" data-boot-tab="extensions">Extensions</div>
           <div class="zed-boot-tab" data-boot-tab="youtube">Youtube</div>
-          <div class="zed-boot-tab" data-boot-tab="settings">Settings</div>
+          <div class="zed-boot-tab" data-boot-tab="settings" style="margin-left:auto">⚙</div>
         </div>
         <div class="zed-boot-body zed-boot-sections">
           <div class="zed-boot-section" data-boot-section="password">

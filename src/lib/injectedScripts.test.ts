@@ -332,3 +332,24 @@ describe("injected script completion", () => {
     await result
   })
 })
+
+it("applies grayscale on load and removes it when disabled or reset", async () => {
+  const style = { textContent: "", remove: vi.fn() }
+  const append = vi.fn()
+  let change!: (changes: Record<string, { newValue?: unknown }>, area: string) => void
+  runInNewContext(script("blackAndWhite"), {
+    document: { createElement: () => style, documentElement: { append } },
+    chrome: { storage: {
+      local: { get: async () => ({ blackAndWhite: true }) },
+      onChanged: { addListener: (listener: typeof change) => { change = listener } },
+    } },
+  })
+  await Promise.resolve()
+  expect(style.textContent).toContain("grayscale(1)")
+  expect(append).toHaveBeenCalledWith(style)
+  change({ blackAndWhite: { newValue: false } }, "local")
+  change({ blackAndWhite: {} }, "local")
+  expect(style.remove).toHaveBeenCalledTimes(2)
+  change({ blackAndWhite: { newValue: true } }, "local")
+  expect(append).toHaveBeenCalledTimes(2)
+})

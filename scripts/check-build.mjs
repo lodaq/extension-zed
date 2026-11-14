@@ -6,7 +6,8 @@ import { Script } from "node:vm"
 const root = resolve("dist")
 const manifest = JSON.parse(readFileSync(resolve(root, "manifest.json"), "utf8"))
 assert.equal(manifest.background.type, "module")
-const paths = [manifest.action.default_popup, manifest.background.service_worker,
+const paths = [manifest.action.default_popup, manifest.background.service_worker, "theme.css", "scrollbar.css",
+  ...manifest.web_accessible_resources.flatMap((entry) => entry.resources),
   ...Object.values(manifest.icons), ...manifest.content_scripts.flatMap((entry) => entry.js)]
 for (const file of paths) assert.ok(existsSync(resolve(root, file)), `Missing manifest asset: ${file}`)
 const worker = readFileSync(resolve(root, manifest.background.service_worker), "utf8")

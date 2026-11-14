@@ -74,3 +74,18 @@ it("recognizes the timestamp format used by Facebook group feed posts", () => {
     [card, "https://www.facebook.com/groups/903875570211711/posts/2183355815597007/"],
   ])
 })
+
+it("attaches to Facebook timestamps without relying on post wrappers", () => {
+  const first = {} as HTMLElement
+  const second = {} as HTMLElement
+  const anchors = [
+    { href: "https://facebook.com/person/posts/123/", textContent: "5 hours ago", closest: () => null, parentElement: first },
+    { href: "https://facebook.com/#", textContent: "A few seconds ago", closest: () => null, parentElement: second },
+    { href: "https://facebook.com/photo/?fbid=456", textContent: "", closest: () => null, parentElement: {} },
+  ]
+  const root = { querySelectorAll: (selector: string) => selector === "a[href]" ? anchors : [] } as unknown as Document
+  expect([...findMediaTargets(root, "https://www.facebook.com/")]).toEqual([
+    [first, "https://www.facebook.com/person/posts/123/"],
+    [second, null],
+  ])
+})

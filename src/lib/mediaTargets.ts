@@ -4,13 +4,25 @@ import { mediaUrl } from "./saved"
 const CARD = "ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer, ytd-reel-item-renderer, ytd-reel-video-renderer, yt-lockup-view-model, yt-shorts-lockup-view-model, ytm-shorts-lockup-view-model, article, [role=article], [data-pagelet^=FeedUnit]"
 export function findMediaTargets(root: Document, pageUrl: string): Map<HTMLElement, string | null> {
   const targets = new Map<HTMLElement, string | null>()
-  for (const anchor of root.querySelectorAll<HTMLAnchorElement>('a[href*="/reel/"], a[href*="/reels/"], a[href*="/shorts/"], a[href*="/watch?"], a[href*="youtu.be/"], a[href*="/p/"], a[href*="/posts/"], a[href*="/permalink/"], a[href*="story_fbid="], a[href*="multi_permalinks="], a[href*="/share/p/"], a[href*="/share/v/"], a[href*="/photo?"], a[href*="/photo/?"], a[href*="/photo.php?"]')) {
+  const facebook = /^(?:www\.|m\.)?facebook\.com$/.test(new URL(pageUrl).hostname)
+  for (const anchor of root.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+    let destination: URL
+    try { destination = new URL(anchor.href) } catch { continue }
+    if (destination.searchParams.has("comment_id") || destination.searchParams.has("reply_comment_id")) continue
     const url = mediaUrl(anchor.href)
-    if (!url || new URL(anchor.href).searchParams.has("comment_id")) continue
+    // Feed experiments omit article wrappers and hydrate timestamp links on hover.
+    const timestamp = facebook && /^(?:www\.|m\.)?facebook\.com$/.test(destination.hostname) && /(?:\b(?:ago|yesterday|just now|[0-9]+\s*[smhdwy])\b|منذ|ساعة|ساعات|دقيقة|دقائق|ثانية|أمس)/i.test(
+      `${anchor.textContent ?? ""} ${anchor.getAttribute?.("aria-label") ?? ""} ${anchor.getAttribute?.("title") ?? ""}`,
+    )
+    const rawHref = anchor.getAttribute?.("href")
+    if ((rawHref === "#" || rawHref === "") && !timestamp) continue
+    if (!url && !timestamp) continue
     const card = anchor.closest<HTMLElement>(CARD)
+    // Prefer the post timestamp to a separate link opening only its photo.
+    if (facebook && !card && destination.pathname.startsWith("/photo") && !timestamp) continue
     const target = card ?? anchor.parentElement
     if (!target) continue
-    if (!targets.has(target)) targets.set(target, url)
+    if (!targets.has(target) || targets.get(target) === null) targets.set(target, url)
   }
   const videos = root.querySelectorAll("video")
   // Reel viewers preload hidden/neighboring videos. Only the most visible player

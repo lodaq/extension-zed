@@ -29,7 +29,7 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     .download{background:var(--primary);color:var(--primary-foreground)}
     .download:hover{opacity:.9}
     .image{max-height:min(460px,calc(80dvh - 180px));overflow:auto;background:var(--muted);min-height:0;flex:1 1 auto}
-    canvas{display:block;width:100%;height:auto}
+    img{display:block;width:100%;height:auto}
     .footer{flex-shrink:0;display:flex;flex-wrap:wrap;gap:8px;justify-content:end;align-items:center;margin-top:16px}
     .status{flex-shrink:0;font-size:14px;margin:8px 0 0}
     .picker{pointer-events:auto;position:fixed;inset:0;width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:0;background:transparent;border:0;border-radius:0;cursor:crosshair;box-shadow:none;overflow:hidden}
@@ -227,7 +227,7 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     check()
     capturing = true
     const original = { x: scrollX, y: scrollY }
-    const viewport = { width: innerWidth, height: innerHeight, windowWidth: innerWidth, windowHeight: innerHeight, scale: devicePixelRatio }
+    const viewport = { width: innerWidth, height: innerHeight, scale: devicePixelRatio }
     const canvas = document.createElement("canvas")
     const pixelWidth = Math.round(rect.width * viewport.scale)
     const pixelHeight = Math.round(rect.height * viewport.scale)
@@ -260,7 +260,7 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
           if (mode === "element") window.scrollTo({ left: x, top: y, behavior: "instant" as ScrollBehavior })
           await wait(100)
           check()
-          if (innerWidth !== viewport.windowWidth || innerHeight !== viewport.windowHeight || devicePixelRatio !== viewport.scale) throw new Error("The viewport changed during capture. Try again.")
+          if (innerWidth !== viewport.width || innerHeight !== viewport.height || devicePixelRatio !== viewport.scale) throw new Error("The viewport changed during capture. Try again.")
           host.style.setProperty("visibility", "hidden", "important")
           const result = await message("frame")
           check()
@@ -294,19 +294,21 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     }
   }
 
-  async function preview(canvas: HTMLCanvasElement) {
+  function preview(dataUrl: string) {
     check()
-    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not encode screenshot")), "image/png"))
-    check()
+    const bytes = Uint8Array.from(atob(dataUrl.split(",")[1]), (char) => char.charCodeAt(0))
+    const blob = new Blob([bytes], { type: "image/png" })
     previewUrl = URL.createObjectURL(blob)
     const panel = dialog("Screenshot preview")
     const image = document.createElement("div")
     image.className = "image"
     image.tabIndex = 0
     image.setAttribute("aria-label", "Screenshot image. Scroll to inspect the full capture.")
-    canvas.setAttribute("role", "img")
-    canvas.setAttribute("aria-label", "Captured screenshot")
-    image.append(canvas)
+    const screenshot = document.createElement("img")
+    screenshot.onerror = () => showError(new Error("Could not load screenshot preview"))
+    screenshot.src = previewUrl
+    screenshot.alt = "Captured screenshot"
+    image.append(screenshot)
     const footer = document.createElement("div")
     footer.className = "footer"
     const status = document.createElement("p")
@@ -326,7 +328,7 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
           status.textContent = "Image is too large to copy. Use Download instead."
           return
         }
-        copy.contentWindow?.postMessage({ type: "zed-screenshot-image", dark, image: canvas.toDataURL("image/png") }, copyOrigin)
+        copy.contentWindow?.postMessage({ type: "zed-screenshot-image", dark, image: dataUrl }, copyOrigin)
       } else if (event.data?.type === "zed-screenshot-close") {
         close()
       } else if (event.data?.type === "zed-screenshot-copy" && typeof event.data.message === "string") {
@@ -345,7 +347,7 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
       status.textContent = "Opening miniPaint…"
       try {
         if (blob.size > 36 * 1024 * 1024 - 32) throw new Error("This image is too large to send to miniPaint. Use Download to open it manually.")
-        await message("edit", { image: canvas.toDataURL("image/png") })
+        await message("edit", { image: dataUrl })
         status.textContent = "Image opened in miniPaint"
       } catch (error) {
         status.textContent = error instanceof Error ? error.message : "Could not open miniPaint. Try again."
@@ -362,20 +364,9 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     if (mode === "area" || mode === "element") rect = await select()
     else if (mode === "full") {
       const result = await message("full")
-      check()
-      const bytes = Uint8Array.from(atob(result.image.split(",")[1]), (char) => char.charCodeAt(0))
-      const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }))
-      try {
-        const canvas = document.createElement("canvas")
-        canvas.width = bitmap.width
-        canvas.height = bitmap.height
-        const context = canvas.getContext("2d")
-        if (!context) throw new Error("Could not allocate screenshot preview")
-        context.drawImage(bitmap, 0, 0)
-        await preview(canvas)
-      } finally { bitmap.close() }
+      preview(result.image)
       return
     } else rect = { x: scrollX, y: scrollY, width: innerWidth, height: innerHeight }
-    await preview(await capture(rect))
+    preview((await capture(rect)).toDataURL("image/png"))
   }).catch(showError)
 }

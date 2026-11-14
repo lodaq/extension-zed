@@ -1,5 +1,5 @@
 type CaptureState = { x: number; y: number; panel?: HTMLElement; left: number; top: number }
-type CaptureWindow = Window & { __zedNativeCapture?: CaptureState }
+type CaptureWindow = Window & { __zedNativeCapture?: () => Promise<void> }
 
 // Self-contained because executeScript serializes the function into the tab.
 export async function measureFullPage() {
@@ -22,33 +22,32 @@ export async function measureFullPage() {
       viewport.expandedHeight = Math.ceil(innerHeight + element.scrollHeight - element.clientHeight)
     }
   }
+  const waitForLayout = () => new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, 250)
+    requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(timer); resolve() }))
+  })
+  // Keep restoration and its layout wait in the same injected context as preparation.
   const target = window as CaptureWindow
-  target.__zedNativeCapture = state
+  target.__zedNativeCapture = async () => {
+    await waitForLayout()
+    if (state.panel?.isConnected && (state.panel.scrollLeft !== state.left || state.panel.scrollTop !== state.top)) {
+      state.panel.scrollTo({ left: state.left, top: state.top, behavior: "instant" as ScrollBehavior })
+    }
+    if (scrollX !== state.x || scrollY !== state.y) window.scrollTo({ left: state.x, top: state.y, behavior: "instant" as ScrollBehavior })
+  }
   // Native clips place fixed headers at the current scroll offset in the document image.
   if (state.x !== 0 || state.y !== 0) {
     window.scrollTo({ left: 0, top: 0, behavior: "instant" as ScrollBehavior })
-    await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, 250)
-      requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(timer); resolve() }))
-    })
+    await waitForLayout()
   }
   return viewport
 }
 
 export async function restoreFullPage() {
   const target = window as CaptureWindow
-  const state = target.__zedNativeCapture
+  const restore = target.__zedNativeCapture
   delete target.__zedNativeCapture
-  if (!state) return
-  // Clearing emulation completes before the page has necessarily laid out at its original size.
-  await new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, 250)
-    requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(timer); resolve() }))
-  })
-  if (state.panel?.isConnected && (state.panel.scrollLeft !== state.left || state.panel.scrollTop !== state.top)) {
-    state.panel.scrollTo({ left: state.left, top: state.top, behavior: "instant" as ScrollBehavior })
-  }
-  if (scrollX !== state.x || scrollY !== state.y) window.scrollTo({ left: state.x, top: state.y, behavior: "instant" as ScrollBehavior })
+  await restore?.()
 }
 
 export async function captureFullPage(tabId: number): Promise<string> {
@@ -77,7 +76,7 @@ export async function captureFullPage(tabId: number): Promise<string> {
       expanded = true
       await chrome.debugger.sendCommand(target, "Emulation.setDeviceMetricsOverride", {
         width: Math.round(viewport.width * zoom), height: Math.round(viewport.expandedHeight * zoom),
-        deviceScaleFactor: viewport.scale / zoom, mobile: false, dontSetVisibleSize: true,
+        deviceScaleFactor: scale / zoom, mobile: false, dontSetVisibleSize: true,
       })
     }
     const metrics = await chrome.debugger.sendCommand(target, "Page.getLayoutMetrics") as { cssContentSize?: { width: number; height: number } }
@@ -109,7 +108,7 @@ export async function captureFullPage(tabId: number): Promise<string> {
         const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }))
         try {
           const top = Math.round(y * scale)
-          const bottom = y + stripHeight === height ? canvas.height : Math.round((y + stripHeight) * scale)
+          const bottom = Math.round((y + stripHeight) * scale)
           context.drawImage(bitmap, 0, top, canvas.width, bottom - top)
         } finally { bitmap.close() }
       }

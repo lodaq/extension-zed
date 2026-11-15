@@ -49,13 +49,12 @@
     function addRow(parent, key, value) {
       const row = document.createElement("div");
       row.className = "row";
-      const keyNode = document.createElement("span");
-      keyNode.className = "key";
-      keyNode.textContent = key;
-      const valueNode = document.createElement("span");
-      valueNode.className = "value";
-      valueNode.textContent = value;
-      row.append(keyNode, valueNode);
+      for (const [className, text] of [["key", key], ["value", value]]) {
+        const span = document.createElement("span");
+        span.className = className;
+        span.textContent = text;
+        row.appendChild(span);
+      }
       parent.appendChild(row);
     }
 
@@ -78,33 +77,18 @@
       addRow(panel, "position", `${formatPixels(rect.left)}, ${formatPixels(rect.top)}`);
       addRow(panel, "size", `${formatPixels(rect.width)} x ${formatPixels(rect.height)}`);
 
-      const boxSection = document.createElement("div");
-      boxSection.className = "section";
-      boxSection.textContent = "Box model";
-      addRow(boxSection, "margin", `${styles.marginTop} ${styles.marginRight} ${styles.marginBottom} ${styles.marginLeft}`);
-      addRow(boxSection, "padding", `${styles.paddingTop} ${styles.paddingRight} ${styles.paddingBottom} ${styles.paddingLeft}`);
-      addRow(boxSection, "border", `${styles.borderTopWidth} ${styles.borderRightWidth} ${styles.borderBottomWidth} ${styles.borderLeftWidth}`);
-      addRow(boxSection, "box-sizing", styles.boxSizing);
-      panel.appendChild(boxSection);
-
-      const visualSection = document.createElement("div");
-      visualSection.className = "section";
-      visualSection.textContent = "Visual";
-      addRow(visualSection, "color", styles.color);
-      addRow(visualSection, "background", styles.backgroundColor);
-      addRow(visualSection, "opacity", styles.opacity);
-      addRow(visualSection, "border-color", styles.borderTopColor);
-      panel.appendChild(visualSection);
-
-      const layoutSection = document.createElement("div");
-      layoutSection.className = "section";
-      layoutSection.textContent = "Layout & type";
-      addRow(layoutSection, "display", styles.display);
-      addRow(layoutSection, "position", styles.position);
-      addRow(layoutSection, "font", `${styles.fontSize} ${styles.fontFamily}`);
-      addRow(layoutSection, "line-height", styles.lineHeight);
-      addRow(layoutSection, "z-index", styles.zIndex);
-      panel.appendChild(layoutSection);
+      const sides = (prefix, suffix = "") => ["Top", "Right", "Bottom", "Left"].map(side => styles[prefix + side + suffix]).join(" ");
+      for (const [heading, rows] of [
+        ["Box model", [["margin", sides("margin")], ["padding", sides("padding")], ["border", sides("border", "Width")], ["box-sizing", styles.boxSizing]]],
+        ["Visual", [["color", styles.color], ["background", styles.backgroundColor], ["opacity", styles.opacity], ["border-color", styles.borderTopColor]]],
+        ["Layout & type", [["display", styles.display], ["position", styles.position], ["font", `${styles.fontSize} ${styles.fontFamily}`], ["line-height", styles.lineHeight], ["z-index", styles.zIndex]]],
+      ]) {
+        const section = document.createElement("div");
+        section.className = "section";
+        section.textContent = heading;
+        for (const [key, value] of rows) addRow(section, key, value);
+        panel.appendChild(section);
+      }
 
       panel.hidden = false;
       const panelRect = panel.getBoundingClientRect();

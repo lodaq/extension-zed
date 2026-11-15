@@ -1,3 +1,5 @@
+import { ACTION_REGISTRY, type ActionExecution } from "./actionRegistry"
+import { applyPageStyle } from "../content/pageStyle"
 /// <reference types="node" />
 import { readFileSync } from "node:fs"
 import { runInNewContext as runContext, type Context } from "node:vm"
@@ -9,12 +11,8 @@ const runInNewContext = (source: string, context: Context) => runContext(source,
 describe("injected script completion", () => {
   it.each([
     "inspectMode",
-    "youtubeProgressBar",
-    "youtubeControls",
     "volumeBoost",
     "arabicRtlMode",
-    "youtubeDuration",
-    "youtubeHalfScreen",
   ])("%s returns its asynchronous work", async (name) => {
     let finish!: (value: Record<string, unknown>) => void
     const get = new Promise<Record<string, unknown>>((resolve) => { finish = resolve })
@@ -34,163 +32,49 @@ describe("injected script completion", () => {
     expect(completed).toBe(true)
   })
 
-  it("injects and resets main, all, and custom scrollbar style elements", () => {
-    const mainCreated: { id?: string }[] = []
-    const allCreated: { id?: string }[] = []
-    const customCreated: { id?: string }[] = []
-    const mainRemove = vi.fn()
-    const allRemove = vi.fn()
-    const customRemove = vi.fn()
-
-    // Hide main scrollbar
-    runInNewContext(script("hideMainScrollBar"), {
-      document: {
-        getElementById: () => null,
-        createElement: () => { const el = { id: "", appendChild: () => {} }; mainCreated.push(el); return el },
-        createTextNode: (t: string) => t,
-        head: { appendChild: () => {} },
-      },
-    })
-    expect(mainCreated[0]?.id).toBe("zed-hide-main-scrollbar")
-
-    // Reset main scrollbar
-    runInNewContext(script("resetMainScrollBar"), {
-      document: { getElementById: (id: string) => (id === "zed-hide-main-scrollbar" ? { remove: mainRemove } : null) },
-    })
-    expect(mainRemove).toHaveBeenCalled()
-
-    // Hide all scrollbars
-    runInNewContext(script("hideAllScrollBars"), {
-      document: {
-        getElementById: () => null,
-        createElement: () => { const el = { id: "", appendChild: () => {} }; allCreated.push(el); return el },
-        createTextNode: (t: string) => t,
-        head: { appendChild: () => {} },
-      },
-    })
-    expect(allCreated[0]?.id).toBe("zed-hide-all-scrollbars")
-
-    // Reset all scrollbars
-    runInNewContext(script("resetAllScrollBars"), {
-      document: { getElementById: (id: string) => (id === "zed-hide-all-scrollbars" ? { remove: allRemove } : null) },
-    })
-    expect(allRemove).toHaveBeenCalled()
-
-    // Apply custom scrollbar
-    runInNewContext(script("applyCustomScrollbar"), {
-      document: {
-        getElementById: () => null,
-        createElement: () => { const el = { id: "", appendChild: () => {} }; customCreated.push(el); return el },
-        createTextNode: (t: string) => t,
-        head: { appendChild: () => {} },
-      },
-    })
-    expect(customCreated[0]?.id).toBe("zed-custom-scrollbar")
-
-    // Reset custom scrollbar
-    runInNewContext(script("resetCustomScrollbar"), {
-      document: { getElementById: (id: string) => (id === "zed-custom-scrollbar" ? { remove: customRemove } : null) },
-    })
-    expect(customRemove).toHaveBeenCalled()
+  it.each([
+    ["applyCustomScrollbar", "zed-custom-scrollbar"],
+  ])("%s injects its style and reset removes it", (apply, id) => {
+    const style = { id: "", appendChild: vi.fn(), remove: vi.fn() }
+    const appendChild = vi.fn()
+    runInNewContext(script(apply), { document: {
+      getElementById: () => null,
+      createElement: () => style,
+      createTextNode: (text: string) => text,
+      head: { appendChild },
+    } })
+    expect(style.id).toBe(id)
+    expect(appendChild).toHaveBeenCalledWith(style)
+    runInNewContext(`(${applyPageStyle.toString()})("${id}", "")`, { document: { getElementById: (key: string) => key === id ? style : null } })
+    expect(style.remove).toHaveBeenCalledOnce()
   })
 
-  it("applies and resets YouTube progress bar, duration, half-screen, and controls styles", async () => {
-    let progressStyle = ""
-    const progressAppend = vi.fn((node: { textContent: string }) => { progressStyle = node.textContent })
-    const progressRemove = vi.fn()
-
-    // Enable progress bar hide
-    await runInNewContext(script("youtubeProgressBar"), {
-      chrome: { storage: { local: { get: async () => ({ youtubeHideProgress: true }) } } },
-      document: {
-        getElementById: () => null,
-        createElement: () => ({ id: "", textContent: "" }),
-        head: { appendChild: progressAppend },
-      },
-    })
-    expect(progressStyle).toContain(".ytp-progress-bar-container")
-
-    // Disable progress bar hide
-    await runInNewContext(script("youtubeProgressBar"), {
-      chrome: { storage: { local: { get: async () => ({ youtubeHideProgress: false }) } } },
-      document: {
-        getElementById: () => ({ remove: progressRemove }),
-        createElement: () => ({ id: "" }),
-      },
-    })
-    expect(progressRemove).toHaveBeenCalled()
-
-    // YouTube duration hide
-    let durationStyle = ""
-    const durationAppend = vi.fn((node: { textContent: string }) => { durationStyle = node.textContent })
-    const durationRemove = vi.fn()
-
-    await runInNewContext(script("youtubeDuration"), {
-      chrome: { storage: { local: { get: async () => ({ youtubeHideDuration: true }) } } },
-      document: {
-        getElementById: () => null,
-        createElement: () => ({ id: "", textContent: "" }),
-        head: { appendChild: durationAppend },
-      },
-    })
-    expect(durationStyle).toContain(".ytp-time-duration")
-
-    await runInNewContext(script("youtubeDuration"), {
-      chrome: { storage: { local: { get: async () => ({ youtubeHideDuration: false }) } } },
-      document: {
-        getElementById: () => ({ remove: durationRemove }),
-        createElement: () => ({ id: "" }),
-      },
-    })
-    expect(durationRemove).toHaveBeenCalled()
-
-    // YouTube half screen
-    let halfScreenStyle = ""
-    const halfScreenAppend = vi.fn((node: { textContent: string }) => { halfScreenStyle = node.textContent })
-    const halfScreenRemove = vi.fn()
-
-    await runInNewContext(script("youtubeHalfScreen"), {
-      chrome: { storage: { local: { get: async () => ({ youtubeHalfScreen: true }) } } },
-      document: {
-        getElementById: () => null,
-        createElement: () => ({ id: "", textContent: "" }),
-        head: { appendChild: halfScreenAppend },
-      },
-    })
-    expect(halfScreenStyle).toContain("ytd-watch-flexy")
-
-    await runInNewContext(script("youtubeHalfScreen"), {
-      chrome: { storage: { local: { get: async () => ({ youtubeHalfScreen: false }) } } },
-      document: {
-        getElementById: () => ({ remove: halfScreenRemove }),
-        createElement: () => ({ id: "" }),
-      },
-    })
-    expect(halfScreenRemove).toHaveBeenCalled()
-
-    // YouTube controls
-    let controlsStyle = ""
-    const controlsAppend = vi.fn((node: { textContent: string }) => { controlsStyle = node.textContent })
-    const controlsRemove = vi.fn()
-
-    await runInNewContext(script("youtubeControls"), {
-      chrome: { storage: { local: { get: async () => ({ youtubeHideControls: true }) } } },
-      document: {
-        getElementById: () => null,
-        createElement: () => ({ id: "", textContent: "" }),
-        head: { appendChild: controlsAppend },
-      },
-    })
-    expect(controlsStyle).toContain(".ytp-chrome-bottom")
-
-    await runInNewContext(script("youtubeControls"), {
-      chrome: { storage: { local: { get: async () => ({ youtubeHideControls: false }) } } },
-      document: {
-        getElementById: () => ({ remove: controlsRemove }),
-        createElement: () => ({ id: "" }),
-      },
-    })
-    expect(controlsRemove).toHaveBeenCalled()
+  it.each([
+    ["hideMainScrollBar", "resetMainScrollBar", "html::-webkit-scrollbar"],
+    ["hideAllScrollBars", "resetAllScrollBars", "*::-webkit-scrollbar"],
+    ["hideYoutubeProgressBar", null, ".ytp-progress-bar-container"],
+    ["hideYoutubeDuration", null, ".ytp-time-duration"],
+    ["youtubeHalfScreen", null, "ytd-watch-flexy"],
+    ["hideYoutubeControls", null, ".ytp-chrome-bottom"],
+  ] as const)("%s applies and resets its style", (name, reset, selector) => {
+    const definition = ACTION_REGISTRY[name] as Extract<ActionExecution, { type: "style" }>
+    const style = { id: "", textContent: "", remove: vi.fn() }
+    const appendChild = vi.fn()
+    const document = {
+      getElementById: (id: string) => id === style.id ? style : null,
+      createElement: () => style,
+      head: { appendChild },
+    }
+    const run = (css: string) => runInNewContext(`(${applyPageStyle.toString()})(${JSON.stringify(definition.id)}, ${JSON.stringify(css)})`, { document })
+    run(definition.css)
+    expect(style.id).toBe(definition.id)
+    expect(style.textContent).toContain(selector)
+    expect(appendChild).toHaveBeenCalledWith(style)
+    run(definition.css)
+    expect(style.remove).toHaveBeenCalledOnce()
+    run(reset ? (ACTION_REGISTRY[reset] as Extract<ActionExecution, { type: "style" }>).css : "")
+    expect(style.remove).toHaveBeenCalledTimes(2)
+    expect(appendChild).toHaveBeenCalledTimes(2)
   })
 
   it("reversibly applies and resets youtubeFocusMode without mutating element inline styles", () => {
@@ -210,7 +94,9 @@ describe("injected script completion", () => {
       },
     }
 
+    const fullscreenEvents = new Map<string, () => void>()
     const doc = {
+      fullscreenElement: null as object | null,
       documentElement: {
         classList: {
           add: (c: string) => classList.add(c),
@@ -221,10 +107,10 @@ describe("injected script completion", () => {
         appendChild: () => { baseStyleAdded = true },
       },
       getElementById: (id: string) => (id === "extension-zed-yt-focus-base" ? { remove: () => { baseStyleRemoved = true } } : null),
-      querySelector: (sel: string) => (sel.includes("player") ? anchor : null),
+      querySelector: (sel: string) => ((sel.includes("player") || sel.includes("anchor")) ? anchor : null),
       querySelectorAll: () => [],
       createElement: () => ({ id: "", textContent: "" }),
-      addEventListener: () => {},
+      addEventListener: (type: string, listener: () => void) => fullscreenEvents.set(type, listener),
     }
 
     const win: Record<string, unknown> = {
@@ -249,6 +135,15 @@ describe("injected script completion", () => {
     expect(attributes.get("data-zed-focus-anchor")).toBe("1")
     // Assert zero inline style mutations occurred!
     expect(anchor.style.setProperty).not.toHaveBeenCalled()
+
+    doc.fullscreenElement = {}
+    fullscreenEvents.get("fullscreenchange")!()
+    expect(classList.has("extension-zed-yt-focus-lock")).toBe(false)
+    expect(attributes.get("data-zed-focus-fs-suspended")).toBe("1")
+    doc.fullscreenElement = null
+    fullscreenEvents.get("webkitfullscreenchange")!()
+    expect(classList.has("extension-zed-yt-focus-lock")).toBe(true)
+    expect(attributes.has("data-zed-focus-fs-suspended")).toBe(false)
 
     // Disable / Reset Focus Mode
     win.__zedYoutubeFocusEnabled = false

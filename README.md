@@ -1,154 +1,31 @@
 # Extension Zed
 
-![Status: under development](https://img.shields.io/badge/status-under_development-orange)
+A Chrome/Brave Manifest V3 toolbox for screenshots, media controls, page tools, saved content, and extension management. Open it from the toolbar or **Alt+Z**.
 
-Extension Zed is a free browser toolbox for page appearance, video playback, YouTube layout, and extension management. It works in Chrome and Brave.
+## Build and install
 
-> **The Chrome Web Store listing is not available yet.** There is no ready-to-install public release archive at this time. The free way to try Extension Zed is to download its source from GitHub, build it once, and load it as an unpacked extension. Developer mode is required; the browser will show its usual warning for unpacked extensions.
+Requires Bun 1.4.4:
 
-## Screenshots
+```sh
+bun install --frozen-lockfile --ignore-scripts
+bun run build
+```
 
-| Misc tools | Extension manager |
-| --- | --- |
-| ![Password generator and playback speed controls](docs/screenshots/misc.png) | ![Extension manager showing Extension Zed](docs/screenshots/extensions.png) |
-
-| YouTube tools | Settings and privacy |
-| --- | --- |
-| ![YouTube layout controls and video markers](docs/screenshots/youtube-controls.png) | ![Theme, settings backup, and privacy information](docs/screenshots/settings.png) |
-
-The manager does not let Extension Zed modify or uninstall itself. Other installed extensions appear here when present.
-
-## Download and install for free
-
-You need Bun to build the extension from source. Install it from [bun.sh](https://bun.sh/), then follow these steps:
-
-1. Download the [Extension Zed source ZIP](https://github.com/lodaq/extension-zed/archive/refs/heads/main.zip) and extract it. Alternatively, clone the repository with Git:
-
-   ```sh
-   git clone https://github.com/lodaq/extension-zed.git
-   cd extension-zed
-   ```
-
-2. Open a terminal in the extracted `extension-zed-main` folder (or the cloned `extension-zed` folder) and build the extension:
-
-   ```sh
-   bun install
-   bun run build
-   ```
-
-3. Open the extensions page in your browser:
-   - Chrome: enter `chrome://extensions` in the address bar.
-   - Brave: enter `brave://extensions` in the address bar.
-
-4. Turn on **Developer mode**, choose **Load unpacked**, and select the `dist` folder inside the project folder.
-5. Optionally pin Extension Zed from the browser's Extensions menu so it is easy to open.
-
-Keep the selected `dist` folder where it is. To install an update, download the newer source, run `bun install` and `bun run build` again, click **Reload** on Extension Zed's card, and refresh any web pages that were already open.
-
-To create a portable build ZIP yourself, run `bun run package:store`. It creates `artifacts/extension-zed-v2.0.0.zip`; extract that ZIP and use its folder with **Load unpacked**. This command creates a file on your computer, but does not publish or upload it.
-
-## How to use it
-
-- Open Extension Zed by clicking its toolbar icon, or press **Alt+Z**. The tab strip navigation lets you switch between **Misc**, **Extensions**, **YouTube**, **Links**, **Saved**, and **Shortcuts**, plus **Settings**.
-- **Misc** contains page and media tools. Open a section or tool tile to use it; changes that are saved as preferences are stored in this browser profile.
-- **Extensions** asks for optional management access the first time you use it. Choose **Allow access** and confirm the browser prompt to list and manage other extensions. You can decline and grant it later.
-- **YouTube** tools are intended for use while watching a YouTube video. Video markers and layout controls become available when a video is open.
-- **Links** organizes quick links and shortcuts to common destinations.
-- **Saved** collects bookmarked media links (YouTube videos, Facebook & Instagram reels/posts) and text snippets. You can toggle in-page "Save to Zed" buttons directly on media cards and feed posts, or use the browser right-click context menu to save selections and links.
-- **Shortcuts** provides configurable in-page keyboard shortcuts to trigger Zed actions quickly without opening the popup.
-- **Settings**, opened with the gear button, controls the theme, supports settings transfer/reset, and includes About with the feature list and overlapping extension alternatives.
+Open `chrome://extensions` or `brave://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist/`. Keep that folder in place. After rebuilding, reload the extension and refresh existing web pages.
 
 ## Features
 
-### Popup
+- **Media:** playback speed from 0.1×–10×, volume boost from 100%–2000%, and preferred video quality from Auto/144p–8K with higher/lower fallback. Support depends on the site's player; unsupported players retain their own settings.
+- **Screenshots:** selected area, visible area, full page, or element; preview, copy PNG, download, or explicitly send the image to miniPaint for editing. Full-page capture uses temporary debugger access, native image strips, and guaranteed viewport/scroll restoration. It does not scroll through the page. Image-size limits apply; DevTools can conflict with capture.
+- **Page tools:** inspect element details, temporarily edit page content, adjust Arabic-leading text to RTL, apply grayscale, and restyle/hide scrollbars. Reloading restores website content edited in design mode.
+- **YouTube:** focus/half-screen layouts and independent progress, duration, and control hiding.
+- **Passwords:** cryptographic generation, 4–128 characters, selectable character groups, and explicit copy. Generated passwords are not saved or backed up.
+- **Extensions:** optional management access; list, enable/disable, reload, open settings, and uninstall other extensions. Browser policy restrictions are respected.
+- **Links/Saved:** save tabs and media links, collect selected text through the context menu, toggle in-page save buttons, and open/copy/remove saved items. Opening a link from Links removes it after the new tab opens.
+- **Shortcuts/settings:** configurable keyboard shortcuts, tool order, remembered popup views/scroll, theme, validated JSON preference export/merge-import, and reset.
+- **Site limiter:** timed domain/subdomain blocks and daily foreground-usage limits, with no early-unblock control. Browser-only rules require Zed to remain enabled. Optional system protection requires the separate [administrator companion](companion/README.md).
 
-- Opens from the toolbar or with **Alt+Z**. The 640 × 600 popup remembers the selected tab and supports mouse-wheel scrolling across its tab strip.
-- Page actions show success or error notifications. A failed action also marks its browser tab with an error badge and tooltip; a later successful action clears the warning.
-
-### Misc
-
-- **Site limiter:** enter a website URL and a duration in minutes, then choose **Block website**. The rule covers that domain and its subdomains, has no early-unblock control, and expires automatically. Daily usage limits count the active tab in the focused window and reset at local midnight. Ordinary rules need no administrator setup and apply only in the browser where Zed is enabled; they do not cover Tor or other browsers.
-
-- **Screenshots:** capture a selected area, visible area, full page, or element. Full page uses the browser renderer without walking the page in scroll steps. Preview the image, copy it as PNG, download it, or click Edit to send the original PNG to miniPaint’s own tab. Edit requires miniPaint site access and supports PNG files up to about 36 MiB; larger files can be downloaded and opened manually. Locked app shells may briefly render at a taller viewport before restoration. Native full-page capture requires the debugger permission and may show the browser's debugging indicator.
-
-- **Password generator:** create 4–128 character passwords using any combination of uppercase letters, lowercase letters, numbers, and symbols. It uses cryptographic randomness. Copying is always a separate action; generated passwords and generator options are not saved or included in backups.
-- **Playback speed:** set video speed from 0.1× to 10×, or use slower, faster, normal, and 2× controls. The preference is saved and reapplied to new videos, when media reloads, and when playback starts.
-- **Volume boost:** amplify audio and video from 100% to 2000%. High amplification can distort sound.
-- **Video quality:** choose Auto or a preferred resolution from 144p to 4320p, with an option to prefer higher or lower available quality when the exact resolution is unavailable. Uses supported player APIs, including YouTube, Video.js, Shaka, exposed Hls.js players, and native Facebook, Instagram, and TikTok players. Unsupported players keep their own quality setting. A change may briefly buffer.
-- **Scrollbars:** hide the document scrollbar, or hide scrollbars throughout the page; the two options can be reset separately.
-- **Inspect mode:** hover over page elements to view their identity, position, size, box model, colors, layout, and typography. Press **Escape** to exit an active inspect overlay.
-- **Design mode:** temporarily make page content editable. Turning the mode off does not undo edits; reloading the page restores the website.
-- **Arabic RTL mode:** adjust Arabic-leading text to read right-to-left, including newly inserted content. Turning it off restores alignment changes made by the extension.
-- **Tool organization:** open Misc tools from tiles and change their order in Settings → Tool order using the Up/Down buttons. The popup remembers the selected view and its scroll position.
-
-### YouTube
-
-- Expand the player with **Focus mode** or use a **Half-screen layout**.
-- Hide the progress bar and chapters, time and duration, or player controls independently.
-
-YouTube layout preferences are saved in the browser. A YouTube player is needed for the layout controls.
-
-### Extensions
-
-- Open `brave://extensions/` (with fallback to `chrome://extensions/`) in a new tab.
-- View installed extensions by name, icon, and version; apps and themes are not listed.
-- Click an extension row or use its switch to turn it on or off.
-- Open an extension's settings directly using the gear button.
-- Reload an extension, or uninstall it through Chrome's confirmation dialog.
-- Extensions controlled by browser policy cannot be changed here.
-
-The **Reload** action restarts an extension (for Extension Zed, it reloads the active extension; for other extensions, it restarts the extension to apply updates Chrome has already downloaded).
-
-### Links
-
-- Manage custom links together with saved media links. Opening a link removes it from the list after the new tab opens; you can also copy or remove links explicitly.
-
-### Saved
-
-- **Save media:** Automatically mount in-page "Save to Zed" buttons on YouTube video cards, Instagram Reels & posts, and Facebook Reels, posts, and timestamp links. Buttons toggle between Save and Remove states.
-- **Save text:** Select any text on a page, right-click, and choose **Save text to Zed** to store it locally with its source page URL.
-- **Save links:** Right-click post timestamp links or video URLs and choose **Save link to Zed**.
-- **In-page button toggle:** A "Show Save to Zed buttons" switch in the Saved tab lets you hide or show in-page controls without losing saved items.
-- **Manage items:** View, copy links, open in new tab, and delete saved items in the Saved tab.
-
-### Shortcuts
-
-- Configure custom keyboard shortcuts for page actions (playback speed changes, volume boost, focus mode, and saving items).
-- Shortcuts are intercepted safely by the content script and sync across tabs upon preference change.
-
-### Settings
-
-- The popup uses Zed Dark with keyboard-accessible navigation and focus management.
-- Export preferences to a JSON backup, import a backup, or reset preferences.
-- Import merges recognized settings; values not present in the backup are left unchanged.
-
-## Privacy and permissions
-
-Preferences and saved items stay in the local browser profile. Extension Zed has no account or cloud sync and does not send telemetry, browsing history, or personal data to an external server. Exported backups include saved website origins along with preferences, so keep backup files private.
-
-The extension needs `scripting`, `activeTab`, `storage`, `clipboardWrite`, `debugger`, `tabs`, `contextMenus`, `alarms`, `idle`, `declarativeNetRequest`, and `nativeMessaging` for page actions, context menu saving, tab navigation, and local preferences. Its automatic playback, video quality, shortcuts, and in-page save features run on HTTP and HTTPS pages, so the browser may show a broad site-access warning. **Management** is optional and is requested only when you choose to use the Extensions tab. Browser-internal and other protected pages generally do not allow page actions. Chrome requires debugger access to be declared at install/update; it cannot be granted as an optional runtime permission. Read [Permissions](PERMISSIONS.md) for details.
-
-Media features depend on the site's player. Some sites may change their player APIs, inaccessible frames may remain unchanged, and unsupported players may not accept speed or quality changes.
-
-## More information
-
-- [Mandatory design system](DESIGN_SYSTEM.md)
-- [Full implemented feature inventory](FEATURES.md)
-- [Permissions and access rationale](PERMISSIONS.md)
-- [Chrome Web Store release status and process](CHROMEWEBSTORE.md)
-- [Development and contribution notes](CONTRIBUTING.md)
-
-All UI uses the Zed Dark design system in `src/design-system/`; see DESIGN_SYSTEM.md. No raw colors, radii or font sizes outside tokens.css.
-
-## Administrator-protected website rules
-
-Misc → Site limiter supports timed blocks and daily foreground usage limits. Browser-only rules stop being enforced if the extension is disabled. The optional administrator-protection path uses a mandatory signed browser component and a separate administrator-owned companion; it cannot be activated by an ordinary unpacked install.
-
-See [companion setup and deployment limits](companion/README.md) for Linux, Windows and macOS installers, prerequisites and acceptance checks. These installers are prepared but **cross-platform enforcement has not been production validated**. They are not run by the extension build. A signed managed distribution and administrator installation are still required; protection is scoped to managed Chrome, with device/network restrictions needed to prevent other access paths.
-
-## Development checks and cleanup
-
-Use Bun 1.4.4. After installing dependencies, run:
+## Development
 
 ```sh
 bun run test
@@ -158,11 +35,34 @@ bun run check:build
 python3 -m unittest discover -s companion -p 'test_*.py'
 bun run test:e2e
 bun run test:e2e:video-quality
-bun audit --production
 ```
 
-Browser tests use a separate temporary profile and the pinned Chrome DevTools MCP 1.13.0 runner through `npx`; Node.js and npm are required. Set `CHROME_PATH` to your Chromium/Chrome for Testing executable. On this development machine it defaults to the cached Playwright Chromium path. Tests install the built `dist` extension, not the source tree, and automatically clean up their temporary profiles.
+Browser tests use isolated temporary profiles, the built extension, and the pinned Chrome DevTools MCP runner through `npx` (Node.js/npm required). Set `CHROME_PATH` to your Chrome/Chromium executable. Test profiles are removed automatically. Build/test checks do not install the companion or change OS policy.
 
-The cleanup removed 752 lines of unused production TypeScript: the retired Misc accordion/drag handlers, unused scroll/tabs/label wrappers, and an unnecessary component export barrel. Tool ordering and scrolling still use the current Settings and popup implementations. Scroll-cache tests now live beside `bootCache.ts`; browser suites share one client and check the current tile navigation. Unused Radix tabs/label dependencies were removed. Existing saved settings and active website rules are preserved.
+`src/` contains the popup, worker, content modules, and unit tests. `public/` contains the manifest, injected scripts, and packaged assets. `companion/` contains the optional system blocker and its installers. UI rules are in [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
 
-Verification covers unit tests, companion state/IPC tests, built assets, popup navigation/password regeneration, page actions, and media player fixtures. It does not certify every live website or administrator installation on Windows/macOS. See the [companion deployment limits](companion/README.md) and [development dependency audit](docs/dependency-audit.md). System-wide filtering across Tor and other browsers is not implemented.
+Before release, run `bun audit --production` and review `bun audit` for development-tool advisories. Upgrade compatible dependencies deliberately; do not force major updates merely to clear an audit.
+
+## Privacy and access
+
+Preferences and saved text/URLs remain in local browser storage; there is no account, cloud sync, or telemetry. Backups can include saved links. Screenshots stay in memory until closed; clicking **Edit** explicitly transfers the image to miniPaint's tab. The optional companion receives foreground URLs locally and retains hostnames, rule deadlines, and daily counters, not page content or URL paths.
+
+HTTP(S) site access supports automatic playback, quality, RTL, shortcuts, and save buttons. `activeTab`/`scripting` run requested page actions; `storage` persists local data; `clipboardWrite` copies on request; `debugger` captures full pages; `tabs` coordinates navigation; `contextMenus` saves selections/links; `alarms`/`idle` count usage and expire rules; `declarativeNetRequest` blocks limited sites; `nativeMessaging` connects the local companion. `management` is optional and requested from Extensions. Protected browser pages block page actions.
+
+## Packaging and publishing
+
+```sh
+bun run package:store
+```
+
+This creates `artifacts/extension-zed-v<version>.zip` without uploading it. Keep package.json and public/manifest.json versions equal. Complete the initial store submission manually, including accurate feature/privacy disclosures, verified contact details, and store-sized screenshots.
+
+For subsequent updates, `.github/workflows/chrome-web-store.yml` tests and packages changes on `main`. It submits a newer version only when CWS credentials are configured. Copy `.env.cws.example` to ignored `.env.local`, fill the five CWS values, then use:
+
+```sh
+bun scripts/upload-cws-secrets.mjs --dry-run
+bun scripts/upload-cws-secrets.mjs
+bun run cws:status -- --env-file .env.local
+```
+
+Secret upload requires authenticated `gh`; check the target repository first. Never commit `.env.local`. Publishing and administrator installation require explicit authorization; neither is part of a normal local build.

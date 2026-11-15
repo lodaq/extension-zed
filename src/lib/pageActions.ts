@@ -1,3 +1,4 @@
+import { applyPageStyle } from "../content/pageStyle"
 import {
   ACTION_REGISTRY,
   BOOLEAN_KEYS,
@@ -30,25 +31,17 @@ function normalizeTabError(error: unknown): string {
   return message
 }
 
-type ExecutionOptions =
-  | { files: string[]; world?: `${chrome.scripting.ExecutionWorld}` }
-  | { func: () => Promise<void> | void; world?: `${chrome.scripting.ExecutionWorld}` }
-  | {
-      func: (...args: [string, string]) => void
-      args: [string, string]
-      world?: `${chrome.scripting.ExecutionWorld}`
-    }
-  | {
-      func: (...args: [string, boolean]) => void
-      args: [string, boolean]
-      world?: `${chrome.scripting.ExecutionWorld}`
-    }
+type ExecutionOptions<Args extends unknown[], Result> =
+  Omit<chrome.scripting.ScriptInjection<Args, Result>, "target"> & {
+    func?: (...args: Args) => Result
+    args?: Args
+  }
 
-async function executeScriptWithFallback<T = unknown>(
+async function executeScriptWithFallback<Args extends unknown[] = [], Result = unknown>(
   tabId: number,
   allFrames: boolean,
-  options: ExecutionOptions
-): Promise<chrome.scripting.InjectionResult<T>[]> {
+  options: ExecutionOptions<Args, Result>
+): Promise<chrome.scripting.InjectionResult<Awaited<Result>>[]> {
   const target = allFrames ? { tabId, allFrames: true } : { tabId }
   const injection = { target, ...options } as Parameters<typeof chrome.scripting.executeScript>[0]
   const results = allFrames
@@ -60,30 +53,7 @@ async function executeScriptWithFallback<T = unknown>(
   if (!results || results.length === 0) {
     throw new Error("No accessible page frames")
   }
-  return results as chrome.scripting.InjectionResult<T>[]
-}
-
-async function injectFiles(
-  tabId: number,
-  files: string[],
-  world: "MAIN" | "ISOLATED" = "ISOLATED"
-) {
-  return executeScriptWithFallback(tabId, true, {
-    files,
-    world: world as chrome.scripting.ExecutionWorld,
-  })
-}
-
-async function applyPlaybackAction(tabId: number): Promise<void> {
-  await injectFiles(tabId, ["scripts/playbackRatePersist.js"])
-
-  const applyPlayback = async () => {
-    await window.__zedPlaybackReady
-    if (!window.__zedPlaybackApply) throw new Error("Playback is unavailable in this frame")
-    await window.__zedPlaybackApply()
-  }
-
-  await executeScriptWithFallback(tabId, true, { func: applyPlayback })
+  return results as chrome.scripting.InjectionResult<Awaited<Result>>[]
 }
 
 async function applyVideoQualityAction(
@@ -93,19 +63,13 @@ async function applyVideoQualityAction(
   const targetQuality = typeof settings.videoQuality === "string" ? settings.videoQuality : "hd1080"
   const fallback = settings.videoQualityFallback === "higher" ? "higher" : "lower"
 
-  const shareSettings = (quality: string, fallbackOption: string) => {
-    Object.assign(window, {
-      __zedVideoQualitySettings: { quality, fallback: fallbackOption },
-    })
-  }
-
   await executeScriptWithFallback(tabId, true, {
-    world: "MAIN",
-    func: shareSettings,
-    args: [targetQuality, fallback],
+    world: "MAIN", args: [targetQuality, fallback],
+    func: (quality: string, fallbackOption: string) => {
+      Object.assign(window, { __zedVideoQualitySettings: { quality, fallback: fallbackOption } })
+    },
   })
-
-  const results = await injectFiles(tabId, ["scripts/applyVideoQuality.js"], "MAIN")
+  const results = await executeScriptWithFallback(tabId, true, { files: ["scripts/applyVideoQuality.js"], world: "MAIN" })
   const selected = [
     ...new Set(
       results
@@ -128,59 +92,31 @@ async function applyVideoQualityAction(
   return `Player quality set to ${labels.join(", ")}`
 }
 
-async function applyFlaggedModeAction(
-  tabId: number,
-  definition: Extract<ActionExecution, { type: "flagged_mode" }>,
-  settings: Record<string, unknown>
-): Promise<void> {
-  const { flagKey, world, file, allFrames = true, settingKey, onValue } = definition
-  const enabled = settings[settingKey] === onValue
-  const executionWorld = world as chrome.scripting.ExecutionWorld
-
-  await executeScriptWithFallback(tabId, allFrames, {
-    world: executionWorld,
-    func: (key: string, value: boolean) => {
-      Object.assign(window, { [key]: value })
-    },
-    args: [flagKey, enabled],
-  })
-
-  await executeScriptWithFallback(tabId, allFrames, {
-    world: executionWorld,
-    files: [file],
-  })
-}
-
-async function applyScriptAction(
-  tabId: number,
-  definition: Extract<ActionExecution, { type: "script" }>
-): Promise<void> {
-  const allFrames = definition.allFrames ?? true
-  const world = (definition.world ?? "ISOLATED") as chrome.scripting.ExecutionWorld
-  await executeScriptWithFallback(tabId, allFrames, {
-    files: [definition.file],
-    world,
-  })
-}
-
-async function apply(
-  tabId: number,
-  event: PageAction,
-  settings: Record<string, unknown>
-): Promise<string | undefined> {
-  const definition = ACTION_REGISTRY[event]
-  switch (definition.type) {
-    case "playback":
-      await applyPlaybackAction(tabId)
-      return undefined
-    case "video_quality":
-      return applyVideoQualityAction(tabId, settings)
-    case "flagged_mode":
-      await applyFlaggedModeAction(tabId, definition, settings)
-      return undefined
-    case "script":
-      await applyScriptAction(tabId, definition)
-      return undefined
+async function apply(tabId: number, event: PageAction, settings: Record<string, unknown>): Promise<string | undefined> {
+  const definition: ActionExecution = ACTION_REGISTRY[event]
+  if (definition.type === "playback") {
+    await executeScriptWithFallback(tabId, true, { files: ["scripts/playbackRatePersist.js"] })
+    await executeScriptWithFallback(tabId, true, { func: async () => {
+      await window.__zedPlaybackReady
+      if (!window.__zedPlaybackApply) throw new Error("Playback is unavailable in this frame")
+      await window.__zedPlaybackApply()
+    } })
+  }
+  else if (definition.type === "video_quality") return applyVideoQualityAction(tabId, settings)
+  else if (definition.type === "style") {
+    const enabled = !definition.settingKey || settings[definition.settingKey] === true
+    await executeScriptWithFallback(tabId, true, {
+      func: applyPageStyle, args: [definition.id, enabled ? definition.css : ""],
+    })
+  } else {
+    const { world = "ISOLATED", allFrames = true, file } = definition
+    if (definition.type === "flagged_mode") {
+      await executeScriptWithFallback(tabId, allFrames, {
+        world, args: [definition.flagKey, settings[definition.settingKey] === definition.onValue],
+        func: (key: string, value: boolean) => { Object.assign(window, { [key]: value }) },
+      })
+    }
+    await executeScriptWithFallback(tabId, allFrames, { world, files: [file] })
   }
 }
 
@@ -192,10 +128,10 @@ function computeSettingsPatch(
   const patch: Record<string, unknown> = {}
 
   if (Object.prototype.hasOwnProperty.call(MODE_KEYS, event)) {
-    const key = MODE_KEYS[event]
+    const key = MODE_KEYS[event as keyof typeof MODE_KEYS]
     patch[key] = (value ?? stored[key] !== "on") ? "on" : "off"
   } else if (Object.prototype.hasOwnProperty.call(BOOLEAN_KEYS, event)) {
-    const key = BOOLEAN_KEYS[event]
+    const key = BOOLEAN_KEYS[event as keyof typeof BOOLEAN_KEYS]
     patch[key] = value ?? stored[key] !== true
   } else if (event === "volumeBoost") {
     patch.volumeBoost = value
@@ -211,20 +147,11 @@ function computeSettingsPatch(
   return patch
 }
 
-async function resolveActiveTabId(): Promise<number | undefined> {
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-  return tabs[0]?.id
-}
-
-async function perform(input: unknown): Promise<PageActionResult> {
+async function perform(request: PageActionRequest & { tabId: number }): Promise<PageActionResult> {
   let saved = false
-  let tabId: number | undefined
+  const { tabId } = request
 
   try {
-    const request = validateActionRequest(input)
-    tabId = request.tabId
-    if (tabId === undefined) throw new Error("No active tab is available")
-
     const stored = await chrome.storage.local.get(null)
     if (request.event === "applyVideoQuality") {
       saved = stored.videoQuality !== undefined
@@ -255,7 +182,7 @@ let pending: Promise<unknown> = Promise.resolve()
 export async function handlePageAction(input: unknown): Promise<PageActionResult> {
   try {
     const request = validateActionRequest(input)
-    const tabId = request.tabId ?? (await resolveActiveTabId())
+    const tabId = request.tabId ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id
     if (tabId === undefined) throw new Error("No active tab is available")
 
     const result = pending.then(() => perform({ ...request, tabId }))

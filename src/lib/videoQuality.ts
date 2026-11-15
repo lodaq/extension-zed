@@ -21,38 +21,3 @@ export const QUALITY_LEVEL_MAP: Record<string, number> = Object.fromEntries(
 )
 
 export type VideoQualityFallback = "higher" | "lower"
-
-export function resolveQuality(
-  targetQuality: string,
-  availableLevels: string[],
-  fallback: VideoQualityFallback
-): string {
-  if (!availableLevels || availableLevels.length === 0) return targetQuality
-  if (targetQuality === "auto") return "auto"
-  if (availableLevels.includes(targetQuality)) return targetQuality
-
-  const targetHeight = QUALITY_LEVEL_MAP[targetQuality]
-  if (!targetHeight) return availableLevels[0] || targetQuality
-
-  const validAvailable = availableLevels
-    .filter((lvl) => Object.prototype.hasOwnProperty.call(QUALITY_LEVEL_MAP, lvl))
-    .map((lvl) => ({ id: lvl, height: QUALITY_LEVEL_MAP[lvl] }))
-    .sort((a, b) => a.height - b.height)
-
-  if (validAvailable.length === 0) return availableLevels[0] || targetQuality
-
-  if (fallback === "higher") {
-    // Find smallest available level with height > targetHeight
-    const higher = validAvailable.find((q) => q.height > targetHeight)
-    if (higher) return higher.id
-    // If none higher, pick the highest available level
-    return validAvailable[validAvailable.length - 1].id
-  } else {
-    // fallback === "lower"
-    // Find largest available level with height < targetHeight
-    const lower = [...validAvailable].reverse().find((q) => q.height < targetHeight)
-    if (lower) return lower.id
-    // If none lower, pick the lowest available level
-    return validAvailable[0].id
-  }
-}

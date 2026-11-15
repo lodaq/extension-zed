@@ -2,6 +2,17 @@ import { readSetting } from "./settings"
 import { afterEach, expect, it, vi } from "vitest"
 import { changeSaved, mediaUrl, SAVED_KEY } from "./saved"
 afterEach(() => vi.unstubAllGlobals())
+it("rejects malformed runtime payloads before accessing storage", async () => {
+  const get = vi.fn()
+  vi.stubGlobal("chrome", { storage: { local: { get } } })
+  for (const data of [null, {}, { type: "saved:remove" }, { type: "saved:add", url: {} },
+    { type: "saved:text", url: "https://example.com", text: [] },
+    { type: "saved:add", url: "x".repeat(16385) },
+    { type: "saved:text", url: "https://example.com", text: "x".repeat(65537) }]) {
+    await expect(changeSaved(data as Parameters<typeof changeSaved>[0])).rejects.toThrow("Invalid saved item request")
+  }
+  expect(get).not.toHaveBeenCalled()
+})
 it("recognizes supported media and strips tracking", () => {
   expect(mediaUrl("https://www.instagram.com/reels/ABC-12/?igsh=x")).toBe("https://www.instagram.com/reel/ABC-12/")
   expect(mediaUrl("https://m.facebook.com/reel/123/?x=1")).toBe("https://www.facebook.com/reel/123/")

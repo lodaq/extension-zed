@@ -1,10 +1,9 @@
-import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { Button } from "@/components/ui/button"
 import { useStoredValue } from "@/lib/useStoredValue"
 import { QUALITY_OPTIONS, type VideoQualityFallback } from "@/lib/videoQuality"
 import { sendPageAction } from "@/lib/withActiveTab"
 
-export default function VideoQualitySection({ dragHandle, open, onOpenChange }: MiscSectionProps) {
+export default function VideoQualitySection() {
   const [quality, setQuality] = useStoredValue<string>("videoQuality", "hd1080")
   const [fallback, setFallback] = useStoredValue<VideoQualityFallback>("videoQualityFallback", "lower")
 
@@ -29,13 +28,7 @@ export default function VideoQualitySection({ dragHandle, open, onOpenChange }: 
   }
 
   return (
-    <MiscSection
-      dragHandle={dragHandle}
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Video quality"
-      id="zed-quality-heading"
-    >
+    <section className="zed-stack">
       <div className="flex flex-col gap-2.5">
         <div className="zed-quality-grid">
           {[...QUALITY_OPTIONS].reverse().filter(opt=>opt.height<=1080).map(opt=><Button key={opt.id} aria-pressed={quality===opt.id} variant={quality===opt.id?"default":"outline"} onClick={()=>void handleQualityChange(opt.id)}>{opt.height}p</Button>)}
@@ -43,31 +36,17 @@ export default function VideoQualitySection({ dragHandle, open, onOpenChange }: 
         <div className="flex flex-col gap-1.5">
           <span className="text-xs text-muted-foreground">If unavailable</span>
           <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant={fallback === "higher" ? "default" : "outline"}
-              aria-pressed={fallback === "higher"}
-              size="sm"
-
-              onClick={() => void handleFallbackChange("higher")}
-            >
-              Prefer higher
-            </Button>
-            <Button
-              type="button"
-              variant={fallback === "lower" ? "default" : "outline"}
-              aria-pressed={fallback === "lower"}
-              size="sm"
-
-              onClick={() => void handleFallbackChange("lower")}
-            >
-              Prefer lower
-            </Button>
+            {(["higher", "lower"] as const).map(value => (
+              <Button key={value} type="button" size="sm" variant={fallback === value ? "default" : "outline"}
+                aria-pressed={fallback === value} onClick={() => void handleFallbackChange(value)}>
+                Prefer {value}
+              </Button>
+            ))}
           </div>
         </div>
         <Button variant="default" onClick={handleApply}>Apply</Button>
         <details><summary className="zed-helper">More resolutions</summary><div className="zed-quality-grid">{QUALITY_OPTIONS.filter(opt=>opt.height>1080).map(opt=><Button key={opt.id} aria-pressed={quality===opt.id} variant={quality===opt.id?"default":"outline"} onClick={()=>void handleQualityChange(opt.id)}>{opt.label}</Button>)}<Button aria-pressed={quality==="auto"} variant={quality==="auto"?"default":"outline"} onClick={()=>void handleQualityChange("auto")}>Auto</Button></div></details>
       </div>
-    </MiscSection>
+    </section>
   )
 }

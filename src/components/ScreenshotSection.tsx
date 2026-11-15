@@ -1,12 +1,11 @@
 import { Icon } from "@/design-system/Icon"
 import { Button } from "./ui/button"
 import { useState } from "react"
-import MiscSection, { type MiscSectionProps } from "./MiscSection"
 import { SCREENSHOT_MODES, type ScreenshotMode } from "@/lib/screenshotModes"
 
 const labels: Record<ScreenshotMode, string> = { area: "Selected area", visible: "Visible area", full: "Full page", element: "Element" }
 
-export default function ScreenshotSection(props: MiscSectionProps) {
+export default function ScreenshotSection() {
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
   async function start(mode: ScreenshotMode) {
@@ -22,7 +21,7 @@ export default function ScreenshotSection(props: MiscSectionProps) {
     }
   }
   return (
-    <MiscSection {...props} title="Capture screenshot" id="zed-screenshot-heading">
+    <section className="zed-stack">
       <div className="zed-captures">
         {SCREENSHOT_MODES.map((mode) => (
           <Button variant="outline" key={mode} type="button" disabled={busy} onClick={() => void start(mode)}
@@ -33,6 +32,6 @@ export default function ScreenshotSection(props: MiscSectionProps) {
         ))}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       </div>
-    </MiscSection>
+    </section>
   )
 }

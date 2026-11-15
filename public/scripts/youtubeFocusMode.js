@@ -23,15 +23,11 @@
     return;
   }
 
-  const anchor =
-    document.querySelector("ytd-watch-flexy ytd-player#ytd-player") ||
-    document.querySelector("ytd-watch-flexy ytd-player") ||
-    document.querySelector("ytd-player#ytd-player") ||
-    document.querySelector("ytd-watch-flexy #player-full-bleed-container") ||
-    document.querySelector("#player-full-bleed-container") ||
-    document.querySelector("ytd-player") ||
-    (document.querySelector("video.html5-main-video") &&
-      document.querySelector("video.html5-main-video").closest("#movie_player"));
+  const anchor = [
+    "ytd-watch-flexy ytd-player#ytd-player", "ytd-watch-flexy ytd-player", "ytd-player#ytd-player",
+    "ytd-watch-flexy #player-full-bleed-container", "#player-full-bleed-container", "ytd-player",
+  ].reduce((found, selector) => found || document.querySelector(selector), null)
+    || document.querySelector("video.html5-main-video")?.closest("#movie_player");
 
   if (!anchor) throw new Error("No YouTube player was found on this page");
 
@@ -74,27 +70,13 @@
   `;
   (document.head || document.documentElement).appendChild(base);
 
-  function applyAnchorChrome() {
-    anchor.removeAttribute("data-zed-focus-fs-suspended");
-  }
-
-  function clearAnchorChrome() {
-    anchor.setAttribute("data-zed-focus-fs-suspended", "1");
-  }
-
-  function focusAnchorStillActive() {
-    return document.querySelector("[data-zed-focus-anchor]") === anchor;
-  }
-
   function onFullscreenChange() {
-    if (!focusAnchorStillActive()) return;
-    const fs = document.fullscreenElement || document.webkitFullscreenElement;
-    if (fs) {
-      document.documentElement.classList.remove("extension-zed-yt-focus-lock");
-      clearAnchorChrome();
-    } else {
-      document.documentElement.classList.add("extension-zed-yt-focus-lock");
-      applyAnchorChrome();
+    if (document.querySelector("[data-zed-focus-anchor]") !== anchor) return;
+    const fullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+    document.documentElement.classList[fullscreen ? "remove" : "add"]("extension-zed-yt-focus-lock");
+    if (fullscreen) anchor.setAttribute("data-zed-focus-fs-suspended", "1");
+    else {
+      anchor.removeAttribute("data-zed-focus-fs-suspended");
       requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
     }
   }
@@ -102,26 +84,21 @@
   document.addEventListener("fullscreenchange", onFullscreenChange, { signal });
   document.addEventListener("webkitfullscreenchange", onFullscreenChange, { signal });
 
-  applyAnchorChrome();
+  anchor.removeAttribute("data-zed-focus-fs-suspended");
 
   let el = anchor;
   while (el && el !== document.documentElement) {
     const parent = el.parentElement;
     if (!parent) break;
-    for (let i = 0; i < parent.children.length; i++) {
-      const child = parent.children[i];
-      if (child !== el) {
-        if (!child.hasAttribute("data-zed-focus-hidden")) {
-          child.setAttribute("data-zed-focus-hidden", "1");
-        }
-      }
+    for (const child of parent.children) {
+      if (child !== el && !child.hasAttribute("data-zed-focus-hidden")) child.setAttribute("data-zed-focus-hidden", "1");
     }
     el = parent;
   }
 
   if (document.fullscreenElement || document.webkitFullscreenElement) {
     document.documentElement.classList.remove("extension-zed-yt-focus-lock");
-    clearAnchorChrome();
+    anchor.setAttribute("data-zed-focus-fs-suspended", "1");
   }
 
   function extensionZedKickYoutubeVideo() {

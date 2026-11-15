@@ -15,7 +15,7 @@ export async function executeShortcut(id: string, tabId: number) {
     if (!result.ok) throw new Error(result.error || "Page action failed")
   }
   const toggles: Record<string, PageActionRequest['event']> = { action13: "inspectModeApply", action14: "designMode", action15: "arabicRtlMode", action21: "youtubeFocus", action22: "hideYoutubeProgressBar", action23: "hideYoutubeDuration", action24: "hideYoutubeControls", action25: "youtubeHalfScreen" }
-  if (toggles[id]) { const event = toggles[id]; const key = MODE_KEYS[event] ?? BOOLEAN_KEYS[event]; return page(event, MODE_KEYS[event] ? stored[key] !== "on" : !stored[key]) }
+  if (toggles[id]) { const event = toggles[id]; const modeKey = (MODE_KEYS as Record<string, string>)[event]; const key = modeKey ?? (BOOLEAN_KEYS as Record<string, string>)[event]; return page(event, modeKey ? stored[key] !== "on" : !stored[key]) }
   switch (id) {
     case "action0": return page("playbackFaster")
     case "action1": return page("playbackSlower")

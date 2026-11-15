@@ -16,12 +16,6 @@ export function useStoredValue<T>(key: string, initialValue: T | (() => T)) {
     if (key === "miscSectionOrder" && Array.isArray(boot.order)) {
       return boot.order as unknown as T
     }
-    if (key === "miscExpandedSections" && Array.isArray(boot.expanded)) {
-      return boot.expanded as unknown as T
-    }
-    if (key === "popupActiveTab" && typeof boot.tab === "string") {
-      return boot.tab as unknown as T
-    }
     return typeof initialValue === "function" ? (initialValue as () => T)() : initialValue
   }
 

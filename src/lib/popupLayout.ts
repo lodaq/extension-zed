@@ -10,6 +10,4 @@ export const popupSectionInner = "flex flex-col gap-2.5"
 
 export const popupControlRow = "flex flex-wrap items-center gap-2"
 
-export const popupSubhead = "text-sm font-medium leading-none text-foreground"
-
 export const popupDescription = "text-xs leading-relaxed text-muted-foreground"

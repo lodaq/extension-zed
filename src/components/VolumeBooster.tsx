@@ -1,5 +1,4 @@
 import { Card } from "@/design-system/components"
-import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { Button } from "@/components/ui/button"
 import { popupControlRow } from "@/lib/popupLayout"
 import { sendPageAction } from "@/lib/withActiveTab"
@@ -14,7 +13,7 @@ function clampBoost(value: number) {
   return Math.min(MAX_BOOST, Math.max(MIN_BOOST, Math.round(value)))
 }
 
-export default function VolumeBooster({ dragHandle, open, onOpenChange }: MiscSectionProps) {
+export default function VolumeBooster() {
   const [storedBoost] = useStoredValue(STORAGE_KEY, MIN_BOOST)
   const boost = clampBoost(Number(storedBoost))
 
@@ -24,7 +23,7 @@ export default function VolumeBooster({ dragHandle, open, onOpenChange }: MiscSe
   }
 
   return (
-    <MiscSection dragHandle={dragHandle} open={open} onOpenChange={onOpenChange} title="Volume boost" id="zed-volume-heading">
+    <section className="zed-stack">
       <Card><div className="flex flex-wrap items-center justify-between gap-3">
         <label htmlFor="zed-volume-boost" className="text-sm font-medium">Amplification</label>
         <output htmlFor="zed-volume-boost" className="zed-volume">{boost}%</output>
@@ -48,6 +47,6 @@ export default function VolumeBooster({ dragHandle, open, onOpenChange }: MiscSe
           Reset to 100%
         </Button>
       </div>
-    </MiscSection>
+    </section>
   )
 }

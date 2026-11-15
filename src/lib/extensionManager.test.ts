@@ -196,90 +196,29 @@ describe("extension settings navigation", () => {
     expect(row.optionsUrl).toBe("chrome-extension://custom/options.html")
   })
 
-  it("determines settings URL prioritizing optionsUrl for enabled extensions", () => {
-    expect(
-      getExtensionSettingsUrl({
-        id: "ext1",
-        optionsUrl: "chrome-extension://ext1/options.html",
-        enabled: true,
-      })
-    ).toBe("chrome-extension://ext1/options.html")
-
-    expect(
-      getExtensionSettingsUrl({
-        id: "ext1",
-        optionsUrl: "chrome-extension://ext1/options.html",
-        enabled: false,
-      })
-    ).toBe("chrome://extensions/?id=ext1")
-
-    expect(
-      getExtensionSettingsUrl({
-        id: "ext2",
-        optionsUrl: "",
-        enabled: true,
-      })
-    ).toBe("chrome://extensions/?id=ext2")
+  it.each([
+    ["ext1", true, "chrome-extension://ext1/options.html", "chrome-extension://ext1/options.html"],
+    ["ext1", false, "chrome-extension://ext1/options.html", "chrome://extensions/?id=ext1"],
+    ["ext2", true, "", "chrome://extensions/?id=ext2"],
+  ])("resolves settings for %s (enabled: %s)", (id, enabled, optionsUrl, expected) => {
+    expect(getExtensionSettingsUrl({ id, enabled, optionsUrl })).toBe(expected)
   })
 
-  it("opens extension settings tab via chrome.tabs.create", async () => {
-    const create = vi.fn((_opts, cb) => {
-      if (cb) cb({ id: 10 })
-      return Promise.resolve({ id: 10 })
-    })
+  it.each([false, true])("opens extension options with browser-details fallback (failure: %s)", async fail => {
+    const create = vi.fn(async () => ({ id: 10 }))
+    if (fail) create.mockImplementationOnce(() => { throw new Error("Cannot open chrome-extension URL") })
     vi.stubGlobal("chrome", { tabs: { create } })
-
-    const [ext] = toManagedExtensions(
-      [info({ id: "target", name: "Target", optionsUrl: "chrome-extension://target/options.html" })],
-      "self"
-    )
-
+    const [ext] = toManagedExtensions([info({ id: "target", name: "Target", optionsUrl: "chrome-extension://target/options.html" })], "self")
     await openExtensionSettings(ext)
-    expect(create).toHaveBeenCalledWith(
-      { url: "chrome-extension://target/options.html" },
-      expect.any(Function)
-    )
-  })
-
-  it("falls back to chrome://extensions details page if optionsUrl fails to open", async () => {
-    let callCount = 0
-    const create = vi.fn((_opts, cb) => {
-      callCount++
-      if (callCount === 1) {
-        throw new Error("Cannot open chrome-extension URL")
-      }
-      if (cb) cb({ id: 20 })
-      return Promise.resolve({ id: 20 })
-    })
-    vi.stubGlobal("chrome", { tabs: { create } })
-
-    const [ext] = toManagedExtensions(
-      [info({ id: "target", name: "Target", optionsUrl: "chrome-extension://target/options.html" })],
-      "self"
-    )
-
-    await openExtensionSettings(ext)
-    expect(create).toHaveBeenCalledTimes(2)
-    expect(create).toHaveBeenLastCalledWith(
-      { url: "chrome://extensions/?id=target" },
-      expect.any(Function)
-    )
+    expect(create).toHaveBeenCalledTimes(fail ? 2 : 1)
+    expect(create).toHaveBeenLastCalledWith({ url: fail ? "chrome://extensions/?id=target" : ext.optionsUrl })
   })
 
   it("opens browser settings for the host extension even when it has app options", async () => {
-    const create = vi.fn((_opts, cb) => {
-      cb({ id: 10 })
-      return Promise.resolve({ id: 10 })
-    })
+    const create = vi.fn(async () => ({ id: 10 }))
     vi.stubGlobal("chrome", { tabs: { create } })
-
-    const self = { id: "self", isSelf: true } as Parameters<typeof openExtensionSettings>[0]
-    await openExtensionSettings(self)
-
-    expect(create).toHaveBeenCalledWith(
-      { url: "chrome://extensions/?id=self" },
-      expect.any(Function)
-    )
+    await openExtensionSettings({ id: "self", isSelf: true } as Parameters<typeof openExtensionSettings>[0])
+    expect(create).toHaveBeenCalledWith({ url: "chrome://extensions/?id=self" })
   })
 
   it("falls back to window.open when chrome.tabs is unavailable", async () => {
@@ -291,37 +230,12 @@ describe("extension settings navigation", () => {
     expect(openMock).toHaveBeenCalledWith("https://example.com", "_blank", "noopener,noreferrer")
   })
 
-  it("opens brave://extensions/ via openBraveExtensionsTab", async () => {
-    const create = vi.fn((_opts, cb) => {
-      if (cb) cb({ id: 30 })
-      return Promise.resolve({ id: 30 })
-    })
+  it.each([false, true])("opens browser extensions with Chrome fallback (failure: %s)", async fail => {
+    const create = vi.fn(async () => ({ id: 30 }))
+    if (fail) create.mockImplementationOnce(() => { throw new Error("Cannot open brave:// URL") })
     vi.stubGlobal("chrome", { tabs: { create } })
-
     await openBraveExtensionsTab()
-    expect(create).toHaveBeenCalledWith(
-      { url: "brave://extensions/" },
-      expect.any(Function)
-    )
-  })
-
-  it("falls back to chrome://extensions/ if brave://extensions/ fails", async () => {
-    let callCount = 0
-    const create = vi.fn((_opts, cb) => {
-      callCount++
-      if (callCount === 1) {
-        throw new Error("Cannot open brave:// URL")
-      }
-      if (cb) cb({ id: 31 })
-      return Promise.resolve({ id: 31 })
-    })
-    vi.stubGlobal("chrome", { tabs: { create } })
-
-    await openBraveExtensionsTab()
-    expect(create).toHaveBeenCalledTimes(2)
-    expect(create).toHaveBeenLastCalledWith(
-      { url: "chrome://extensions/" },
-      expect.any(Function)
-    )
+    expect(create).toHaveBeenCalledTimes(fail ? 2 : 1)
+    expect(create).toHaveBeenLastCalledWith({ url: fail ? "chrome://extensions/" : "brave://extensions/" })
   })
 })

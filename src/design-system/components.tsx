@@ -1,8 +1,25 @@
-import { useEffect, useRef, type ReactNode } from "react"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { Icon, type IconName } from "./Icon"
 
 export function Tile({ id, title, tooltip, icon, badge, disabled, onClick }: { id?: string; title: string; tooltip: string; icon: IconName; badge?: string; disabled?: boolean; onClick: () => void }) {
-  return <button id={id} className="zed-tile" disabled={disabled} onClick={onClick}><span className="zed-tile-top"><span className="zed-well"><Icon name={icon} /></span><span>{badge}</span></span><span>{title}</span><span className="zed-tooltip" role="tooltip">{tooltip}</span></button>
+  const nameId = useId()
+  const descriptionId = useId()
+  const badgeId = useId()
+  const [dismissed, setDismissed] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  useEffect(() => {
+    if (!hovered) return
+    const dismiss = (event: KeyboardEvent) => { if (event.key === "Escape") setDismissed(true) }
+    window.addEventListener("keydown", dismiss)
+    return () => window.removeEventListener("keydown", dismiss)
+  }, [hovered])
+  return <button id={id} type="button" className="zed-tile" disabled={disabled} onClick={onClick}
+    aria-labelledby={`${badge ? `${badgeId} ` : ""}${nameId}`} aria-describedby={descriptionId}
+    data-tooltip-dismissed={dismissed || undefined} onBlur={() => setDismissed(false)} onMouseEnter={() => setHovered(true)} onMouseLeave={() => { setHovered(false); setDismissed(false) }}
+    onKeyDown={event => { if (event.key === "Escape" && !dismissed) { event.stopPropagation(); setDismissed(true) } }}>
+    <span className="zed-tile-top"><span className="zed-well"><Icon name={icon} /></span><span id={badgeId}>{badge}</span></span>{" "}
+    <span id={nameId}>{title}</span><span id={descriptionId} className="zed-tooltip" role="tooltip">{tooltip}</span>
+  </button>
 }
 export function SwitchRow({ label, description, checked, onChange, disabled }: { label: string; description?: string; checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
   return <button type="button" className="zed-switch-row" role="switch" aria-checked={checked} disabled={disabled} onClick={() => onChange(!checked)}><span>{label}{description && <span className="zed-helper" style={{ display: "block" }}>{description}</span>}</span><span className="zed-switch" /></button>
@@ -10,7 +27,7 @@ export function SwitchRow({ label, description, checked, onChange, disabled }: {
 export function StatusPill({ active }: { active: boolean }) { return <span className={`zed-pill${active ? " zed-pill--active" : ""}`}>{active ? "Active" : "Off"}</span> }
 export function Card({ children, active = false }: { children: ReactNode; active?: boolean }) { return <div className={`zed-card${active ? " zed-card--active" : ""}`} style={{ padding: 16 }}>{children}</div> }
 export function IconButton({ label, icon, onClick, disabled }: { label: string; icon: IconName; onClick: () => void; disabled?: boolean }) { return <button type="button" className="zed-icon-button" aria-label={label} onClick={onClick} disabled={disabled}><Icon name={icon} size={18} /></button> }
-export function LetterAvatar({ title, compact=false }: { title: string; compact?:boolean }) { return <span className={`zed-avatar${compact?" zed-avatar--link":""}`} style={{ background: `var(--zed-avatar-${title.length % 6 + 1})` }}>{title[0]?.toUpperCase()}</span> }
+export function LetterAvatar({ title, compact=false }: { title: string; compact?:boolean }) { return <span aria-hidden="true" className={`zed-avatar${compact?" zed-avatar--link":""}`} style={{ background: `var(--zed-avatar-${title.length % 6 + 1})` }}>{title[0]?.toUpperCase()}</span> }
 export function Notice({ title, children }: { title: string; children: ReactNode }) { return <div className="zed-notice" role="alert"><Icon name="info" /><div><strong>{title}</strong><div className="zed-helper">{children}</div></div></div> }
 export function Dialog({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)

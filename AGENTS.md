@@ -1,19 +1,15 @@
-# Agent Guidelines - Extension Zed
+# Extension Zed
 
-All UI uses the Zed Dark design system in `src/design-system/`; see DESIGN_SYSTEM.md. No raw colors, radii or font sizes outside tokens.css.
+- All UI uses `src/design-system/`; follow DESIGN_SYSTEM.md. No raw colors, radii, or font sizes outside tokens.css.
+- Keep Manifest V3 behavior, validate messages and imported settings, and retain error handling and cleanup for page modifications.
+- Preserve keyboard navigation, accessible names, visible focus, dialog focus restoration, and existing stored data.
+- Use Bun 1.4.4. Run the relevant checks listed in README.md; browser tests require a built `dist/`.
+- Do not publish releases, install the administrator companion, or change browser/OS policy without an explicit request.
 
 ## Project skills
 
-Skills live in `.agents/skills/`. Read the relevant `SKILL.md` before using a skill; load its references only as needed.
-
-- `modern-web-guidance`: Search and retrieve current guidance before implementing HTML, CSS, or client-side JavaScript changes, following its workflow.
-- `chrome-extensions`: Manifest V3 APIs, permissions, service workers, messaging, and Chrome Web Store publishing.
-- `chrome-extension-best-practices`: Extension performance, reliability, and code quality.
-- `chrome-extension-ui`: Popup, options, side panel, and content script UI; use this project's Zed Dark tokens and components.
-- `vercel-react-best-practices`: React rendering and performance; apply rules relevant to this Vite SPA.
-- `accessibility`: Keyboard navigation, focus, semantics, and accessibility audits.
-- `security-and-hardening`: Untrusted page content, message validation, storage, and external integrations.
-- `performance-optimization`: Profiling and targeted performance improvements.
-- `playwright-chrome-extension-testing`: Browser tests for unpacked Manifest V3 extensions.
-
-Apply skills when their scope matches the task. Installing these skills does not authorize unrelated code changes or publishing. Keep the design system requirements above when adapting UI guidance.
+- Use [code-simplification](.agents/skills/code-simplification/SKILL.md) when existing code needs clarity improvements without behavior changes.
+- Use [refactor](.agents/skills/refactor/SKILL.md) for surgical structural improvements: extract, rename, or break down code while preserving behavior.
+- Use [code-review-and-quality](.agents/skills/code-review-and-quality/SKILL.md) before every merge; review correctness, readability, architecture, security, and performance.
+- Use [vitest](.agents/skills/vitest/SKILL.md) when writing or reviewing tests, mocks, timers, fixtures, or coverage; verify CLI options against the installed version.
+- Use [github-actions-hardening](.agents/skills/github-actions-hardening/SKILL.md) when writing or reviewing GitHub Actions workflows; present proposed security fixes for review before applying them.

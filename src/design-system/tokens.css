@@ -126,7 +126,7 @@ html:not(.dark), :host(:not(.dark)) {
   --zed-text-muted: #53657B;
   --zed-icon: #4A5E76;
   --zed-icon-off: #718196;
-  --zed-accent: #08766C;
+  --zed-accent: #06695F;
   --zed-on-accent: #FFFFFF;
   --zed-warn: #A63E13;
   --zed-on-warn: #FFFFFF;
@@ -134,4 +134,14 @@ html:not(.dark), :host(:not(.dark)) {
   --zed-knob-off: #53657B;
   --zed-shadow-pop: 0 8px 20px #14203324;
   --zed-shadow-dialog: 0 16px 40px #14203333;
+}
+
+@media (forced-colors: active) {
+  :root, :root.light {
+    --zed-border-control: ButtonText;
+    --zed-switch-off: ButtonFace;
+    --zed-knob-off: ButtonText;
+    --zed-accent: Highlight;
+    --zed-on-accent: HighlightText;
+  }
 }

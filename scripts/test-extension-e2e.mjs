@@ -103,15 +103,9 @@ async function run() {
     let snapshotRes = await client.callTool("take_snapshot", { pageId: 1 });
     let snapshotText = parseTextContent(snapshotRes);
 
-    const hasMiscTab = snapshotText.includes('"Misc"');
-    const hasYoutubeTab = snapshotText.includes('"YouTube"');
-    const hasSettingsTab = snapshotText.includes('"Settings"');
-    const hasShortcutsTab = /shortcuts/i.test(snapshotText);
-
-    record("Popup tab: Misc present", hasMiscTab);
-    record("Popup tab: Youtube present", hasYoutubeTab);
-    record("Popup tab: Settings present", hasSettingsTab);
-    record("Popup tab: Shortcuts present", hasShortcutsTab);
+    for (const tab of ["Misc", "YouTube", "Settings", "Shortcuts"]) {
+      record(`Popup tab: ${tab} present`, snapshotText.includes(`"${tab}"`));
+    }
 
     // Check for popup console errors
     const consoleRes = await client.callTool("list_console_messages", { pageId: 1, types: ["error"] });
@@ -147,47 +141,46 @@ async function run() {
     const pwGenText = parseTextContent(pwGenEval);
     record("Password Generator click & update", pwGenText.includes('"hasValue":true') && pwGenText.includes('"changed":true'), pwGenText);
 
-    // Switch to Extensions tab using CDP click tool
-    console.log("\n8. Testing Tab switching to Extensions via click tool...");
-    const extMatch = snapshotText.match(/uid=([^\s]+)\s+button\s+"Extensions"/);
-    if (extMatch) {
-      await client.callTool("click", { pageId: 1, uid: extMatch[1] });
-      await new Promise(r => setTimeout(r, 200));
-      const extSnap = await client.callTool("take_snapshot", { pageId: 1 });
-      const extSnapText = parseTextContent(extSnap);
-      const hasBraveBtn = extSnapText.includes("brave://extensions");
-      record("Extensions tab brave://extensions button present", hasBraveBtn, extSnapText.slice(0, 300));
-    } else {
-      record("Extensions tab brave://extensions button present", false, "Could not find Extensions tab UID");
+    for (const { tab, name, matches, delay } of [
+      { tab: "Extensions", name: "Extensions tab brave://extensions button present", matches: text => text.includes("brave://extensions"), delay: 200 },
+      { tab: "YouTube", name: "Switch to YouTube tab", matches: text => text.includes('heading "YouTube"') && text.includes("Focus mode"), delay: 200 },
+      { tab: "Settings", name: "Switch to Settings tab & verify Export/Import", matches: text => text.includes("Export") && text.includes("Import"), delay: 600 },
+    ]) {
+      const match = snapshotText.match(new RegExp(`uid=([^\\s]+)\\s+button\\s+"${tab}"`));
+      if (!match) {
+        record(name, false, `Could not find ${tab} tab UID`);
+        continue;
+      }
+      await client.callTool("click", { pageId: 1, uid: match[1] });
+      await new Promise(resolve => setTimeout(resolve, delay));
+      const text = parseTextContent(await client.callTool("take_snapshot", { pageId: 1 }));
+      record(name, matches(text), text.slice(0, 300));
     }
 
-    // Switch to YouTube tab using CDP click tool
-    console.log("\n8b. Testing Tab switching to YouTube via click tool...");
-    const ytMatch = snapshotText.match(/uid=([^\s]+)\s+button\s+"YouTube"/);
-    if (ytMatch) {
-      await client.callTool("click", { pageId: 1, uid: ytMatch[1] });
-      await new Promise(r => setTimeout(r, 200));
-      const ytSnap = await client.callTool("take_snapshot", { pageId: 1 });
-      const ytSnapText = parseTextContent(ytSnap);
-      const ytActive = ytSnapText.includes('heading "YouTube"') && ytSnapText.includes('Focus mode');
-      record("Switch to YouTube tab", ytActive, ytSnapText.slice(0, 300));
-    } else {
-      record("Switch to YouTube tab", false, "Could not find YouTube tab UID");
+    // Recording must preserve normal keyboard navigation and return focus after cancellation.
+    const popupEvaluate = async (source) => {
+      const result = await client.callTool("evaluate_script", { pageId: 1, function: source });
+      const json = parseTextContent(result).match(/```json\s*([\s\S]*?)\s*```/);
+      if (result.isError || !json) throw new Error(parseTextContent(result));
+      return JSON.parse(json[1]);
+    };
+    await popupEvaluate(`async () => {
+      await chrome.storage.local.set({popupLocation:{tab:"Shortcuts",detail:null,settings:false}});
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return true;
+    }`);
+    for (const key of ["Tab", "Shift+Tab", "Escape"]) {
+      await popupEvaluate('() => { document.querySelector(\'button[aria-label="Edit shortcut for Faster"]\').focus(); return true; }');
+      await client.callTool("press_key", { pageId: 1, key: "Enter" });
+      await client.callTool("press_key", { pageId: 1, key });
+      const state = await popupEvaluate(`() => ({
+        recording: !!document.querySelector('.zed-recording'),
+        focus: document.activeElement.getAttribute('aria-label'),
+        lostFocus: document.activeElement === document.body
+      })`);
+      record(`Shortcut recording exits with ${key} and retains focus`, !state.recording && !state.lostFocus && (key !== "Escape" || state.focus === "Edit shortcut for Faster"), JSON.stringify(state));
     }
-
-    // Switch to Settings tab using CDP click tool
-    console.log("\n9. Testing Tab switching to Settings via click tool...");
-    const setMatch = snapshotText.match(/uid=([^\s]+)\s+button\s+"Settings"/);
-    if (setMatch) {
-      await client.callTool("click", { pageId: 1, uid: setMatch[1] });
-      await new Promise(r => setTimeout(r, 600));
-      const setSnap = await client.callTool("take_snapshot", { pageId: 1 });
-      const setSnapText = parseTextContent(setSnap);
-      const setHasExport = setSnapText.includes("Export") && setSnapText.includes("Import");
-      record("Switch to Settings tab & verify Export/Import", setHasExport, setSnapText.slice(0, 300));
-    } else {
-      record("Switch to Settings tab & verify Export/Import", false, "Could not find Settings tab UID");
-    }
+    record("Popup has one named main heading", await popupEvaluate('() => document.querySelectorAll("h1").length === 1 && document.querySelector("h1").textContent === "Shortcuts"'));
 
     // Test chrome.storage.local from popup context
     console.log("\n10. Testing chrome.storage.local from popup context...");
@@ -266,6 +259,27 @@ async function run() {
     });
     const playbackVerifyText = parseTextContent(playbackVerify);
     record("Media element playback rate verified", playbackVerifyText.includes('"rate":1.8'), playbackVerifyText);
+
+    // Exercise consolidated styles through real worker dispatch and page injection.
+    for (const enabled of [true, false]) {
+      const dispatch = await client.callTool("evaluate_script", {
+        pageId: 1,
+        function: `async () => {
+          const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
+          const actions = ${JSON.stringify(enabled ? ["hideMainScrollBar", "hideAllScrollBars", "applyCustomScrollbar"] : ["resetMainScrollBar", "resetAllScrollBars", "resetCustomScrollbar"])};
+          const results = [];
+          for (const event of [...actions, 'hideYoutubeProgressBar', 'hideYoutubeControls', 'hideYoutubeDuration', 'youtubeHalfScreen']) {
+            results.push(await chrome.runtime.sendMessage({event, value:event.startsWith('hideYoutube') || event === 'youtubeHalfScreen' ? ${enabled} : undefined, tabId:tab.id}));
+          }
+          return {ok:results.every(result => result.ok), results};
+        }`,
+      });
+      const state = await client.callTool("evaluate_script", {
+        pageId: testPageId,
+        function: `() => ['zed-hide-main-scrollbar','zed-hide-all-scrollbars','zed-custom-scrollbar','zed-youtube-progress-bar','zed-youtube-controls','zed-youtube-duration','zed-youtube-half-screen'].every(id => Boolean(document.getElementById(id)) === ${enabled})`,
+      });
+      record(`Page styles ${enabled ? "apply" : "reset"} through the worker`, !dispatch.isError && parseTextContent(dispatch).includes('"ok":true') && !state.isError && /\btrue\b/.test(parseTextContent(state)), parseTextContent(state));
+    }
 
     // Verify Arabic RTL mode content script injection
     console.log("\n14. Verifying Arabic RTL mode behavior on target page...");

@@ -53,23 +53,25 @@ export default function SettingsTab() {
     )
   }
 
-  const onExport = async () => {
+  const transfer = async (action: () => Promise<void>, success: string, description: string, failure: string, fallback?: string) => {
     setBusy(true)
     try {
-      downloadSettings(await exportSettings())
-      toast({ title: "Settings exported", description: "Your Zed settings were downloaded." })
+      await action()
+      toast({ title: success, description })
     } catch (error) {
-      toast({ title: "Export failed", description: String(error), variant: "destructive" })
+      toast({ title: failure, description: fallback ? error instanceof Error ? error.message : fallback : String(error), variant: "destructive" })
     } finally {
       setBusy(false)
     }
   }
 
+  const onExport = () => transfer(async () => downloadSettings(await exportSettings()),
+    "Settings exported", "Your Zed settings were downloaded.", "Export failed")
+
   const onImport = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ""
     if (!file) return
-
     if (file.size > MAX_SETTINGS_FILE_SIZE) {
       toast({
         title: "Couldn’t import that file",
@@ -78,57 +80,24 @@ export default function SettingsTab() {
       })
       return
     }
-
-    setBusy(true)
-    try {
+    await transfer(async () => {
       let parsed: unknown
-      try {
-        const text = await file.text()
-        parsed = JSON.parse(text)
-      } catch {
-        throw new Error("Invalid JSON: The selected file could not be parsed as valid JSON.")
-      }
-
+      try { parsed = JSON.parse(await file.text()) }
+      catch { throw new Error("Invalid JSON: The selected file could not be parsed as valid JSON.") }
       await importSettings(parsed)
-      toast({
-        title: "Settings imported",
-        description: "Preferences merged. Page toggles apply when used; playback updates open pages.",
-      })
-    } catch (error) {
-      toast({
-        title: "Couldn’t import that file",
-        description: error instanceof Error ? error.message : "The settings file could not be read.",
-        variant: "destructive",
-      })
-    } finally {
-      setBusy(false)
-    }
+    }, "Settings imported", "Preferences merged. Page toggles apply when used; playback updates open pages.",
+    "Couldn’t import that file", "The settings file could not be read.")
   }
 
-  const handleResetClick = async () => {
+  const handleResetClick = () => {
     setConfirmReset(false)
-    setBusy(true)
-    try {
-      await resetSettings()
-      toast({
-        title: "Settings reset",
-        description: "All preferences were reset to defaults.",
-      })
-    } catch (error) {
-      toast({
-        title: "Reset failed",
-        description: error instanceof Error ? error.message : "Could not reset settings.",
-        variant: "destructive",
-      })
-    } finally {
-      setBusy(false)
-    }
+    return transfer(resetSettings, "Settings reset", "All preferences were reset to defaults.", "Reset failed", "Could not reset settings.")
   }
 
   return (
     <section className={cn(popupPanel, popupSectionInner)}>
       <h2 className={popupSectionTitle}>Extension Zed</h2>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={() => void appAction(() => reloadExtension(currentExtensionId()))}>
           <Icon name="reload" size={16} />Refresh
         </Button>
@@ -145,23 +114,11 @@ export default function SettingsTab() {
       <SwitchRow label="Black and white" description="Show all websites in grayscale." checked={blackAndWhite} onChange={enabled=>void setBlackAndWhite(enabled).catch(error=>toast({title:String(error),variant:"destructive"}))}/>
 
       <h2 className={popupSectionTitle}>Backup and reset</h2>
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          disabled={busy}
-          variant="outline"
-          className="flex-1"
-          onClick={() => void onExport()}
-        >
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" disabled={busy} variant="outline" className="flex-1" onClick={() => void onExport()}>
           Export
         </Button>
-        <Button
-          type="button"
-          disabled={busy}
-          variant="outline"
-          className="flex-1"
-          onClick={() => fileInputRef.current?.click()}
-        >
+        <Button type="button" disabled={busy} variant="outline" className="flex-1" onClick={() => fileInputRef.current?.click()}>
           Import
         </Button>
       </div>

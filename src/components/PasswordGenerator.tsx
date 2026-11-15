@@ -1,4 +1,3 @@
-import MiscSection, { type MiscSectionProps } from "@/components/MiscSection"
 import { useState } from "react"
 import { Icon } from "@/design-system/Icon"
 import { Button } from "@/components/ui/button"
@@ -21,7 +20,7 @@ function generate(options: PasswordOptions) {
   }
 }
 
-export default function PasswordGenerator({ dragHandle, open, onOpenChange, initialOptions=DEFAULT_PASSWORD_OPTIONS, onOptionsChange }: MiscSectionProps & {initialOptions?:PasswordOptions;onOptionsChange?:(options:PasswordOptions)=>void}) {
+export default function PasswordGenerator({ initialOptions=DEFAULT_PASSWORD_OPTIONS, onOptionsChange }: {initialOptions?:PasswordOptions;onOptionsChange?:(options:PasswordOptions)=>void}) {
   const [{ options, password, error }, setState] = useState(() => generate(initialOptions))
   const update = (patch: Partial<PasswordOptions>) => {
     const next = {...options,...patch}
@@ -39,7 +38,7 @@ export default function PasswordGenerator({ dragHandle, open, onOpenChange, init
   }
 
   return (
-    <MiscSection dragHandle={dragHandle} open={open} onOpenChange={onOpenChange} title="Password generator" id="zed-password-heading">
+    <section className="zed-stack">
       <div className="flex items-center gap-2">
         <input
           aria-label="Generated password"
@@ -82,6 +81,6 @@ export default function PasswordGenerator({ dragHandle, open, onOpenChange, init
       </Card><div className="zed-grid pt-1">
         {CHARACTER_OPTIONS.map(([key,label,hint])=><CheckboxTile key={key} label={label} hint={hint} checked={options[key]} onChange={checked=>update({[key]:checked})}/>)}
       </div>
-    </MiscSection>
+    </section>
   )
 }

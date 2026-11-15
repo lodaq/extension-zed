@@ -5,7 +5,6 @@ export type ManagedExtension = {
   name: string
   version: string
   enabled: boolean
-  isSelf: boolean
   canToggle: boolean
   canReload: boolean
   canUninstall: boolean
@@ -46,11 +45,6 @@ function pickIconUrl(info: chrome.management.ExtensionInfo): string | null {
   return icon?.url ?? null
 }
 
-/**
- * Keeps extensions only (apps and themes are not manager targets), decides
- * which actions Chrome will allow, and orders the list alphabetically so rows
- * do not jump around after a toggle.
- */
 export function toManagedExtensions(
   infos: readonly chrome.management.ExtensionInfo[],
   selfId: string
@@ -58,17 +52,15 @@ export function toManagedExtensions(
   return infos
     .filter((info) => info.type === "extension" && info.id !== selfId)
     .map((info) => {
-      const isSelf = info.id === selfId
-      const canToggle = !isSelf && (info.enabled ? info.mayDisable : info.mayEnable !== false)
+      const canToggle = info.enabled ? info.mayDisable : info.mayEnable !== false
       return {
         id: info.id,
         name: info.name,
         version: info.versionName || info.version,
         enabled: info.enabled,
-        isSelf,
         canToggle,
-        canReload: (canToggle || isSelf) && info.enabled,
-        canUninstall: !isSelf && info.mayDisable,
+        canReload: canToggle && info.enabled,
+        canUninstall: info.mayDisable,
         iconUrl: pickIconUrl(info),
         optionsUrl: info.optionsUrl || "",
       }
@@ -91,13 +83,7 @@ export async function setExtensionEnabled(id: string, enabled: boolean): Promise
   await getManagement().setEnabled(id, enabled)
 }
 
-/**
- * Chrome has no public "update another extension" API. Disabling and enabling
- * reloads an unpacked extension from disk and applies an update that Chrome has
- * already downloaded for a store extension.
- * When reloading Extension Zed itself, uses chrome.runtime.reload() to restart
- * the extension.
- */
+// Chrome has no update API; disable/enable reloads disk files or an already downloaded update.
 export async function reloadExtension(id: string): Promise<void> {
   const selfId = currentExtensionId()
   if (selfId && id === selfId && typeof chrome !== "undefined" && chrome.runtime?.reload) {
@@ -127,20 +113,7 @@ export function getExtensionSettingsUrl(extension: {
 export async function openTab(url: string): Promise<void> {
   const tabs = typeof chrome === "undefined" ? undefined : chrome.tabs
   if (tabs && typeof tabs.create === "function") {
-    await new Promise<void>((resolve, reject) => {
-      try {
-        const result: unknown = tabs.create({ url }, () => {
-          const lastError = chrome.runtime?.lastError
-          if (lastError) reject(new Error(lastError.message))
-          else resolve()
-        })
-        if (result && typeof (result as Promise<unknown>).then === "function") {
-          ;(result as Promise<unknown>).then(() => resolve(), reject)
-        }
-      } catch (err) {
-        reject(err)
-      }
-    })
+    await tabs.create({ url })
     return
   }
 
@@ -161,7 +134,7 @@ export async function openBraveExtensionsTab(): Promise<void> {
 }
 
 export async function openExtensionSettings(
-  extension: ManagedExtension
+  extension: ManagedExtension & { isSelf?: boolean }
 ): Promise<void> {
   const primaryUrl = extension.isSelf ? `chrome://extensions/?id=${extension.id}` : getExtensionSettingsUrl(extension)
   const fallbackUrl = `chrome://extensions/?id=${extension.id}`

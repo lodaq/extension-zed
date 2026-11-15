@@ -123,6 +123,8 @@ export default function App() {
   }, [])
   const selected = tab === "Misc" ? tools.find(tool => tool.id === detail) : undefined
   const Detail = selected?.component
+  const pageTitle = settings ? "Settings" : selected?.title ?? tab
+  useEffect(() => { document.title = `${pageTitle} · Extension Zed` }, [pageTitle])
   const modesOn = [inspect, design, rtl].filter(value => value === "on").length
   const badges: Record<string, string | undefined> = {
     playback: `${speed}×`,
@@ -145,8 +147,8 @@ export default function App() {
   else if (tab === "Saved") content = <SavedTab />
   else if (tab === "Links") content = <LinksTab />
   else if (tab === "Shortcuts") content = <ShortcutsTab />
-  else if (detail === "password") content = <PasswordGenerator open onOpenChange={() => { }} initialOptions={passwordOptions} onOptionsChange={setPasswordOptions} />
-  else if (Detail) content = <Detail open onOpenChange={() => { }} />
+  else if (detail === "password") content = <PasswordGenerator initialOptions={passwordOptions} onOptionsChange={setPasswordOptions} />
+  else if (Detail) content = <Detail />
   else content = (
     <div className="zed-stack zed-root">
       {restricted && (
@@ -186,6 +188,7 @@ export default function App() {
           <h1 ref={viewTitle} tabIndex={-1} className="zed-title">{settings ? "Settings" : selected?.title}</h1>
         </div>
       )}
+      {!(settings || selected) && <h1 ref={viewTitle} tabIndex={-1} className="sr-only">{pageTitle}</h1>}
       <div className="zed-content zed-scroll"
         ref={restoreScroll}
         onScroll={event => saveStoredScrollPosition(`${tab}-${detail}-${settings}`, event.currentTarget.scrollTop)}>

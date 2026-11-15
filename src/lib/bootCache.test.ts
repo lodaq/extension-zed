@@ -44,9 +44,37 @@ describe("Scroll position preservation and storage", () => {
     expect(state.dark).toBe(false)
   })
 
-  it("preserves expanded misc sections across boot cache mirrors", () => {
-    mirrorBootValue("miscExpandedSections", ["playback", "quality", "scrollbars"])
+  it("preserves tool order across boot cache mirrors", () => {
+    mirrorBootValue("miscSectionOrder", ["playback", "quality", "password", "volume", "scrollbars", "modes", "screenshot"])
     const state = readBootState()
-    expect(state.expanded).toEqual(["playback", "quality", "scrollbars"])
+    expect(state.order).toEqual(["playback", "quality", "password", "volume", "scrollbars", "modes", "screenshot"])
   })
+})
+
+it("validates cached preferences, migrates legacy order, and ignores obsolete cache fields", () => {
+  _resetBootStateForTesting()
+  const storage = new Map<string, string>()
+  const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+    removeItem: (key: string) => storage.delete(key),
+  } })
+  try {
+    storage.set("zed.boot", JSON.stringify({ dark: false, order: ["modes", "password", "playback", "volume", "quality", "scrollbars"], tab: "youtube", expanded: ["modes"] }))
+    expect(readBootState()).toMatchObject({ dark: false, order: ["modes", "password", "playback", "volume", "quality", "scrollbars", "screenshot"] })
+    expect(readBootState()).not.toHaveProperty("expanded")
+    storage.set("zed.boot", JSON.stringify({ dark: "invalid", order: ["invalid"], scrollPositions: { misc: "invalid" } }))
+    expect(readBootState().dark).toBe(false)
+    expect(readBootState().order).toContain("screenshot")
+    expect(getStoredScrollPosition("misc")).toBe(0)
+    storage.set("zed.boot", "broken JSON")
+    expect(readBootState().dark).toBe(false)
+    saveStoredScrollPosition("misc", Number.NaN)
+    expect(getStoredScrollPosition("misc")).toBe(0)
+  } finally {
+    _resetBootStateForTesting()
+    if (original) Object.defineProperty(globalThis, "localStorage", original)
+    else Reflect.deleteProperty(globalThis, "localStorage")
+  }
 })

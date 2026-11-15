@@ -2,7 +2,7 @@ import { SAVED_KEY, readSaved } from "./saved"
 import { PLAYBACK_MAX, PLAYBACK_MIN } from "./playbackPresets"
 import { QUALITY_LEVEL_MAP } from "./videoQuality"
 
-export const CURRENT_SETTINGS_SCHEMA_VERSION = 1
+const CURRENT_SETTINGS_SCHEMA_VERSION = 1
 export const MAX_SETTINGS_FILE_SIZE = 512 * 1024 // 512 KB
 
 export const POPUP_TABS = ["misc", "extensions", "youtube", "saved", "settings"] as const
@@ -19,44 +19,6 @@ export const MISC_SECTION_ORDER = [
 ] as const
 export type MiscSectionId = (typeof MISC_SECTION_ORDER)[number]
 
-export const RESET_SETTINGS_KEYS = [
-  "speed",
-  "volumeBoost",
-  "darkTheme",
-  "blackAndWhite",
-  "youtubeFocus",
-  "youtubeHideProgress",
-  "youtubeHideControls",
-  "youtubeHideDuration",
-  "youtubeHalfScreen",
-  "youtubeQualityOpen",
-  "videoQuality",
-  "videoQualityFallback",
-  "inspectMode",
-  "designMode",
-  "arabicRtlMode",
-  "popupActiveTab",
-  "popupLocation",
-  "miscSectionOrder",
-  "miscExpandedSections",
-  "keyboardShortcuts",
-  "savedButtonsEnabled",
-] as const
-export type KnownSettingKey = (typeof RESET_SETTINGS_KEYS)[number] | "savedLinks"
-
-export interface ExportPayload {
-  version: number
-  exportedAt: string
-  settings: Record<string, unknown>
-}
-
-export interface RawSettingsFile {
-  version?: unknown
-  settings?: unknown
-  exportedAt?: unknown
-  [key: string]: unknown
-}
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value)
 
@@ -70,25 +32,6 @@ function isValidSpeed(value: unknown): boolean {
   }
   const num = Number(value)
   return Number.isFinite(num) && num >= PLAYBACK_MIN && num <= PLAYBACK_MAX
-}
-
-function isValidVolumeBoost(value: unknown): boolean {
-  return typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 2000
-}
-
-function isValidVideoQuality(value: unknown): boolean {
-  return (
-    typeof value === "string" &&
-    (value === "auto" || Object.prototype.hasOwnProperty.call(QUALITY_LEVEL_MAP, value))
-  )
-}
-
-function isValidVideoQualityFallback(value: unknown): boolean {
-  return value === "higher" || value === "lower"
-}
-
-function isValidPopupTab(value: unknown): boolean {
-  return POPUP_TABS.some((tab) => tab === value)
 }
 
 function isValidMiscSectionOrder(value: unknown): boolean {
@@ -123,7 +66,7 @@ function isShortcutMap(value: unknown): boolean {
   return isRecord(value) && Object.entries(value).every(([key, combo]) => /^action(?:[0-9]|1[0-9]|2[0-7])$/.test(key) && typeof combo === "string" && combo.length <= 100)
 }
 
-const validators: Record<KnownSettingKey, SettingValidator> = {
+const validators = {
   popupLocation: value => isRecord(value) &&
     ["Misc", "Extensions", "YouTube", "Links", "Saved", "Shortcuts"].includes(value.tab as string) &&
     (value.detail === null || ["playback", "quality", "password", "volume", "scrollbars", "modes", "capture", "limiter"].includes(value.detail as string)) &&
@@ -132,7 +75,7 @@ const validators: Record<KnownSettingKey, SettingValidator> = {
   savedButtonsEnabled: isBoolean,
   savedLinks: isSavedLinks,
   speed: isValidSpeed,
-  volumeBoost: isValidVolumeBoost,
+  volumeBoost: value => typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 2000,
   darkTheme: isBoolean,
   blackAndWhite: isBoolean,
   youtubeFocus: isBoolean,
@@ -141,15 +84,18 @@ const validators: Record<KnownSettingKey, SettingValidator> = {
   youtubeHideDuration: isBoolean,
   youtubeHalfScreen: isBoolean,
   youtubeQualityOpen: isBoolean,
-  videoQuality: isValidVideoQuality,
-  videoQualityFallback: isValidVideoQualityFallback,
+  videoQuality: value => typeof value === "string" && (value === "auto" || Object.prototype.hasOwnProperty.call(QUALITY_LEVEL_MAP, value)),
+  videoQualityFallback: value => value === "higher" || value === "lower",
   inspectMode: isMode,
   designMode: isMode,
   arabicRtlMode: isMode,
-  popupActiveTab: isValidPopupTab,
+  popupActiveTab: value => POPUP_TABS.some(tab => tab === value),
   miscSectionOrder: isValidMiscSectionOrder,
   miscExpandedSections: isValidMiscExpandedSections,
-}
+} satisfies Record<string, SettingValidator>
+
+export type KnownSettingKey = keyof typeof validators
+export const RESET_SETTINGS_KEYS = Object.keys(validators).filter(key => key !== "savedLinks") as Exclude<KnownSettingKey, "savedLinks">[]
 
 const RESET_KEY_SET = new Set<string>(RESET_SETTINGS_KEYS)
 
@@ -159,29 +105,26 @@ function isKnownSettingKey(key: string): key is KnownSettingKey {
 
 export function readSetting<T>(key: string, value: unknown, fallback: T): T {
   if (key === SAVED_KEY) return readSaved(value) as T
-  if (isKnownSettingKey(key) && validators[key](value)) {
-    if (key === "miscSectionOrder" && Array.isArray(value) && !value.includes("screenshot")) {
-      return [...value, "screenshot"] as T
-    }
-    return value as T
+  if (!isKnownSettingKey(key) || !validators[key](value)) return fallback
+  if (key === "miscSectionOrder" && Array.isArray(value) && !value.includes("screenshot")) {
+    return [...value, "screenshot"] as T
   }
-  return fallback
+  return value as T
 }
 
 function recognizedSettings(input: Record<string, unknown>): Record<string, unknown> {
   const settings: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(input)) {
-    if (isKnownSettingKey(key)) {
-      if (!validators[key](value)) {
-        throw new Error(`Invalid setting: ${key}`)
-      }
-      settings[key] = readSetting(key, value, value)
+    if (!isKnownSettingKey(key)) continue
+    if (!validators[key](value)) {
+      throw new Error(`Invalid setting: ${key}`)
     }
+    settings[key] = readSetting(key, value, value)
   }
   return settings
 }
 
-export async function exportSettings(): Promise<ExportPayload> {
+export async function exportSettings() {
   const stored = await chrome.storage.local.get(null)
   return {
     version: CURRENT_SETTINGS_SCHEMA_VERSION,
@@ -190,7 +133,7 @@ export async function exportSettings(): Promise<ExportPayload> {
   }
 }
 
-export function migrateSettings(input: unknown): RawSettingsFile {
+export function migrateSettings(input: unknown) {
   if (!isRecord(input)) {
     throw new Error("Unsupported settings file")
   }
@@ -212,16 +155,10 @@ export async function importSettings(input: unknown): Promise<void> {
   await chrome.storage.local.set(settings)
 }
 
-function isResetKey(key: string): boolean {
-  return RESET_KEY_SET.has(key) || key.startsWith("ytMarkers:")
-}
-
 export async function resetSettings(): Promise<void> {
   const all = await chrome.storage.local.get(null)
-  const removeKeys = Object.keys(all).filter(isResetKey)
+  const removeKeys = Object.keys(all).filter(key => RESET_KEY_SET.has(key) || key.startsWith("ytMarkers:"))
   if (removeKeys.length > 0) {
     await chrome.storage.local.remove(removeKeys)
   }
 }
-
-export const resetAllSettings = resetSettings

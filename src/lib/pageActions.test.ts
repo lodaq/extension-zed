@@ -1,3 +1,5 @@
+import { ACTION_REGISTRY, type ActionExecution, type PageAction } from "./actionRegistry"
+import { applyPageStyle } from "../content/pageStyle"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { handlePageAction } from "./pageActions"
 
@@ -74,44 +76,36 @@ describe("page actions", () => {
     expect(set).not.toHaveBeenCalled()
   })
 
-  it("handles scrollbar toggle, custom style, and reset actions", async () => {
-    expect(await handlePageAction({ event: "hideMainScrollBar" })).toMatchObject({ ok: true })
-    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/hideMainScrollBar.js"] }))
-
-    expect(await handlePageAction({ event: "resetMainScrollBar" })).toMatchObject({ ok: true })
-    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/resetMainScrollBar.js"] }))
-
-    expect(await handlePageAction({ event: "hideAllScrollBars" })).toMatchObject({ ok: true })
-    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/hideAllScrollBars.js"] }))
-
-    expect(await handlePageAction({ event: "resetAllScrollBars" })).toMatchObject({ ok: true })
-    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/resetAllScrollBars.js"] }))
-
-    expect(await handlePageAction({ event: "applyCustomScrollbar" })).toMatchObject({ ok: true })
-    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/applyCustomScrollbar.js"] }))
-
-    expect(await handlePageAction({ event: "resetCustomScrollbar" })).toMatchObject({ ok: true })
-    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/resetCustomScrollbar.js"] }))
+  it.each([
+    ["hideMainScrollBar", "hideMainScrollBar"],
+    ["resetMainScrollBar", "resetMainScrollBar"],
+    ["hideAllScrollBars", "hideAllScrollBars"],
+    ["resetAllScrollBars", "resetAllScrollBars"],
+    ["applyCustomScrollbar", "applyCustomScrollbar"],
+    ["resetCustomScrollbar", "resetCustomScrollbar"],
+  ])("injects the script for %s", async (event, file) => {
+    expect(await handlePageAction({ event })).toMatchObject({ ok: true })
+    const definition: ActionExecution = ACTION_REGISTRY[event as PageAction]
+    expect(inject).toHaveBeenCalledWith(expect.objectContaining(definition.type === "style"
+      ? { func: applyPageStyle, args: [definition.id, definition.css] }
+      : { files: [`scripts/${file}.js`] }))
   })
 
-  it("handles YouTube focus mode toggle and boolean options", async () => {
-    expect(await handlePageAction({ event: "youtubeFocus", value: true })).toMatchObject({ ok: true })
-    expect(values.youtubeFocus).toBe(true)
-
-    expect(await handlePageAction({ event: "youtubeFocus", value: false })).toMatchObject({ ok: true })
-    expect(values.youtubeFocus).toBe(false)
-
-    expect(await handlePageAction({ event: "hideYoutubeProgressBar", value: true })).toMatchObject({ ok: true })
-    expect(values.youtubeHideProgress).toBe(true)
-
-    expect(await handlePageAction({ event: "hideYoutubeControls", value: true })).toMatchObject({ ok: true })
-    expect(values.youtubeHideControls).toBe(true)
-
-    expect(await handlePageAction({ event: "hideYoutubeDuration", value: true })).toMatchObject({ ok: true })
-    expect(values.youtubeHideDuration).toBe(true)
-
-    expect(await handlePageAction({ event: "youtubeHalfScreen", value: true })).toMatchObject({ ok: true })
-    expect(values.youtubeHalfScreen).toBe(true)
+  it.each([
+    ["youtubeFocus", "youtubeFocus"],
+    ["hideYoutubeProgressBar", "youtubeHideProgress"],
+    ["hideYoutubeControls", "youtubeHideControls"],
+    ["hideYoutubeDuration", "youtubeHideDuration"],
+    ["youtubeHalfScreen", "youtubeHalfScreen"],
+  ])("persists both states for %s", async (event, key) => {
+    for (const value of [true, false]) {
+      expect(await handlePageAction({ event, value })).toMatchObject({ ok: true })
+      expect(values[key]).toBe(value)
+      const definition: ActionExecution = ACTION_REGISTRY[event as PageAction]
+      if (definition.type === "style") expect(inject).toHaveBeenLastCalledWith(expect.objectContaining({
+        func: applyPageStyle, args: [definition.id, value ? definition.css : ""],
+      }))
+    }
   })
 
   it("handles applyVideoQuality action", async () => {

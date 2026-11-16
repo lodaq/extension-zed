@@ -1,0 +1,1 @@
+- Fix the full screen mode issue

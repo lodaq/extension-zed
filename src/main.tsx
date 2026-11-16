@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 import './main.css'
+import { fitPopup } from './lib/popupLayout'
+
+window.addEventListener('resize', () => setTimeout(fitPopup, 100))
 
 function sizePopup({ width, height }: chrome.windows.Window) {
   const style = document.documentElement.style
@@ -21,6 +24,7 @@ async function startPopup() {
 }
 
 void startPopup().catch(() => { /* Retain the 200px fallback if window bounds are unavailable. */ }).finally(() => {
+  setTimeout(fitPopup, 100)
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <ErrorBoundary>

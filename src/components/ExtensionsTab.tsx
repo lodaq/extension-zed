@@ -236,7 +236,7 @@ export default function ExtensionsTab() {
 
       {permissionState === "granted" && extensions && extensions.length > 0 && (
         <ul className="space-y-1">
-          {extensions.map((extension) => {
+          {[...extensions].sort((a, b) => Number(b.enabled) - Number(a.enabled)).map((extension) => {
             const busy = pending[extension.id]
             const locked = !extension.canToggle && !extension.canUninstall
             const rowTitle = extension.canToggle

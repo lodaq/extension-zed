@@ -63,6 +63,7 @@
         "http://*/*"
       ],
       "js": [
+        "scripts/metaPlayback.js",
         "scripts/applyVideoQuality.js"
       ],
       "run_at": "document_idle",

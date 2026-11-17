@@ -13,6 +13,7 @@ it("replies to runtime messages, reports failure badge, and clears badge on succ
     contextMenus: { removeAll: vi.fn((callback: () => void) => callback()), create: vi.fn(), onClicked: { addListener: vi.fn() } },
     commands: { onCommand: { addListener: vi.fn() } },
     storage: {
+      onChanged: { addListener: vi.fn() },
       local: {
         get: async () => ({ ...values }),
         set: async (patch: Record<string, unknown>) => { Object.assign(values, patch) },
@@ -53,7 +54,7 @@ it("runs page shortcuts from a focused frame before any popup interaction", asyn
       onMessage: { addListener: (listener: typeof message) => { message = listener } },
       onInstalled: { addListener: vi.fn() }, onStartup: { addListener: vi.fn() },
     },
-    storage: { local: { get: async () => ({}), set: vi.fn(async () => {}) } },
+    storage: { onChanged: { addListener: vi.fn() }, local: { get: async () => ({}), set: vi.fn(async () => {}) } },
     scripting: { executeScript: inject },
     tabs: { onActivated: { addListener: vi.fn() }, onUpdated: { addListener: vi.fn() }, query: async () => [] },
   })
@@ -67,6 +68,7 @@ it("runs page shortcuts from a focused frame before any popup interaction", asyn
 it("backfills shortcut listeners on worker load, install and startup without a popup", async () => {
   vi.resetModules()
   const events: Record<string, () => void> = {}
+  let change!: (changes: Record<string, { newValue?: unknown }>, area: string) => void
   const inject = vi.fn(async () => [])
   vi.stubGlobal("chrome", {
     contextMenus: { removeAll: vi.fn((callback: () => void) => callback()), create: vi.fn(), onClicked: { addListener: vi.fn() } },
@@ -78,6 +80,7 @@ it("backfills shortcut listeners on worker load, install and startup without a p
     },
     tabs: { onActivated: { addListener: vi.fn() }, onUpdated: { addListener: vi.fn() }, query: vi.fn(async () => [{ id: 7 }, { id: 8 }]) },
     scripting: { executeScript: inject },
+    storage: { onChanged: { addListener: (listener: typeof change) => { change = listener } } },
   })
   await import("./background")
   expect(chrome.contextMenus.create).toHaveBeenCalledWith({ id: "zed-save-text", title: "Save text to Zed", contexts: ["selection"] })
@@ -87,6 +90,13 @@ it("backfills shortcut listeners on worker load, install and startup without a p
   await vi.waitFor(() => expect(inject).toHaveBeenCalledTimes(4))
   events.startup()
   await vi.waitFor(() => expect(inject).toHaveBeenCalledTimes(6))
+  change({ blackAndWhite: { newValue: true } }, "sync")
+  change({ other: { newValue: true } }, "local")
+  expect(inject).toHaveBeenCalledTimes(6)
+  for (const [index, newValue] of [true, false, undefined].entries()) {
+    change({ blackAndWhite: { newValue } }, "local")
+    await vi.waitFor(() => expect(inject).toHaveBeenCalledTimes(8 + index * 2))
+  }
   expect(inject).toHaveBeenCalledWith({ target: { tabId: 7, allFrames: true }, files: ["scripts/shortcuts.js", "scripts/blackAndWhite.js"] })
 })
 
@@ -104,6 +114,7 @@ it("reconnects activated and newly loaded tabs without opening the popup", async
       onUpdated: { addListener: (listener: typeof update) => { update = listener } },
     },
     scripting: { executeScript: inject },
+    storage: { onChanged: { addListener: vi.fn() } },
   })
   await import("./background")
   activate({ tabId: 7 })
@@ -125,7 +136,7 @@ it.each([
     contextMenus: { removeAll: (callback: () => void) => callback(), create: vi.fn(), onClicked: { addListener: (listener: typeof click) => { click = listener } } },
     runtime: { onMessage: { addListener: vi.fn() }, onInstalled: { addListener: vi.fn() }, onStartup: { addListener: vi.fn() } },
     tabs: { query: async () => [], onActivated: { addListener: vi.fn() }, onUpdated: { addListener: vi.fn() } },
-    storage: { local: { get: async () => values, set: async (patch: object) => { Object.assign(values, patch) } } },
+    storage: { onChanged: { addListener: vi.fn() }, local: { get: async () => values, set: async (patch: object) => { Object.assign(values, patch) } } },
     action: { setBadgeText: vi.fn(), setTitle: vi.fn() },
   })
   await import("./background")

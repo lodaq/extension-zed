@@ -1,24 +1,14 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react"
+import { useEffect, useId, useRef, type ReactNode } from "react"
 import { Icon, type IconName } from "./Icon"
 
-export function Tile({ id, title, tooltip, icon, badge, disabled, onClick }: { id?: string; title: string; tooltip: string; icon: IconName; badge?: string; disabled?: boolean; onClick: () => void }) {
+export function Tile({ id, title, description, icon, badge, disabled, onClick }: { id?: string; title: string; description: string; icon: IconName; badge?: string; disabled?: boolean; onClick: () => void }) {
   const nameId = useId()
   const descriptionId = useId()
   const badgeId = useId()
-  const [dismissed, setDismissed] = useState(false)
-  const [hovered, setHovered] = useState(false)
-  useEffect(() => {
-    if (!hovered) return
-    const dismiss = (event: KeyboardEvent) => { if (event.key === "Escape") setDismissed(true) }
-    window.addEventListener("keydown", dismiss)
-    return () => window.removeEventListener("keydown", dismiss)
-  }, [hovered])
   return <button id={id} type="button" className="zed-tile" disabled={disabled} onClick={onClick}
-    aria-labelledby={`${badge ? `${badgeId} ` : ""}${nameId}`} aria-describedby={descriptionId}
-    data-tooltip-dismissed={dismissed || undefined} onBlur={() => setDismissed(false)} onMouseEnter={() => setHovered(true)} onMouseLeave={() => { setHovered(false); setDismissed(false) }}
-    onKeyDown={event => { if (event.key === "Escape" && !dismissed) { event.stopPropagation(); setDismissed(true) } }}>
+    aria-labelledby={`${badge ? `${badgeId} ` : ""}${nameId}`} aria-describedby={descriptionId}>
     <span className="zed-tile-top"><span className="zed-well"><Icon name={icon} /></span><span id={badgeId}>{badge}</span></span>{" "}
-    <span id={nameId}>{title}</span><span id={descriptionId} className="zed-tooltip" role="tooltip">{tooltip}</span>
+    <span id={nameId} className="zed-tile-label">{title}</span><span id={descriptionId} className="sr-only">{description}</span>
   </button>
 }
 export function SwitchRow({ label, description, checked, onChange, disabled }: { label: string; description?: string; checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {

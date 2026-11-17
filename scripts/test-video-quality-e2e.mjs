@@ -18,11 +18,12 @@ function playerPage(kind = "hls") {
         document.addEventListener(type, () => window.inputEvents++, true);
       }
       window.selected = null;
+      window.qualityCalls = 0;
       window.attachPlayer = function(video) {
         if (${JSON.stringify(kind)} === 'hls') {
           video.hls = {
             media: video, levels: [{height:360}, {height:720}, {height:1080}],
-            set loadLevel(index) { window.selected = index < 0 ? 'auto' : this.levels[index].height + 'p'; this.media.dataset.quality = window.selected; }
+            set loadLevel(index) { window.qualityCalls++; window.selected = index < 0 ? 'auto' : this.levels[index].height + 'p'; this.media.dataset.quality = window.selected; }
           };
         }
         if (${JSON.stringify(kind)} === 'videojs') {
@@ -145,6 +146,26 @@ async function main() {
       if (granted.isError) throw new Error(parseTextContent(granted));
       const response = await evaluate(client, 1, `async () => chrome.runtime.sendMessage({event:'applyVideoQuality'})`);
       if (!response?.ok || response.message !== "Player quality set to 1080p") throw new Error(JSON.stringify(response));
+    });
+    await check("Changing playback speed preserves the player's current quality", async () => {
+      const qualityCalls = await evaluate(client, page, `() => {
+        const video = document.querySelector('video');
+        video.hls.loadLevel = 0;
+        return window.qualityCalls;
+      }`);
+      const response = await evaluate(client, 1, `async () => {
+        const [tab] = await chrome.tabs.query({url:${JSON.stringify(`${base}/hls`)}});
+        return chrome.runtime.sendMessage({event:'playbackRateApply',value:1.7,tabId:tab.id});
+      }`);
+      if (!response?.ok) throw new Error(JSON.stringify(response));
+      await evaluate(client, page, `() => {
+        const video = document.querySelector('video');
+        for (const type of ['emptied','loadstart','loadedmetadata','playing']) video.dispatchEvent(new Event(type, {bubbles:true}));
+        return true;
+      }`);
+      await waitForState(client, page, { selected: "360p", rate: 1.7, input: 0 });
+      const after = await evaluate(client, page, '() => window.qualityCalls');
+      if (after !== qualityCalls) throw new Error(`Speed change made ${after - qualityCalls} quality calls`);
     });
     await check("Changed settings apply to existing videos and frames", async () => {
       await evaluate(client, 1, `async () => { await chrome.storage.local.set({speed:'1.5'}); return true; }`);

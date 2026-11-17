@@ -29,7 +29,7 @@ export const SHORTCUT_ACTIONS = [
   { id: "action27", group: 'Appearance', name: 'Toggle black and white', combo: '' },
 ] as const
 export const POPUP_SHORTCUT_ACTIONS = [
-  ...["Misc", "Extensions", "YouTube", "Links", "Saved", "Shortcuts", "Settings"].map((name, index) => ({ id: `tab${index}`, group: "Popup · Tabs", name: `Open ${name}`, combo: String(index + 1) })),
+  ...["Misc", "Extensions", "YouTube", "Links", "Saved", "Shortcuts", "Settings"].map((name, index) => ({ id: `tab${index}`, group: "Popup · Tabs", name: `Open ${name}`, combo: name === "Settings" ? "S" : String(index + 1) })),
   { id: "back", group: "Popup · Navigation", name: "Back", combo: "Escape" },
   { id: "hints", group: "Popup · Navigation", name: "Show click hints", combo: "F" },
 ]

@@ -6,14 +6,10 @@
     hd720: 720, large: 480, medium: 360, small: 240, tiny: 144,
   };
   const SETTINGS_ATTRIBUTE = "data-zed-video-quality";
-  const SPEED_ATTRIBUTE = "data-zed-playback-speed";
-  const isFacebook = /(^|\.)facebook\.com$/i.test(window.location && window.location.hostname || "");
-  const isMeta = isFacebook || /(^|\.)instagram\.com$/i.test(window.location && window.location.hostname || "");
+  const isMeta = /(^|\.)(facebook|instagram)\.com$/i.test(window.location && window.location.hostname || "");
   const isTikTok = /(^|\.)tiktok\.com$/i.test(window.location && window.location.hostname || "");
-  const metaControllers = new WeakMap();
-  let speed = null;
   let settings = null;
-  let applied = new WeakMap();
+  const applied = new WeakMap();
   // YouTube identifies videos by ID; rebuffering must not reset its quality choice.
   const youtubeApplied = new WeakMap();
   let retryTimers = [];
@@ -140,62 +136,9 @@
     }, force);
   }
 
-  function metaController(video) {
-    function match(value) {
-      if (value && typeof value.selectVideoQuality === "function" && typeof value.getCurrentState === "function" &&
-          typeof value.internal_getVideoElement === "function" && value.internal_getVideoElement() === video) return value;
-      return null;
-    }
-    const cached = match(metaControllers.get(video));
-    if (cached) return cached;
-    const key = Object.getOwnPropertyNames(video).find(function (key) { return key.startsWith("__reactFiber$"); });
-    let fiber = key && video[key];
-    if (!fiber) {
-      let root = null;
-      for (let element = video; element && !root; element = element.parentElement) {
-        const rootKey = Object.getOwnPropertyNames(element).find(function (key) { return key.startsWith("__reactContainer$"); });
-        if (rootKey) {
-          const container = element[rootKey];
-          root = container.stateNode && container.stateNode.current || container;
-        }
-      }
-      // Some Meta builds keep host fibers only in the root tree; bound the fallback scan.
-      const pending = root ? [root] : [];
-      const seen = new Set();
-      for (let visited = 0; pending.length && visited < 20000; visited++) {
-        const candidate = pending.pop();
-        if (!candidate || seen.has(candidate)) continue;
-        seen.add(candidate);
-        if (candidate.stateNode === video) { fiber = candidate; break; }
-        if (candidate.sibling) pending.push(candidate.sibling);
-        if (candidate.child) pending.push(candidate.child);
-      }
-    }
-    // shortcut: Meta exposes this controller through React refs; revisit if its player internals change.
-    for (let depth = 0; fiber && depth < 40; fiber = fiber.return, depth++) {
-      let controller = match(fiber.memoizedProps && fiber.memoizedProps.value);
-      for (let hook = fiber.memoizedState, count = 0; !controller && hook && count < 100; hook = hook.next, count++) {
-        const state = hook.memoizedState;
-        controller = match(state) || match(state && state.implementationController) ||
-          match(state && state.current && state.current.value && state.current.value.implementationController);
-      }
-      for (let context = fiber.dependencies && fiber.dependencies.firstContext, count = 0;
-           !controller && context && count < 20; context = context.next, count++) controller = match(context.memoizedValue);
-      if (controller) { metaControllers.set(video, controller); return controller; }
-    }
-    return null;
-  }
-
-  function syncMetaSpeed(controller) {
-    if (speed === null || typeof controller.setPlaybackRate !== "function") return;
-    const state = controller.getCurrentState();
-    if (state && state.targetPlaybackRate !== speed) controller.setPlaybackRate(speed);
-  }
-
   function applyMeta(video, force) {
-    const controller = metaController(video);
+    const controller = window.__zedMetaControllerFor && window.__zedMetaControllerFor(video);
     if (!controller || typeof controller.isFrozen === "function" && controller.isFrozen()) return null;
-    syncMetaSpeed(controller);
     if (!settings) return null;
     const state = controller.getCurrentState();
     if (!Array.isArray(state.availableVideoQualities)) return null;
@@ -247,20 +190,8 @@
     }, force);
   }
 
-  function setSpeed(value) {
-    const next = Number(value);
-    speed = Number.isFinite(next) && next >= 0.1 && next <= 10 ? Math.round(next * 10) / 10 : null;
-    if (!isMeta) return;
-    for (const video of queryAll("video")) {
-      try {
-        const controller = metaController(video);
-        if (controller) syncMetaSpeed(controller);
-      } catch (error) {}
-    }
-  }
-
   function applyAll(force) {
-    if (!settings && speed === null) return Promise.resolve(null);
+    if (!settings) return Promise.resolve(null);
     let result = null;
     function attempt(action, active) {
       // A disposed or unsupported player must not stop other videos in the frame.
@@ -333,20 +264,17 @@
   }
 
   if (window.__zedVideoQualityEngine) {
-    if (window.__zedVideoQualityEngine.version !== 10) {
+    if (window.__zedVideoQualityEngine.version !== 12) {
       window.__zedVideoQualityEngine.setSettings({ quality: "auto", fallback: "lower" }, { apply: false });
       throw new Error("Refresh this tab to replace the old video quality handler.");
     }
     return window.__zedVideoQualityEngine.apply(normalize(window.__zedVideoQualitySettings) || undefined);
   }
-  window.__zedVideoQualityEngine = { apply, applyAll, setSettings, getSettings: function () { return settings; }, version: 10 };
+  window.__zedVideoQualityEngine = { apply, applyAll, setSettings, getSettings: function () { return settings; }, version: 12 };
 
   function onMedia(event) {
     if (!event.target || event.target.tagName !== "VIDEO") return;
-    if (event.type === "loadstart" || event.type === "emptied") {
-      applied = new WeakMap();
-      return;
-    }
+    if (event.type === "loadstart" || event.type === "emptied") return;
     void applyAll(false);
   }
 
@@ -356,22 +284,17 @@
     document.addEventListener("zed-video-quality-changed", function (event) {
       try { setSettings(typeof event.detail === "string" ? JSON.parse(event.detail) : event.detail); } catch (error) {}
     });
-    document.addEventListener("zed-playback-speed-changed", function (event) { setSpeed(event.detail); });
     document.addEventListener("yt-navigate-finish", function () { void applyAll(false); scheduleRetries(); });
   }
   if (typeof MutationObserver !== "undefined" && document.documentElement) {
     observer = new MutationObserver(function (records) {
-      if (records.some(function (record) { return record.type === "attributes" && record.target === document.documentElement; })) {
-        setSettings(readSettings());
-        if (isMeta) setSpeed(document.documentElement.getAttribute(SPEED_ATTRIBUTE));
-      }
+      if (records.some(function (record) { return record.type === "attributes" && record.target === document.documentElement && record.attributeName === SETTINGS_ATTRIBUTE; })) setSettings(readSettings());
       for (const record of records) for (const node of record.addedNodes) if (node.nodeType === 1) discover(node);
       if (records.some(function (record) { return record.addedNodes.length > 0; })) void applyAll(false);
     });
-    observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: [SETTINGS_ATTRIBUTE, SPEED_ATTRIBUTE] });
+    observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: [SETTINGS_ATTRIBUTE] });
   }
   discover(document);
-  if (isMeta && document.documentElement) setSpeed(document.documentElement.getAttribute(SPEED_ATTRIBUTE));
 
   const initial = normalize(window.__zedVideoQualitySettings) || readSettings();
   if (initial) return apply(initial);

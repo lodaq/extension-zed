@@ -28,14 +28,14 @@ import { showClickHints } from "@/lib/clickHints"
 import ShortcutsTab from "@/components/ShortcutsTab"
 
 const tools = [
-  { id: "limiter", title: "Site limiter", tooltip: "Locked website blocks and daily usage limits", component: SiteLimiter },
-  { id: "playback", title: "Playback speed", tooltip: "Speed up or slow down video", component: ChangePlaybackRate },
-  { id: "quality", title: "Video quality", tooltip: "Set a preferred resolution", component: VideoQualitySection },
-  { id: "password", title: "Password generator", tooltip: "Random, customizable passwords", component: PasswordGenerator },
-  { id: "volume", title: "Volume boost", tooltip: "Amplify audio up to 2000%", component: VolumeBooster },
-  { id: "scrollbars", title: "Scrollbars", tooltip: "Restyle or hide scrollbars", component: ScrollbarsSection },
-  { id: "modes", title: "Modes", tooltip: "Inspect, design and RTL", component: ModesSection },
-  { id: "capture", title: "Capture screenshot", tooltip: "Selected area, visible area, full page or element", component: ScreenshotSection },
+  { id: "limiter", title: "Site limiter", description: "Locked website blocks and daily usage limits", component: SiteLimiter },
+  { id: "playback", title: "Playback speed", description: "Speed up or slow down video", component: ChangePlaybackRate },
+  { id: "quality", title: "Video quality", description: "Set a preferred resolution", component: VideoQualitySection },
+  { id: "password", title: "Password generator", description: "Random, customizable passwords", component: PasswordGenerator },
+  { id: "volume", title: "Volume boost", description: "Amplify audio up to 2000%", component: VolumeBooster },
+  { id: "scrollbars", title: "Scrollbars", description: "Restyle or hide scrollbars", component: ScrollbarsSection },
+  { id: "modes", title: "Modes", description: "Inspect, design and RTL", component: ModesSection },
+  { id: "capture", title: "Capture screenshot", description: "Selected area, visible area, full page or element", component: ScreenshotSection },
 ] as const
 const tabs = ["Misc", "Extensions", "YouTube", "Links", "Saved", "Shortcuts"] as const
 const DEFAULT_LOCATION = { tab: "Misc", detail: null as string | null, settings: false }
@@ -80,7 +80,18 @@ export default function App() {
   const [shortcuts] = useStoredValue("keyboardShortcuts", DEFAULT_SHORTCUTS)
   const bindings = readShortcuts(shortcuts)
   useEffect(() => {
-    let clearHints: (() => void) | undefined
+    void (async () => {
+      const stored = await chrome.storage.local.get(["keyboardShortcuts", "popupShortcutKeysV2"])
+      if (stored.popupShortcutKeysV2) return
+      const next = readShortcuts(stored.keyboardShortcuts)
+      if (next.tab1 === "A") next.tab1 = "2"
+      if (next.tab6 === "7") next.tab6 = "S"
+      await chrome.storage.local.set({ keyboardShortcuts: next, popupShortcutKeysV2: true })
+    })().catch(error => toast({ title: String(error), variant: "destructive" }))
+  }, [])
+  const clearHints = useRef<(() => void) | undefined>(undefined)
+  useEffect(() => () => { clearHints.current?.() }, [location, shortcuts])
+  useEffect(() => {
     const listener = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat) return
       if (event.isComposing || document.querySelector('dialog[open], [role="dialog"]')) return
@@ -96,7 +107,7 @@ export default function App() {
         if (target) void setLocation({ ...location, tab: target, settings: false })
         return
       }
-      if (id === "hints") { clearHints?.(); clearHints = showClickHints(); return }
+      if (id === "hints") { clearHints.current?.(); clearHints.current = showClickHints(); return }
       if (id === "back") {
         void setLocation({ tab: settings ? tab : "Misc", settings: false, detail: settings || tab !== "Misc" ? detail : null })
         return
@@ -107,7 +118,7 @@ export default function App() {
       }).catch(error => toast({ title: String(error), variant: "destructive" }))
     }
     window.addEventListener("keydown", listener)
-    return () => { window.removeEventListener("keydown", listener); clearHints?.() }
+    return () => { window.removeEventListener("keydown", listener) }
   }, [location, settings, detail, tab, shortcuts, setLocation])
   const [order] = useStoredValue("miscSectionOrder", DEFAULT_TOOL_ORDER)
   const [passwordOptions, setPasswordOptions] = useState(DEFAULT_PASSWORD_OPTIONS)
@@ -164,11 +175,11 @@ export default function App() {
       )}
       <div className="zed-tiles">
         {orderedTools.map(tool => (
-          <Tile key={tool.id} id={`zed-tool-${tool.id}`} title={tool.title} tooltip={tool.tooltip} icon={tool.id === "limiter" ? "modes" : tool.id}
+          <Tile key={tool.id} id={`zed-tool-${tool.id}`} title={tool.title} description={tool.description} icon={tool.id === "limiter" ? "modes" : tool.id}
             badge={badges[tool.id]} disabled={restricted && tool.id !== "password" && tool.id !== "limiter"}
             onClick={() => setDetail(tool.id)} />
         ))}
-        <Tile title="Save & close tab" tooltip="Save this tab’s URL to Links, then close the tab" icon="save" onClick={saveTab} />
+        <Tile title="Save & close tab" description="Save this tab’s URL to Links, then close the tab" icon="save" onClick={saveTab} />
       </div>
     </div>
   )
@@ -200,7 +211,10 @@ export default function App() {
       <div className="zed-content zed-scroll"
         ref={restoreScroll}
         onScroll={event => saveStoredScrollPosition(`${tab}-${detail}-${settings}`, event.currentTarget.scrollTop)}>
-        {content}
+        {selected && !settings ? <div className="zed-stack zed-root">
+          <p className="zed-helper">{selected.description}</p>
+          {content}
+        </div> : content}
         <Activity mode={!settings && tab === "Extensions" ? "visible" : "hidden"}>
           <ExtensionsTab />
         </Activity>

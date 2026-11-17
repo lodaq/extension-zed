@@ -87,6 +87,9 @@ chrome.runtime.onInstalled.addListener(() => {
   void installShortcutsInOpenTabs().catch(console.error)
 })
 chrome.runtime.onStartup.addListener(() => { void installShortcutsInOpenTabs().catch(console.error) })
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.blackAndWhite) void installShortcutsInOpenTabs().catch(console.error)
+})
 
 // Extension reloads also restart the worker without a browser-startup event.
 void installShortcutsInOpenTabs().catch(console.error)

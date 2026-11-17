@@ -69,7 +69,7 @@ async function applyVideoQualityAction(
       Object.assign(window, { __zedVideoQualitySettings: { quality, fallback: fallbackOption } })
     },
   })
-  const results = await executeScriptWithFallback(tabId, true, { files: ["scripts/applyVideoQuality.js"], world: "MAIN" })
+  const results = await executeScriptWithFallback(tabId, true, { files: ["scripts/metaPlayback.js", "scripts/applyVideoQuality.js"], world: "MAIN" })
   const selected = [
     ...new Set(
       results

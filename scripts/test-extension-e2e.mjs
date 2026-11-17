@@ -114,6 +114,15 @@ async function run() {
     record("Popup has zero console errors", !hasPopupConsoleErrors, hasPopupConsoleErrors ? consoleText : "clean");
 
     // Test password generator in popup
+    const tileHelp = await client.callTool("evaluate_script", {
+      pageId: 1,
+      function: `() => {
+        const tile = document.getElementById('zed-tool-password');
+        tile.focus();
+        return !document.querySelector('.zed-tile [role="tooltip"], .zed-tooltip') && !tile.hasAttribute('title');
+      }`,
+    });
+    record("Feature tiles have no hover or focus tooltips", !tileHelp.isError && /\btrue\b/.test(parseTextContent(tileHelp)));
     console.log("\n7. Testing Password Generator interactive controls in Popup...");
     const pwGenEval = await client.callTool("evaluate_script", {
       pageId: 1,
@@ -130,6 +139,7 @@ async function run() {
 
         const newVal = input ? input.value : null;
         return {
+          descriptionVisible: [...document.querySelectorAll('p.zed-helper')].some(node => node.textContent === 'Random, customizable passwords' && node.getBoundingClientRect().height > 0),
           opened: !!input,
           initialLen: initialVal ? initialVal.length : 0,
           newLen: newVal ? newVal.length : 0,
@@ -140,6 +150,7 @@ async function run() {
     });
     const pwGenText = parseTextContent(pwGenEval);
     record("Password Generator click & update", pwGenText.includes('"hasValue":true') && pwGenText.includes('"changed":true'), pwGenText);
+    record("Feature description appears inside the opened tool", pwGenText.includes('"descriptionVisible":true'));
 
     for (const { tab, name, matches, delay } of [
       { tab: "Extensions", name: "Extensions tab brave://extensions button present", matches: text => text.includes("brave://extensions"), delay: 200 },
@@ -164,6 +175,56 @@ async function run() {
       if (result.isError || !json) throw new Error(parseTextContent(result));
       return JSON.parse(json[1]);
     };
+    await popupEvaluate(`async () => {
+      await chrome.storage.local.set({popupLocation:{tab:"Misc",detail:null,settings:false},keyboardShortcuts:{tab1:"A",tab6:"7",action2:"Cmd+K"},popupShortcutKeysV2:false});
+      return true;
+    }`);
+    await client.callTool("navigate_page", { pageId: 1, url: popupUrl });
+    record("Shortcut migration preserves other assignments", await popupEvaluate(`async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return (await chrome.storage.local.get('keyboardShortcuts')).keyboardShortcuts.action2 === 'Cmd+K';
+    }`));
+    await client.callTool("press_key", { pageId: 1, key: "2" });
+    record("2 opens Extensions with an existing shortcut map", await popupEvaluate('() => document.querySelector("h1").textContent === "Extensions" && document.querySelector(\'[aria-keyshortcuts="2"]\').textContent.includes("Extensions")'));
+    await client.callTool("press_key", { pageId: 1, key: "s" });
+    record("S opens Settings with an existing shortcut map", await popupEvaluate('() => document.querySelector("h1").textContent === "Settings" && document.querySelector(\'[aria-label="Settings"]\').getAttribute("aria-keyshortcuts") === "S"'));
+    await popupEvaluate(`async () => {
+      await chrome.storage.local.set({popupLocation:{tab:"Misc",detail:null,settings:false}});
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return true;
+    }`);
+    await client.callTool("press_key", { pageId: 1, key: "f" });
+    record("F shows click hints", await popupEvaluate('() => document.querySelectorAll(".zed-hint").length > 0'));
+    record("S is reserved for Settings in hint labels", await popupEvaluate('() => [...document.querySelectorAll(".zed-hint")].every(node => !node.textContent.includes("s"))'));
+    await client.callTool("press_key", { pageId: 1, key: "s" });
+    record("S opens Settings during hint mode", await popupEvaluate('() => document.querySelector("h1").textContent === "Settings" && !document.querySelector(".zed-hints")'));
+    await client.callTool("press_key", { pageId: 1, key: "Escape" });
+    await client.callTool("press_key", { pageId: 1, key: "f" });
+    const passwordHint = await popupEvaluate(`async () => {
+      const target = document.getElementById('zed-tool-password').getBoundingClientRect();
+      const hint = [...document.querySelectorAll('.zed-hint')].find(node => Math.abs(parseFloat(node.style.top) - target.top) < 1 && Math.abs(parseFloat(node.style.left) - target.right) < 1)?.textContent;
+      await chrome.storage.local.set({speed:"1.5"});
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return {label:hint, visible:!!document.querySelector('.zed-hints')};
+    }`);
+    record("Click hints survive unrelated popup updates", !!passwordHint.label && passwordHint.visible, JSON.stringify(passwordHint));
+    if (passwordHint.label) {
+      for (const key of passwordHint.label) await client.callTool("press_key", { pageId: 1, key });
+      record("Typing a hint opens its tool and clears hints", await popupEvaluate('() => document.querySelector("h1").textContent === "Password generator" && !document.querySelector(".zed-hints")'));
+      await popupEvaluate(`async () => {
+        await chrome.storage.local.set({popupLocation:{tab:"Misc",detail:null,settings:false}});
+        await new Promise(resolve => setTimeout(resolve, 100));
+        return true;
+      }`);
+      await client.callTool("press_key", { pageId: 1, key: "f" });
+      await popupEvaluate(`() => {
+        for (const letter of ${JSON.stringify(passwordHint.label)}) {
+          window.dispatchEvent(new KeyboardEvent('keydown', {key:'ش',code:'Key'+letter.toUpperCase(),bubbles:true,cancelable:true}));
+        }
+        return true;
+      }`);
+      record("Non-Latin keyboard layout activates the displayed hint", await popupEvaluate('() => document.querySelector("h1").textContent === "Password generator" && !document.querySelector(".zed-hints")'));
+    }
     await popupEvaluate(`async () => {
       await chrome.storage.local.set({popupLocation:{tab:"Shortcuts",detail:null,settings:false}});
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -207,6 +268,19 @@ async function run() {
 
     // Wait for test page DOM to settle
     await client.callTool("wait_for", { pageId: testPageId, selector: "h1" });
+    await client.callTool("evaluate_script", { pageId: testPageId, function: '() => { window.zedNoReloadCheck = true; return true; }' });
+    for (const enabled of [true, false]) {
+      await popupEvaluate(`async () => {
+        await chrome.storage.local.set({blackAndWhite:${enabled}});
+        await new Promise(resolve => setTimeout(resolve, 100));
+        return true;
+      }`);
+      const state = await client.callTool("evaluate_script", {
+        pageId: testPageId,
+        function: `() => window.zedNoReloadCheck === true && getComputedStyle(document.documentElement).filter === ${JSON.stringify(enabled ? "grayscale(1)" : "none")}`,
+      });
+      record(`Grayscale turns ${enabled ? "on" : "off"} without reloading`, !state.isError && /\btrue\b/.test(parseTextContent(state)), parseTextContent(state));
+    }
 
     const pageInspect = await client.callTool("evaluate_script", {
       pageId: testPageId,

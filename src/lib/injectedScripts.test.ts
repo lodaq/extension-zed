@@ -255,7 +255,7 @@ it("applies grayscale on load and removes it when disabled or reset", async () =
   const append = vi.fn()
   let change!: (changes: Record<string, { newValue?: unknown }>, area: string) => void
   runInNewContext(script("blackAndWhite"), {
-    document: { createElement: () => style, documentElement: { append } },
+    document: { getElementById: () => null, querySelectorAll: () => [], createElement: () => style, documentElement: { append } },
     chrome: { storage: {
       local: { get: async () => ({ blackAndWhite: true }) },
       onChanged: { addListener: (listener: typeof change) => { change = listener } },
@@ -271,10 +271,44 @@ it("applies grayscale on load and removes it when disabled or reset", async () =
   expect(append).toHaveBeenCalledTimes(2)
 })
 
-it("installs the grayscale listener only once when reinjected", () => {
+it("reapplies grayscale on reinjection without duplicating its listener or style", async () => {
   const addListener = vi.fn()
-  const context = { globalThis: {}, document: { createElement: () => ({ remove() {} }), documentElement: {} }, chrome: { storage: { local: { get: async () => ({}) }, onChanged: { addListener } } } }
-  runInNewContext(script("blackAndWhite"), context)
-  runInNewContext(script("blackAndWhite"), context)
+  const style = { remove: vi.fn() }, append = vi.fn(), createElement = vi.fn(() => style)
+  const get = vi.fn().mockResolvedValueOnce({ blackAndWhite: true }).mockResolvedValueOnce({ blackAndWhite: false })
+  const context = { globalThis: {}, document: { getElementById: () => null, querySelectorAll: () => [], createElement, documentElement: { append } }, chrome: { storage: { local: { get }, onChanged: { addListener } } } }
+  await runInNewContext(script("blackAndWhite"), context)
+  expect(append).toHaveBeenCalledWith(style)
+  await runInNewContext(script("blackAndWhite"), context)
+  expect(style.remove).toHaveBeenCalledOnce()
+  expect(createElement).toHaveBeenCalledOnce()
   expect(addListener).toHaveBeenCalledTimes(1)
+})
+
+it("keeps a live grayscale toggle when an older startup read completes", async () => {
+  let finish!: (value: object) => void
+  let change!: (changes: Record<string, { newValue?: unknown }>, area: string) => void
+  const style = { remove: vi.fn() }, append = vi.fn()
+  const pending = runInNewContext(script("blackAndWhite"), {
+    document: { getElementById: () => null, querySelectorAll: () => [], createElement: () => style, documentElement: { append } },
+    chrome: { storage: {
+      local: { get: () => new Promise(resolve => { finish = resolve }) },
+      onChanged: { addListener: (listener: typeof change) => { change = listener } },
+    } },
+  })
+  change({ blackAndWhite: { newValue: false } }, "local")
+  finish({ blackAndWhite: true })
+  await pending
+  expect(style.remove).toHaveBeenCalledOnce()
+  expect(append).not.toHaveBeenCalled()
+})
+
+it("removes grayscale left by an older extension without a page reload", async () => {
+  const style = { textContent: "html{filter:grayscale(1)!important}", remove: vi.fn() }
+  const createElement = vi.fn()
+  await runInNewContext(script("blackAndWhite"), {
+    document: { getElementById: () => null, querySelectorAll: () => [style], createElement },
+    chrome: { storage: { local: { get: async () => ({ blackAndWhite: false }) }, onChanged: { addListener: vi.fn() } } },
+  })
+  expect(style.remove).toHaveBeenCalledOnce()
+  expect(createElement).not.toHaveBeenCalled()
 })

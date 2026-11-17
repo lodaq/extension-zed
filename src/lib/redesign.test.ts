@@ -56,6 +56,7 @@ it("preserves save shortcuts edited inside Zed", () => {
   expect(() => recordCombo(event)).toThrow()
  })
 
-it("adds Settings as the seventh popup shortcut for existing users", () => {
-  expect(readShortcuts({ tab0: "1" }).tab6).toBe("7")
+it("defaults Extensions to 2 and Settings to S while preserving custom assignments", () => {
+  expect(readShortcuts({ tab0: "1" })).toMatchObject({ tab1: "2", tab6: "S" })
+  expect(readShortcuts({ tab1: "E", tab6: "G" })).toMatchObject({ tab1: "E", tab6: "G" })
 })

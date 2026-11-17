@@ -19,6 +19,15 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe("page actions", () => {
+  it.each(['playbackFaster', 'playbackSlower', 'playbackRateApply'])("%s only writes speed and injects playback code", async event => {
+    values.videoQuality = 'hd720'
+    values.videoQualityFallback = 'higher'
+    expect(await handlePageAction({ event, ...(event === 'playbackRateApply' ? { value: 2 } : {}) })).toMatchObject({ ok: true })
+    expect(set).toHaveBeenCalledOnce()
+    expect(Object.keys(set.mock.calls[0][0])).toEqual(['speed'])
+    expect(values).toMatchObject({ videoQuality: 'hd720', videoQualityFallback: 'higher' })
+    expect(inject.mock.calls.flatMap(([options]) => options.files ?? [])).toEqual(['scripts/playbackRatePersist.js'])
+  })
   it("handles playback faster", async () => {
     expect(await handlePageAction({ event: "playbackFaster" })).toMatchObject({ ok: true })
     expect(values.speed).toBe("1.5")
@@ -115,7 +124,7 @@ describe("page actions", () => {
     values.videoQualityFallback = "higher"
     inject.mockResolvedValue([{ frameId: 0, result: "2160p" }])
     expect(await handlePageAction({ event: "applyVideoQuality" })).toMatchObject({ ok: true, message: "Player quality set to 2160p" })
-    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/applyVideoQuality.js"] }))
+    expect(inject).toHaveBeenCalledWith(expect.objectContaining({ files: ["scripts/metaPlayback.js", "scripts/applyVideoQuality.js"] }))
   })
 
   it("reports unsupported quality instead of claiming the saved preference was applied", async () => {

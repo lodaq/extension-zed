@@ -1,4 +1,4 @@
-const alphabet = "asdfghjklqwertyuiopzxcvbnm"
+const alphabet = "adfghjklqwertyuiopzxcvbnm"
 export function hintLabels(count: number): string[] {
   const width = Math.max(1, Math.ceil(Math.log(Math.max(1, count)) / Math.log(alphabet.length)))
   return Array.from({ length: count }, (_, index) => {
@@ -43,11 +43,13 @@ export function showClickHints(): () => void {
     window.removeEventListener('pointerdown', cleanup, true)
   }
   const keydown = (event: KeyboardEvent) => {
-    if (event.isComposing || event.repeat) return
+    if (event.isComposing || event.repeat || event.key === 'Shift') return
+    const key = (/^Key[A-Z]$/.test(event.code) ? event.code.slice(3) : event.key).toLowerCase()
+    if (key === 's' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { cleanup(); return }
     event.preventDefault()
     event.stopImmediatePropagation()
     if (event.key === 'Escape' || event.ctrlKey || event.metaKey || event.altKey) { cleanup(); return }
-    prefix += event.key.toLowerCase()
+    prefix += key
     const index = labels.indexOf(prefix)
     if (index >= 0) {
       cleanup()

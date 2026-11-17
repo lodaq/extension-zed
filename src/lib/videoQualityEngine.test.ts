@@ -3,26 +3,78 @@ import { runInNewContext } from "node:vm"
 import { describe, expect, it, vi } from "vitest"
 
 const source = readFileSync(new URL("../../public/scripts/applyVideoQuality.js", import.meta.url), "utf8")
+const speedSource = readFileSync(new URL("../../public/scripts/metaPlayback.js", import.meta.url), "utf8")
 
 function page(videos: object[], extra: Record<string, unknown> = {}, youtubePlayers: object[] = []) {
-  const listeners = new Map<string, (event: { type: string; target: object; detail?: unknown }) => void>()
+  let mutation!: (records: object[]) => void
+  const attributes = new Map<string, string>()
+  const root = { getAttribute: (name: string) => attributes.get(name) ?? null }
+  type Listener = (event: { type: string; target: object; detail?: unknown }) => void
+  const listeners = new Map<string, Listener[]>()
   const win = {
     __zedVideoQualitySettings: { quality: "hd1080", fallback: "lower" },
     ...extra,
   }
-  const run = () => runInNewContext(source, {
+  const runSource = (program: string) => runInNewContext(program, {
     window: win,
     document: {
+      documentElement: root,
       getElementById: () => null,
       querySelectorAll: (selector: string) => selector === "video" ? videos : selector === ".html5-video-player" ? youtubePlayers : [],
-      addEventListener: (type: string, listener: (event: { type: string; target: object; detail?: unknown }) => void) => listeners.set(type, listener),
+      addEventListener: (type: string, listener: Listener) => listeners.set(type, [...listeners.get(type) ?? [], listener]),
     },
     setTimeout: vi.fn(), clearTimeout: vi.fn(),
+    MutationObserver: class {
+      constructor(callback: typeof mutation) { mutation = callback }
+      observe() {}
+    },
   })
-  return { win, run, event: (type: string, target: object, detail?: unknown) => listeners.get(type)?.({ type, target, detail }) }
+  return { win, run: () => runSource(speedSource + '\n' + source), runSpeed: () => runSource(speedSource), attributes, mutate: (attributeName: string) => mutation([{ type: 'attributes', target: root, attributeName, addedNodes: [] }]), event: (type: string, target: object, detail?: unknown) => listeners.get(type)?.forEach(listener => listener({ type, target, detail })) }
 }
 
 describe("programmatic video quality", () => {
+  it("updates native Meta speed without loading or accessing video quality", async () => {
+    const state = { targetPlaybackRate: 1 }
+    Object.defineProperty(state, 'selectedVideoQuality', { get() { throw new Error('Quality must not be read') } })
+    const video = { tagName: 'VIDEO', __reactFiber$test: {} }
+    const setPlaybackRate = vi.fn((rate: number) => { state.targetPlaybackRate = rate })
+    const selectVideoQuality = vi.fn()
+    const controller = { getCurrentState: () => state, internal_getVideoElement: () => video, setPlaybackRate, selectVideoQuality }
+    video.__reactFiber$test = { memoizedProps: { value: controller } }
+    const p = page([video], { location: { hostname: 'www.facebook.com' } })
+    Object.defineProperty(p.win, '__zedVideoQualitySettings', { get() { throw new Error('Quality settings must not be read') } })
+    p.runSpeed()
+    p.event('zed-playback-speed-changed', video, 2)
+    expect(setPlaybackRate).toHaveBeenCalledWith(2)
+    expect(selectVideoQuality).not.toHaveBeenCalled()
+    expect('__zedVideoQualityEngine' in p.win).toBe(false)
+  })
+  it("does not reread quality settings when only playback speed changes", async () => {
+    const setPlaybackQuality = vi.fn()
+    const player = { getAvailableQualityLevels: () => ['hd1080', 'hd720'], setPlaybackQuality }
+    const p = page([], { __zedVideoQualitySettings: { quality: 'hd720', fallback: 'lower' } }, [player])
+    p.attributes.set('data-zed-video-quality', JSON.stringify({ quality: 'hd1080', fallback: 'lower' }))
+    await p.run()
+    expect(setPlaybackQuality).toHaveBeenLastCalledWith('hd720')
+    p.mutate('data-zed-playback-speed')
+    expect(setPlaybackQuality).toHaveBeenCalledTimes(1)
+    p.mutate('data-zed-video-quality')
+    expect(setPlaybackQuality).toHaveBeenLastCalledWith('hd1080')
+  })
+
+  it("keeps a player's quality choice during speed-related media reload events", async () => {
+    const change = vi.fn()
+    const video = { tagName: 'VIDEO', currentSrc: 'stream' }
+    Object.assign(video, { hls: { media: video, levels: [{ height: 720 }], set loadLevel(index: number) { change(index) } } })
+    const p = page([video])
+    await p.run()
+    p.event('zed-playback-speed-changed', video, 2)
+    for (const type of ['emptied', 'loadstart', 'loadedmetadata', 'canplay', 'playing']) p.event(type, video)
+    expect(change).toHaveBeenCalledTimes(1)
+    video.currentSrc = 'next-stream'
+    p.event('loadedmetadata', video)
+    expect(change).toHaveBeenCalledTimes(2)
+  })
   it.each(["hd720", "auto"])("does not reapply YouTube quality %s during playback reload events", async quality => {
     const setPlaybackQualityRange = vi.fn()
     const setPlaybackQuality = vi.fn()
@@ -304,7 +356,7 @@ describe("programmatic video quality", () => {
     expect(configure).toHaveBeenLastCalledWith({ abr: { enabled: true } })
   })
 
-  it("retries late levels, deduplicates media events, and handles reused sources", async () => {
+  it("retries late levels, deduplicates media events, and handles new sources", async () => {
     const levels: { height: number }[] = []
     const change = vi.fn()
     const video = { tagName: "VIDEO", currentSrc: "blob:reused", hls: {} }
@@ -318,6 +370,9 @@ describe("programmatic video quality", () => {
     p.event("canplay", video)
     expect(change).toHaveBeenCalledTimes(1)
     p.event("loadstart", video)
+    p.event("loadedmetadata", video)
+    expect(change).toHaveBeenCalledTimes(1)
+    Object.assign(video, { currentSrc: 'next-stream' })
     p.event("loadedmetadata", video)
     expect(change).toHaveBeenCalledTimes(2)
   })

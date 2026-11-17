@@ -61,8 +61,6 @@ input[type=range] { width: 100%; accent-color: var(--zed-accent); }
 .zed-tile:hover:not(:disabled) { background:var(--zed-surface-hover);border-color:var(--zed-border-strong); }
 .zed-tile-top { display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%;color:var(--zed-accent); }
 .zed-well { display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--zed-surface-raised);border-radius:var(--zed-radius-sm);color:var(--zed-accent); }
-.zed-tooltip { opacity:0;visibility:hidden;pointer-events:auto;transform:translateY(4px);transition:opacity var(--zed-dur) var(--zed-ease),transform var(--zed-dur) var(--zed-ease);position:absolute;top:100%;left:0;right:0;padding:8px 10px;background:var(--zed-surface-overlay);border:1px solid var(--zed-border-strong);border-radius:var(--zed-radius-md);color:var(--zed-text-soft);font-size:var(--zed-fs-xs);font-weight:400;line-height:1.4;box-shadow:var(--zed-shadow-pop);z-index:20; }
-.zed-tile:not([data-tooltip-dismissed]):hover:not(:disabled) .zed-tooltip,.zed-tile:not([data-tooltip-dismissed]):focus-visible .zed-tooltip { opacity:1;visibility:visible;transform:translateY(0); }
 .zed-switch-row { min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;background:var(--zed-surface);border:1px solid var(--zed-border-subtle);border-radius:var(--zed-radius-lg);font-size:var(--zed-fs-base);font-weight:500; }
 .zed-check { height:64px;display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--zed-surface);border:1px solid var(--zed-border-subtle);border-radius:var(--zed-radius-lg); }
 .zed-check[aria-checked=true] { border-color:var(--zed-accent-line); }
@@ -105,7 +103,7 @@ input[type=range] { width: 100%; accent-color: var(--zed-accent); }
 
 .zed-dialog { margin:auto; }
 .zed-toast { white-space:normal;overflow-wrap:anywhere; }
-.zed-tile>span:last-of-type:not(.zed-tooltip) { line-height:1.25; }
+.zed-tile-label { line-height:1.25; }
 
 .zed-check { font-size:var(--zed-fs-base); }
 .zed-check strong { font-weight:600; }

@@ -76,7 +76,7 @@ async function installShortcutsInOpenTabs(tabId?: number) {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
-        files: ["scripts/shortcuts.js"],
+        files: ["scripts/shortcuts.js", "scripts/blackAndWhite.js"],
       })
     } catch {
       // Browser-protected pages and tabs closed during installation cannot be scripted.

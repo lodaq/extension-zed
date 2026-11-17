@@ -97,7 +97,7 @@ export default function SettingsTab() {
   return (
     <section className={cn(popupPanel, popupSectionInner)}>
       <div className="zed-settings-header"><span className="zed-avatar zed-brand">Z</span><div className="zed-settings-identity"><h2 className={popupSectionTitle}>Extension Zed</h2><p className="zed-helper">v{chrome.runtime.getManifest().version}</p></div>
-      <div className="flex flex-wrap gap-2">
+      <div className="zed-actions">
         <Button type="button" variant="outline" onClick={() => void appAction(() => reloadExtension(currentExtensionId()))}>
           <Icon name="reload" size={16} />Refresh
         </Button>

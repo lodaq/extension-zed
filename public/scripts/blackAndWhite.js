@@ -1,4 +1,6 @@
 (() => {
+  if (globalThis.__zedBlackAndWhiteInstalled) return;
+  globalThis.__zedBlackAndWhiteInstalled = true;
   const style = document.createElement("style");
   style.textContent = "html{filter:grayscale(1)!important}";
   const apply = (enabled) => {

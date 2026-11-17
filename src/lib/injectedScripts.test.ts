@@ -270,3 +270,11 @@ it("applies grayscale on load and removes it when disabled or reset", async () =
   change({ blackAndWhite: { newValue: true } }, "local")
   expect(append).toHaveBeenCalledTimes(2)
 })
+
+it("installs the grayscale listener only once when reinjected", () => {
+  const addListener = vi.fn()
+  const context = { globalThis: {}, document: { createElement: () => ({ remove() {} }), documentElement: {} }, chrome: { storage: { local: { get: async () => ({}) }, onChanged: { addListener } } } }
+  runInNewContext(script("blackAndWhite"), context)
+  runInNewContext(script("blackAndWhite"), context)
+  expect(addListener).toHaveBeenCalledTimes(1)
+})

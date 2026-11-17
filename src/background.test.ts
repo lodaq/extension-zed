@@ -87,7 +87,7 @@ it("backfills shortcut listeners on worker load, install and startup without a p
   await vi.waitFor(() => expect(inject).toHaveBeenCalledTimes(4))
   events.startup()
   await vi.waitFor(() => expect(inject).toHaveBeenCalledTimes(6))
-  expect(inject).toHaveBeenCalledWith({ target: { tabId: 7, allFrames: true }, files: ["scripts/shortcuts.js"] })
+  expect(inject).toHaveBeenCalledWith({ target: { tabId: 7, allFrames: true }, files: ["scripts/shortcuts.js", "scripts/blackAndWhite.js"] })
 })
 
 it("reconnects activated and newly loaded tabs without opening the popup", async () => {
@@ -110,8 +110,8 @@ it("reconnects activated and newly loaded tabs without opening the popup", async
   update(8, { status: "loading" })
   update(8, { status: "complete" })
   await vi.waitFor(() => expect(inject).toHaveBeenCalledTimes(2))
-  expect(inject).toHaveBeenCalledWith({ target: { tabId: 7, allFrames: true }, files: ["scripts/shortcuts.js"] })
-  expect(inject).toHaveBeenCalledWith({ target: { tabId: 8, allFrames: true }, files: ["scripts/shortcuts.js"] })
+  expect(inject).toHaveBeenCalledWith({ target: { tabId: 7, allFrames: true }, files: ["scripts/shortcuts.js", "scripts/blackAndWhite.js"] })
+  expect(inject).toHaveBeenCalledWith({ target: { tabId: 8, allFrames: true }, files: ["scripts/shortcuts.js", "scripts/blackAndWhite.js"] })
 })
 
 it.each([

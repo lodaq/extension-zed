@@ -15,7 +15,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "outline", size = "default", ...props }, ref) => (
     <button ref={ref} className={cn(
-      "zed-btn inline-flex items-center justify-center gap-2 px-4 disabled:pointer-events-none disabled:opacity-50",
+      "zed-btn inline-flex items-center justify-center disabled:pointer-events-none disabled:opacity-50",
       variants[variant], sizes[size], className
     )} {...props} />
   )

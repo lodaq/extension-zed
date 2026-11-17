@@ -47,7 +47,7 @@ export default function SavedTab() {
       <label className="zed-stack">Collection name (required)
         <input className="zed-input" required maxLength={80} value={rename} onChange={event => setRename(event.target.value)} />
       </label>
-      <div className="flex gap-2">
+      <div className="zed-actions">
         <Button type="submit">Rename</Button>
         <Button type="button" variant="ghost" onClick={async () => {
           if (await request({ type: "saved:delete-collection", collection })) { setCollection(""); setRename("") }
@@ -55,7 +55,7 @@ export default function SavedTab() {
       </div>
       <p className="zed-helper">Deleting this collection keeps its items in All saved.</p>
     </form></details>}
-    {creating && <form className="flex gap-2" onSubmit={async event => {
+    {creating && <form className="zed-actions" onSubmit={async event => {
       event.preventDefault()
       if (await request({ type: "saved:collection", collection: name })) { setName(""); setCreating(false) }
     }}>

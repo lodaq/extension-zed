@@ -16,6 +16,10 @@ export default function VideoDownloader({ state }: { state: DownloaderState }) {
   const input = useRef<HTMLInputElement>(null)
   const previous = useRef(state)
   useEffect(() => {
+    // The worker reports connection failures in the setup notice.
+    void downloaderCommand("connect").catch(() => {})
+  }, [])
+  useEffect(() => {
     const before = previous.current
     previous.current = state
     if (before.phase === "checking" && state.phase === "ready") toast({ title: "Helper connected" })
@@ -56,10 +60,9 @@ export default function VideoDownloader({ state }: { state: DownloaderState }) {
   const footnote = <p className="zed-helper">Works with YouTube and the 1,000+ other sites yt-dlp supports. Download only content you own or have permission to save.</p>
 
   if (state.phase === "setup") return <div className="zed-stack">
-    <Notice title="Downloader helper not found">Video downloads need yt-dlp and the Zed helper installed on this computer. Nothing is sent to any server.{state.error && <p>{state.error}</p>}</Notice>
+    <Notice title="Downloader helper not found">Video downloads need a one-time installation of the Zed helper on this computer. After installation, Zed connects automatically.{(state.error || error) && <p>{state.error || error}</p>}</Notice>
     <div className="zed-grid"><Button onClick={() => void chrome.tabs.create({ url: chrome.runtime.getURL("downloader-setup.html") }).catch(error => setError(String(error)))}>Setup guide</Button>
       <Button variant="default" disabled={pending} onClick={() => void run("ping")}>Check again</Button></div>
-    {error && <Notice title="Couldn’t connect">{error}</Notice>}
   </div>
 
   if (state.phase === "done") return <div className="zed-stack">

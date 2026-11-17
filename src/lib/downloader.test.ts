@@ -112,3 +112,17 @@ it("cleans up a silent native connection so Check again can reconnect", async ()
   events.message({ id: "2", ok: true, state: { phase: "ready" } })
   await expect(retry).resolves.toMatchObject({ ok: true })
 })
+
+it("automatically connects once and preserves an existing download on repeated opens", async () => {
+  vi.resetModules()
+  const { events, connectNative } = nativeMock()
+  const { handleDownloaderCommand, readDownloaderState } = await import("./downloaderWorker")
+  const result = handleDownloaderCommand({ command: "connect" }, sender)
+  await vi.waitFor(() => expect(connectNative).toHaveBeenCalledTimes(1))
+  events.message({ id: "1", ok: true, state: { phase: "checking" } })
+  await result
+  events.message({ event: "state", state: { phase: "downloading", pct: 42 } })
+  expect(await readDownloaderState()).toMatchObject({ phase: "downloading" })
+  await expect(handleDownloaderCommand({ command: "connect" }, sender)).resolves.toMatchObject({ state: { phase: "downloading", pct: 42 } })
+  expect(connectNative).toHaveBeenCalledTimes(1)
+})

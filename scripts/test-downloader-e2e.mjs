@@ -34,6 +34,7 @@ try {
   const navigation = await call("navigate_page", { pageId: 1, url })
   const worker = navigation.match(/sw-\d+/)?.[0]
   assert.ok(worker, navigation)
+  await evaluate(`() => { chrome.runtime.connectNative = () => { throw new Error('Specified native messaging host not found.'); }; }`, worker)
   await call("resize_page", { pageId: 1, width: 640, height: 600 })
   await evaluate(`async () => {
     document.documentElement.style.setProperty('--zed-popup-width', '640px');
@@ -42,6 +43,8 @@ try {
     await new Promise(r => setTimeout(r, 100));
   }`)
   await shot("setup")
+  await evaluate(`async () => { [...document.querySelectorAll('button')].find(b => b.textContent === 'Check again').click(); await new Promise(r => setTimeout(r, 100)); }`)
+  await check(`() => document.querySelectorAll('[role=alert]').length === 1 && document.body.textContent.includes('Specified native messaging host not found.')`)
   // Mock only the native transport in this disposable profile. All popup/worker code is real.
   await evaluate(`() => {
     let listeners = [];
@@ -64,7 +67,8 @@ try {
     });
     globalThis.zedTestMedia = media;
   }`, worker)
-  await evaluate(`async () => { await chrome.runtime.sendMessage({ type: 'downloader:command', command: 'ping' }); await new Promise(r => setTimeout(r, 100)); }`)
+  await call("navigate_page", { pageId: 1, url })
+  await check(`async () => { await new Promise(r => setTimeout(r, 200)); document.documentElement.style.setProperty('--zed-popup-width', '640px'); document.documentElement.style.setProperty('--zed-popup-h', '600px'); return !!document.getElementById('zed-video-link'); }`)
   await shot("ready")
   await evaluate(`async () => { document.querySelector('form').requestSubmit(); await new Promise(r => setTimeout(r, 50)); }`)
   await check(`() => document.body.textContent.includes('Paste a link first.') && document.activeElement.id === 'zed-video-link'`)

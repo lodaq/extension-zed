@@ -8,18 +8,18 @@
 <body>
 <main>
 <h1>Set up the Zed downloader</h1>
-<p>Video downloads use a separate user-level helper and your installed yt-dlp. No administrator companion or browser policy changes are needed.</p>
+<p>Full video and audio downloads need a one-time local helper installation. Browser extensions cannot install native programs themselves. Once installed, Zed connects automatically; no extension ID or browser configuration is needed.</p>
 <ol>
 <li>Install Python 3.10 or newer, yt-dlp, and optionally ffmpeg using your operating system’s package manager or their official installers. Make sure <code>yt-dlp --version</code> and <code>ffmpeg -version</code> work in a terminal.</li>
-<li>Find Extension Zed’s 32-letter ID on <code>chrome://extensions</code> or <code>brave://extensions</code>, with Developer mode enabled.</li>
-<li>From the Extension Zed source folder, run the command below for your system. Replace <code>EXTENSION_ID</code> with your ID. For Brave append <code>--browser brave</code> on macOS/Linux, or <code>-Browser brave</code> on Windows.</li>
+<li>Install Extension Zed in Chrome or Brave before running the helper installer.</li>
+<li>From the Extension Zed source folder, run the command below for your system. The installer detects Zed in your Chrome and Brave profiles automatically.</li>
 </ol>
 <h2>Linux / macOS</h2>
-<pre><code>python3 downloader/install.py EXTENSION_ID</code></pre>
+<pre><code>python3 downloader/install.py</code></pre>
 <h2>Windows PowerShell</h2>
-<pre><code>.\downloader\install-windows.ps1 -ExtensionId EXTENSION_ID</code></pre>
-<p>Keep the source folder available until installation finishes. The installer copies the helper to your user profile and registers it for only your extension ID. It does not install yt-dlp or ffmpeg.</p>
-<p>Return to Zed → Misc → Video downloader → Check again. Restart the browser if you changed PATH.</p>
+<pre><code>.\downloader\install-windows.ps1</code></pre>
+<p>Keep the source folder available until installation finishes. The installer copies the helper to your user profile and registers it for the detected Zed extension IDs only. It does not install Python, yt-dlp or ffmpeg.</p>
+<p>Return to Zed → Misc → Video downloader. It connects automatically when opened. If the view was already open, choose Check again. Restart the browser if you changed PATH.</p>
 <p>Files are saved to <code>~/Downloads/Zed</code>. Without ffmpeg, only single-file videos and native audio formats are available. MP3 conversion and merging need ffmpeg.</p>
 <p>Update asks yt-dlp to self-update. If your package manager installed it, update it through that package manager when self-update is unavailable.</p>
 <p>Download only content you own or have permission to save.</p>

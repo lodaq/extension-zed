@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from zed_downloader import Host, MAX_MESSAGE, media_info, read_message, valid_url
-from install import install
+from install import discover_ids, install, setup
 
 
 def fixture():
@@ -163,6 +163,29 @@ class DownloaderTests(unittest.TestCase):
             self.assertTrue(Path(manifest["path"]).is_file())
             with self.assertRaises(ValueError):
                 install("invalid-id", "chrome")
+
+    def test_installer_discovers_only_zed_ids_without_manual_configuration(self):
+        with tempfile.TemporaryDirectory() as root:
+            profile = Path(root) / "Default"
+            profile.mkdir()
+            extension = Path(root) / "zed-dist"
+            extension.mkdir()
+            (extension / "manifest.json").write_text(json.dumps({"name": "Extension Zed", "permissions": ["nativeMessaging"]}))
+            (profile / "Preferences").write_text(json.dumps({"extensions": {"settings": {
+                "a" * 32: {"path": str(extension)},
+                "b" * 32: {"manifest": {"name": "Other extension", "permissions": ["nativeMessaging"]}},
+                "invalid": {"path": str(extension)},
+            }}}))
+            (profile / "Secure Preferences").write_text(json.dumps({"extensions": {"settings": {
+                "c" * 32: {"manifest": {"name": "Extension Zed", "permissions": ["nativeMessaging"]}},
+            }}}))
+            with patch("install.browser_root", return_value=Path(root)):
+                self.assertEqual(discover_ids("brave"), ["a" * 32, "c" * 32])
+            with patch("install.discover_ids", side_effect=[[], ["a" * 32]]), patch("install.install") as register:
+                setup()
+            register.assert_called_once_with("a" * 32, "brave", ["a" * 32])
+            with patch("install.discover_ids", return_value=[]), self.assertRaisesRegex(ValueError, "Install/load the extension first"):
+                setup()
 
 
 if __name__ == "__main__":

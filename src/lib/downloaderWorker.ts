@@ -61,6 +61,11 @@ export async function handleDownloaderCommand(data: Record<string, unknown>, sen
   if (!DOWNLOADER_ENABLED || sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL("index.html")) throw new Error("Downloader access denied")
   const command = data.command
   if (command === "state") return { ok: true, state: await readDownloaderState() }
+  if (command === "connect") {
+    const state = await readDownloaderState()
+    if (port || state.phase === "done") return { ok: true, state }
+    return handleDownloaderCommand({ command: "ping" }, sender)
+  }
   if (command === "seen") {
     const state = await readDownloaderState()
     if (state.phase === "done") await save({ ...state, seen: true })

@@ -24,6 +24,7 @@ const icons = {
   element: <><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" /><rect x="9" y="9" width="6" height="6" rx="1" /></>,
   error: <><circle cx="12" cy="12" r="9" fill="currentColor" stroke="none" /><path d="M12 7v6M12 16h.01" stroke="var(--zed-bg)" /></>,
   info: <><path d="M12 11v5M12 8h.01" /><circle cx="12" cy="12" r="9" /></>,
+  folder: <path d="M3 7V5h6l2 2h10v13H3z" />,
   plus: <path d="M12 5v14M5 12h14" />,
 }
 export type IconName = keyof typeof icons

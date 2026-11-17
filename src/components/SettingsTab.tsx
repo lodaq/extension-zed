@@ -96,7 +96,7 @@ export default function SettingsTab() {
 
   return (
     <section className={cn(popupPanel, popupSectionInner)}>
-      <h2 className={popupSectionTitle}>Extension Zed</h2>
+      <div className="zed-settings-header"><span className="zed-avatar zed-brand">Z</span><div className="zed-settings-identity"><h2 className={popupSectionTitle}>Extension Zed</h2><p className="zed-helper">v{chrome.runtime.getManifest().version}</p></div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={() => void appAction(() => reloadExtension(currentExtensionId()))}>
           <Icon name="reload" size={16} />Refresh
@@ -109,21 +109,19 @@ export default function SettingsTab() {
           <Icon name="error" size={16} />
         </Button>
       </div>
+      </div>
       <h2 className={popupSectionTitle}>Appearance</h2>
       <SwitchRow label="Dark theme" checked={dark} onChange={toggle}/>
       <SwitchRow label="Black and white" description="Show all websites in grayscale." checked={blackAndWhite} onChange={enabled=>void setBlackAndWhite(enabled).catch(error=>toast({title:String(error),variant:"destructive"}))}/>
 
       <h2 className={popupSectionTitle}>Backup and reset</h2>
-      <div className="flex flex-wrap gap-2">
+      <div className="zed-backup-actions">
         <Button type="button" disabled={busy} variant="outline" className="flex-1" onClick={() => void onExport()}>
           Export
         </Button>
         <Button type="button" disabled={busy} variant="outline" className="flex-1" onClick={() => fileInputRef.current?.click()}>
           Import
         </Button>
-      </div>
-
-      <div className="pt-1">
         <Button
           type="button"
           disabled={busy}
@@ -131,7 +129,7 @@ export default function SettingsTab() {
           className="w-full zed-btn--warn-outline"
           onClick={() => setConfirmReset(true)}
         >
-          Reset settings to defaults
+          Reset to defaults
         </Button>
       </div>
 
@@ -143,7 +141,7 @@ export default function SettingsTab() {
         onChange={(event) => void onImport(event)}
       />
 
-      <details><summary className="zed-helper">Tool order</summary><div className="zed-stack">{order.map((id,index)=><div className="zed-row" key={id}><span className="flex-1">{({password:"Password generator",playback:"Playback speed",volume:"Volume boost",quality:"Video quality",scrollbars:"Scrollbars",modes:"Modes",screenshot:"Capture screenshot"})[id]}</span>{[-1,1].map(delta=><Button size="sm" key={delta} disabled={index+delta<0||index+delta>=order.length} aria-label={`Move ${id} ${delta<0?"up":"down"}`} onClick={()=>{const next=moveMiscSection(order,index,index+delta);void setOrder(next).catch(error=>toast({title:String(error),variant:"destructive"}))}}>{delta<0?"↑":"↓"}</Button>)}</div>)}</div></details>
+      <details className="zed-tool-order"><summary>Tool order<span className="zed-helper">Reorder the Misc tools</span></summary><div className="zed-stack">{order.map((id,index)=><div className="zed-row" key={id}><span className="flex-1">{({password:"Password generator",playback:"Playback speed",volume:"Volume boost",quality:"Video quality",scrollbars:"Scrollbars",modes:"Modes",screenshot:"Capture screenshot"})[id]}</span>{[-1,1].map(delta=><Button size="sm" key={delta} disabled={index+delta<0||index+delta>=order.length} aria-label={`Move ${id} ${delta<0?"up":"down"}`} onClick={()=>{const next=moveMiscSection(order,index,index+delta);void setOrder(next).catch(error=>toast({title:String(error),variant:"destructive"}))}}>{delta<0?"↑":"↓"}</Button>)}</div>)}</div></details>
 
       <section aria-labelledby="zed-about-heading" className="flex flex-col gap-2 border-t border-border pt-3">
         <h2 id="zed-about-heading" className={popupSectionTitle}>About Extension Zed</h2>

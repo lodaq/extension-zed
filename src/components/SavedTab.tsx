@@ -1,6 +1,8 @@
 import { useStoredValue } from "@/lib/useStoredValue"
 import { COLLECTIONS_KEY, readCollections, SAVED_KEY, SAVED_BUTTONS_KEY, readSaved, type SavedItem } from "@/lib/saved"
 import { Button } from "./ui/button"
+import { Icon } from "@/design-system/Icon"
+import { LetterAvatar } from "@/design-system/components"
 import { SwitchRow } from "@/design-system/components"
 import { useState } from "react"
 
@@ -13,7 +15,9 @@ export default function SavedTab() {
   const [collection, setCollection] = useState("")
   const [rename, setRename] = useState("")
   const [name, setName] = useState("")
-  const items = readSaved(stored).filter(item => !collection || item.collection === collection)
+  const [creating, setCreating] = useState(false)
+  const allItems = readSaved(stored)
+  const items = allItems.filter(item => !collection || item.collection === collection)
   async function request(data: object) {
     try {
       const result = await chrome.runtime.sendMessage(data)
@@ -25,18 +29,18 @@ export default function SavedTab() {
   const [buttonsEnabled, setButtonsEnabled] = useStoredValue(SAVED_BUTTONS_KEY, true)
   const [error, setError] = useState("")
   return <section className="zed-stack zed-root zed-saved" aria-label="Saved items">
-    <h2 className="zed-title">Saved</h2>
+    <div className="zed-saved-heading"><h2 className="zed-title">Saved</h2><span className="zed-helper">{allItems.length} {allItems.length === 1 ? "item" : "items"}</span></div>
     <p className="zed-helper">Save posts, videos and reels with the page’s Save to Zed button. Right-click selected text to save it here. Stored on this device.</p>
     <SwitchRow label="Show Save to Zed buttons" description="Show save/remove controls on posts, reels and videos." checked={buttonsEnabled} onChange={checked => {
       void setButtonsEnabled(checked).catch(error => setError(String(error)))
     }} />
-    <label className="zed-stack">Collections
-      <select className="zed-input" value={collection} onChange={event => { setCollection(event.target.value); setRename(event.target.value) }}>
-        <option value="">All saved</option>
-        {collections.map(name => <option key={name}>{name}</option>)}
-      </select>
-    </label>
-    {collection && <form className="zed-stack" onSubmit={async event => {
+    <div className="zed-collection-bar" role="group" aria-label="Collections">
+      {["", ...collections].map(value => <Button key={value} variant={collection === value ? "default" : "outline"} aria-pressed={collection === value} onClick={() => { setCollection(value); setRename(value) }}>
+        {value || "All saved"}<span>{allItems.filter(item => !value || item.collection === value).length}</span>
+      </Button>)}
+      <Button variant="ghost" className="zed-new-collection" aria-expanded={creating} onClick={() => setCreating(!creating)}><Icon name="plus" size={16} />New</Button>
+    </div>
+    {collection && <details className="zed-collection-manage"><summary>Manage collection</summary><form className="zed-stack" onSubmit={async event => {
       event.preventDefault()
       if (await request({ type: "saved:rename", collection, name: rename })) setCollection(rename.trim())
     }}>
@@ -50,34 +54,45 @@ export default function SavedTab() {
         }}>Delete collection</Button>
       </div>
       <p className="zed-helper">Deleting this collection keeps its items in All saved.</p>
-    </form>}
-    <form className="flex gap-2" onSubmit={async event => {
+    </form></details>}
+    {creating && <form className="flex gap-2" onSubmit={async event => {
       event.preventDefault()
-      if (await request({ type: "saved:collection", collection: name })) setName("")
+      if (await request({ type: "saved:collection", collection: name })) { setName(""); setCreating(false) }
     }}>
       <label className="zed-stack">New collection name (required)<input className="zed-input" placeholder="New collection" maxLength={80} required value={name} onChange={event => setName(event.target.value)} /></label>
       <Button type="submit">Create</Button>
-    </form>
+    </form>}
     {error && <p role="alert" className="zed-saved-error">{error}</p>}
     {!items.length && <p className="zed-helper">No saved items yet.</p>}
-    {items.map(item => <article key={item.id} className="zed-card zed-saved-item">
-      <p className="select-text whitespace-pre-wrap break-words">{item.text}</p>
-      <label className="zed-stack">Move to collection
-        <select className="zed-input" value={item.collection || ""} onChange={event => void request({ type: "saved:move", id: item.id, collection: event.target.value })}>
-          <option value="">All saved</option>
-          {collections.map(name => <option key={name}>{name}</option>)}
-        </select>
-      </label>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <a className="zed-saved-link truncate underline" href={item.url} target="_blank" rel="noopener noreferrer">{item.kind === "text" ? "Open source" : "Open saved link"}</a>
-        <Button size="sm" variant="ghost" onClick={async () => {
-          try {
-            const result = await chrome.runtime.sendMessage({ type: "saved:remove", id: item.id })
-            if (!result?.ok) throw new Error(result?.error || "Could not remove item")
-            setError("")
-          } catch (error) { setError(String(error)) }
-        }}>Remove</Button>
-      </div>
-    </article>)}
+    {items.map(item => {
+      let url: URL
+      try { url = new URL(item.url) } catch { return null }
+      const title = item.kind === "text" ? item.text : url.hostname.replace(/^www\./, "")
+      return <article key={item.id} className="zed-card zed-saved-row">
+        {item.kind === "text" ? <span className="zed-well"><Icon name="full" /></span> : <LetterAvatar title={title} />}
+        <div className="zed-saved-copy"><strong dir="auto">{title}</strong><p className="zed-helper">{item.kind === "text" ? "Selected text" : url.pathname.replace(/^\//, "") + url.search}</p></div>
+        {item.collection && <span className="zed-pill zed-saved-tag">{item.collection}</span>}
+        <a className="zed-icon-button" aria-label={item.kind === "text" ? "Open source" : "Open saved link"} href={item.url} target="_blank" rel="noopener noreferrer"><Icon name="open" size={18} /></a>
+        <details className="zed-collection-picker" onKeyDown={event => {
+          if (event.key === "Escape") {
+            event.preventDefault()
+            event.stopPropagation()
+            event.currentTarget.removeAttribute("open")
+            event.currentTarget.querySelector("summary")?.focus()
+          }
+        }}>
+          <summary className="zed-icon-button" aria-label="Move to collection"><Icon name="folder" size={18} /></summary>
+          <div className="zed-collection-menu">
+            <p className="zed-helper">Move to collection</p>
+            {["", ...collections].map(value => <Button key={value} variant="ghost" aria-pressed={(item.collection || "") === value} onClick={async event => {
+              const details = event.currentTarget.closest("details")
+              if (await request({ type: "saved:move", id: item.id, collection: value })) { details?.removeAttribute("open"); details?.querySelector("summary")?.focus() }
+            }}>{value || "No collection"}{(item.collection || "") === value && <Icon name="check" size={16} />}</Button>)}
+            <Button variant="ghost" onClick={() => setCreating(true)}><Icon name="plus" size={16} />New collection…</Button>
+          </div>
+        </details>
+        <Button size="icon" variant="ghost" aria-label="Remove saved item" onClick={() => void request({ type: "saved:remove", id: item.id })}><Icon name="delete" size={18} /></Button>
+      </article>
+    })}
   </section>
 }

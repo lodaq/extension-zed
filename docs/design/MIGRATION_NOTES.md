@@ -1,0 +1,19 @@
+# Video downloader implementation
+
+Scope: §4.18 of the supplied design spec. Existing redesigned screens, keyboard bindings, storage schemas, and site limiter behavior are retained. The reference files are preserved beside this document.
+
+The popup uses React 19, TypeScript, Vite, Bun 1.4.4, Vitest, ESLint and the existing token guard. UI uses `src/design-system/` and the existing Button, Card, Notice, Icon and primitive styles. The new native host uses Python, matching the existing companion’s language, but is installed separately without administrator privileges.
+
+Integration reaches the Misc tile and restricted-page copy, popup navigation restoration, the background message router, session storage, a local setup page, native helper/installers, tests and README. Existing saved settings and exports are unchanged. No manifest permission or dependency changes: nativeMessaging already exists.
+
+Decisions: single video per URL (`--no-playlist`); one active operation; fixed `~/Downloads/Zed`; installed yt-dlp and ffmpeg detected on PATH (plus standard Unix package-manager locations in the launcher); no ffmpeg means single-file videos and original audio, no MP3. Update uses yt-dlp self-update and reports package-manager restrictions. Windows/macOS/Linux installers register only a supplied extension ID for Chrome or Brave. Installation is user initiated; no helper is installed by build/test commands.
+
+The helper sends reduced format metadata and keeps selectors locally. The worker owns the native port, persists current state in session storage, and restores active/done views when reopening the popup. Extension/browser shutdown interrupts jobs, with explicit interruption feedback on the next worker session read. Open/reveal use the helper’s last completed file. A unique staging directory ensures cancel removes only that job’s partials and completion never replaces an earlier file.
+
+Remote thumbnails are represented by the design’s placeholder, preserving the no-network-from-popup rule. Formats derive from extractor JSON; unknown sizes stay unknown, and approximate sizes are marked. Direct media with unknown resolution uses an Original row; MP3 conversion uses variable bitrate and reports size as unknown. The tool stays enabled on restricted pages. Existing user tool ordering is preserved; the downloader is appended after the existing tools rather than changing the stored tool-order schema.
+
+Distribution caveat: downloading from YouTube and other sites can conflict with Chrome Web Store policy or site terms. Review before publishing. `VITE_VIDEO_DOWNLOADER=false` removes the tile and rejects downloader worker commands. The permission note “Download only content you own or have permission to save” remains visible. No release or administrator companion installation is part of this change.
+
+Verification: Bun 1.4.4; 337 Vitest tests, 11 downloader Python tests and 15 existing companion Python tests passed. Lint/token guard, TypeScript/Vite build and build-asset validation passed. Existing browser suites passed 41 extension checks and 11 media scenarios. `bun run test:e2e:downloader` covers all nine states, format keyboard navigation, download restoration after reopening, and content overflow; it regenerates the screenshots in `screenshots/` using a mocked native transport in a disposable profile. Screenshots were inspected at 640 × 600 using the existing UI tokens/components. A regression mutation admitting DRM formats was rejected by the format test, then restored.
+
+A real-tool smoke check served a temporary one-second MP4 on localhost, read its formats with installed yt-dlp, downloaded it, and converted it to MP3 with ffmpeg. Files and the server were temporary. No external media sites, real helper registration, Windows/macOS execution, publishing, administrator companion installation or policy changes were tested/performed.

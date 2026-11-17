@@ -40,6 +40,7 @@ export default defineConfig({
   plugins: [react(), inlinePopupCss(), {
     name: "extension-ui-styles",
     generateBundle() {
+      this.emitFile({ type: "asset", fileName: "downloader-setup.css", source: readFileSync("src/design-system/downloader-setup.css", "utf8") })
       for (const name of ["theme", "scrollbar"]) {
         this.emitFile({ type: "asset", fileName: `${name}.css`, source: name === "theme" ? '@font-face{font-family:Inter;font-weight:100 900;font-display:swap;src:url("fonts/Inter.woff2") format("woff2")}\n' + readFileSync("src/design-system/tokens.css", "utf8").replaceAll(":root", ":root, :host") + readFileSync("src/theme.css", "utf8").replace(/@import[^;]+;/g, "") : readFileSync(`src/${name}.css`, "utf8") })
       }

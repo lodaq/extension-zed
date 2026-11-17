@@ -26,6 +26,9 @@ import { getStoredScrollPosition, saveStoredScrollPosition } from "@/lib/bootCac
 import { DEFAULT_SHORTCUTS, readShortcuts, recordCombo } from "@/lib/shortcuts"
 import { showClickHints } from "@/lib/clickHints"
 import ShortcutsTab from "@/components/ShortcutsTab"
+import VideoDownloader from "@/components/VideoDownloader"
+import { DOWNLOADER_ENABLED } from "@/lib/downloader"
+import { useDownloader } from "@/lib/useDownloader"
 
 const tools = [
   { id: "limiter", title: "Site limiter", description: "Locked website blocks and daily usage limits", component: SiteLimiter },
@@ -59,6 +62,13 @@ export default function App() {
   }, [])
   const [location, setLocation] = useStoredValue("popupLocation", DEFAULT_LOCATION)
   const { tab, detail, settings } = location
+  const download = useDownloader()
+  const restoredDownload = useRef(false)
+  useEffect(() => {
+    if (!DOWNLOADER_ENABLED || restoredDownload.current || !(download.phase === "downloading" || (download.phase === "done" && !download.seen))) return
+    restoredDownload.current = true
+    void setLocation({ tab: "Misc", detail: "downloader", settings: false })
+  }, [download.phase, download.seen, setLocation])
   const viewTitle = useRef<HTMLHeadingElement>(null)
   const previousView = useRef({ tab, detail, settings })
   useLayoutEffect(() => {
@@ -138,8 +148,9 @@ export default function App() {
     window.addEventListener(PAGE_ACTION_FEEDBACK_EVENT, listener)
     return () => window.removeEventListener(PAGE_ACTION_FEEDBACK_EVENT, listener)
   }, [])
-  const selected = tab === "Misc" ? tools.find(tool => tool.id === detail) : undefined
-  const Detail = selected?.component
+  const downloaderTool = DOWNLOADER_ENABLED ? { id: "downloader", title: "Video downloader", description: "Download videos from any site yt-dlp supports" } : undefined
+  const selected = tab === "Misc" ? tools.find(tool => tool.id === detail) ?? (detail === "downloader" ? downloaderTool : undefined) : undefined
+  const Detail = selected && "component" in selected ? selected.component : undefined
   const pageTitle = settings ? "Settings" : selected?.title ?? tab
   useEffect(() => { document.title = `${pageTitle} · Extension Zed` }, [pageTitle])
   const modesOn = [inspect, design, rtl].filter(value => value === "on").length
@@ -165,12 +176,13 @@ export default function App() {
   else if (tab === "Links") content = <LinksTab />
   else if (tab === "Shortcuts") content = <ShortcutsTab />
   else if (detail === "password") content = <PasswordGenerator initialOptions={passwordOptions} onOptionsChange={setPasswordOptions} />
+  else if (detail === "downloader" && DOWNLOADER_ENABLED) content = <VideoDownloader state={download} />
   else if (Detail) content = <Detail />
   else content = (
     <div className="zed-stack zed-root">
       {restricted && (
         <Notice title="Zed can’t run on this page">
-          Browser pages like this one block extensions. Open a regular website to use the page tools. Password generator and Save &amp; close tab still work.
+          Browser pages like this one block extensions. Open a regular website to use the page tools. Password generator{DOWNLOADER_ENABLED ? ", Video downloader" : ""} and Save &amp; close tab still work.
         </Notice>
       )}
       <div className="zed-tiles">
@@ -179,6 +191,9 @@ export default function App() {
             badge={badges[tool.id]} disabled={restricted && tool.id !== "password" && tool.id !== "limiter"}
             onClick={() => setDetail(tool.id)} />
         ))}
+        {downloaderTool && <Tile id="zed-tool-downloader" title={downloaderTool.title} description={downloaderTool.description} icon="download"
+          badge={download.phase === "downloading" ? download.pct == null ? "Working" : `${download.pct}%` : download.phase === "done" && !download.seen ? "Done" : undefined}
+          onClick={() => setDetail("downloader")} />}
         <Tile title="Save & close tab" description="Save this tab’s URL to Links, then close the tab" icon="save" onClick={saveTab} />
       </div>
     </div>

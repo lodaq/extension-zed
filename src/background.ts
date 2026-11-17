@@ -5,6 +5,7 @@ import { openSavedLink } from "./lib/links"
 import { executeShortcut } from "./lib/shortcutExecution"
 import { handleScreenshotMessage } from "./lib/screenshots"
 import { handlePageAction, type PageActionResult } from "./lib/pageActions"
+import { handleDownloaderCommand } from "./lib/downloaderWorker"
 
 async function showResult(result: PageActionResult) {
   if (result.tabId === undefined) {
@@ -19,6 +20,10 @@ async function showResult(result: PageActionResult) {
 
 chrome.runtime.onMessage.addListener((data, sender, reply) => {
   if (sender.id !== chrome.runtime.id) return
+  if (data?.type === "downloader:command") {
+    void handleDownloaderCommand(data, sender).then(reply, error => reply({ ok: false, error: String(error.message || error) }))
+    return true
+  }
   if (typeof data?.type === "string" && data.type.startsWith("limiter:")) {
     if (sender.tab || sender.url !== chrome.runtime.getURL("index.html")) return
     if (data.type === "limiter:system-status" || (data.type === "limiter:add" && data.system === true)) {

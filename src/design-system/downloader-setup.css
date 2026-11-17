@@ -1,0 +1,7 @@
+body { margin:0;background:var(--zed-bg);color:var(--zed-text);font:var(--zed-fs-base)/1.6 var(--zed-font); }
+main { max-width:800px;margin:auto;padding:var(--zed-space-8); }
+h1,h2 { font-size:var(--zed-fs-title); }
+p,li { color:var(--zed-text-soft); }
+li { margin-block:var(--zed-space-3); }
+code { font-family:var(--zed-font-mono);overflow-wrap:anywhere; }
+pre { padding:var(--zed-space-6);background:var(--zed-surface);border:1px solid var(--zed-border);border-radius:var(--zed-radius-md);white-space:pre-wrap; }

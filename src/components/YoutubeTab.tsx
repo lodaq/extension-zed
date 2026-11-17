@@ -11,6 +11,8 @@ const YOUTUBE_TOGGLES: readonly {
   { label: "Focus mode", storageKey: "youtubeFocus", action: "youtubeFocus", subject: "Focus mode", states: ["off", "on"] },
   { label: "Hide progress bar", storageKey: "youtubeHideProgress", action: "hideYoutubeProgressBar", subject: "Progress bar", states: ["shown", "hidden"] },
   { label: "Hide time & duration", storageKey: "youtubeHideDuration", action: "hideYoutubeDuration", subject: "Video duration", states: ["shown", "hidden"] },
+  { label: "Hide thumbnail timestamps", storageKey: "youtubeHideTimestamps", action: "hideYoutubeTimestamps", subject: "Thumbnail timestamps", states: ["shown", "hidden"] },
+  { label: "Hide all timestamps", storageKey: "youtubeHideAllTimestamps", action: "hideAllYoutubeTimestamps", subject: "All timestamps", states: ["shown", "hidden"] },
   { label: "Hide controls", storageKey: "youtubeHideControls", action: "hideYoutubeControls", subject: "Controls", states: ["shown", "hidden"] },
   { label: "Half-screen layout", storageKey: "youtubeHalfScreen", action: "youtubeHalfScreen", subject: "Half-screen layout", states: ["disabled", "enabled"] },
 ]

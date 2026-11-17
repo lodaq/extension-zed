@@ -54,6 +54,8 @@ describe("injected script completion", () => {
     ["hideAllScrollBars", "resetAllScrollBars", "*::-webkit-scrollbar"],
     ["hideYoutubeProgressBar", null, ".ytp-progress-bar-container"],
     ["hideYoutubeDuration", null, ".ytp-time-duration"],
+    ["hideYoutubeTimestamps", null, "ytd-thumbnail-overlay-time-status-renderer"],
+    ["hideAllYoutubeTimestamps", null, "a[href*=\"&t=\"]"],
     ["youtubeHalfScreen", null, "ytd-watch-flexy"],
     ["hideYoutubeControls", null, ".ytp-chrome-bottom"],
   ] as const)("%s applies and resets its style", (name, reset, selector) => {
@@ -75,6 +77,26 @@ describe("injected script completion", () => {
     run(reset ? (ACTION_REGISTRY[reset] as Extract<ActionExecution, { type: "style" }>).css : "")
     expect(style.remove).toHaveBeenCalledTimes(2)
     expect(appendChild).toHaveBeenCalledTimes(2)
+  })
+
+  it("hides timestamps across YouTube player, thumbnails, comments, chapters, and transcripts", () => {
+    const definition = ACTION_REGISTRY.hideAllYoutubeTimestamps as Extract<ActionExecution, { type: "style" }>
+    for (const selector of [
+      ".ytp-time-display",
+      ".ytp-tooltip-progress-bar-pill-time-stamp",
+      ".ytp-tooltip-progress-bar-pill:not(:has(",
+      "yt-thumbnail-badge-view-model",
+      ".ytInlinePlayerControlsTimeDisplay",
+      "a[href*=\"&t=\"]",
+      "ytd-macro-markers-list-item-renderer #time",
+      ".segment-timestamp",
+      ".ytwTranscriptSegmentViewModelTimestamp",
+    ]) {
+      expect(definition.css).toContain(selector)
+    }
+
+    const thumbnails = ACTION_REGISTRY.hideYoutubeTimestamps as Extract<ActionExecution, { type: "style" }>
+    expect(thumbnails.css).toContain(".ytInlinePlayerControlsTimeDisplay")
   })
 
   it("reversibly applies and resets youtubeFocusMode without mutating element inline styles", () => {

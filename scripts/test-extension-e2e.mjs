@@ -143,7 +143,7 @@ async function run() {
 
     for (const { tab, name, matches, delay } of [
       { tab: "Extensions", name: "Extensions tab brave://extensions button present", matches: text => text.includes("brave://extensions"), delay: 200 },
-      { tab: "YouTube", name: "Switch to YouTube tab", matches: text => text.includes('heading "YouTube"') && text.includes("Focus mode"), delay: 200 },
+      { tab: "YouTube", name: "Switch to YouTube tab", matches: text => text.includes('heading "YouTube"') && text.includes("Focus mode") && text.includes("Hide thumbnail timestamps") && text.includes("Hide all timestamps"), delay: 200 },
       { tab: "Settings", name: "Switch to Settings tab & verify Export/Import", matches: text => text.includes("Export") && text.includes("Import"), delay: 600 },
     ]) {
       const match = snapshotText.match(new RegExp(`uid=([^\\s]+)\\s+button\\s+"${tab}"`));
@@ -268,7 +268,7 @@ async function run() {
           const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
           const actions = ${JSON.stringify(enabled ? ["hideMainScrollBar", "hideAllScrollBars", "applyCustomScrollbar"] : ["resetMainScrollBar", "resetAllScrollBars", "resetCustomScrollbar"])};
           const results = [];
-          for (const event of [...actions, 'hideYoutubeProgressBar', 'hideYoutubeControls', 'hideYoutubeDuration', 'youtubeHalfScreen']) {
+          for (const event of [...actions, 'hideYoutubeProgressBar', 'hideYoutubeControls', 'hideYoutubeDuration', 'hideYoutubeTimestamps', 'hideAllYoutubeTimestamps', 'youtubeHalfScreen']) {
             results.push(await chrome.runtime.sendMessage({event, value:event.startsWith('hideYoutube') || event === 'youtubeHalfScreen' ? ${enabled} : undefined, tabId:tab.id}));
           }
           return {ok:results.every(result => result.ok), results};
@@ -276,7 +276,7 @@ async function run() {
       });
       const state = await client.callTool("evaluate_script", {
         pageId: testPageId,
-        function: `() => ['zed-hide-main-scrollbar','zed-hide-all-scrollbars','zed-custom-scrollbar','zed-youtube-progress-bar','zed-youtube-controls','zed-youtube-duration','zed-youtube-half-screen'].every(id => Boolean(document.getElementById(id)) === ${enabled})`,
+        function: `() => ['zed-hide-main-scrollbar','zed-hide-all-scrollbars','zed-custom-scrollbar','zed-youtube-progress-bar','zed-youtube-controls','zed-youtube-duration','zed-youtube-timestamps','zed-youtube-all-timestamps','zed-youtube-half-screen'].every(id => Boolean(document.getElementById(id)) === ${enabled})`,
       });
       record(`Page styles ${enabled ? "apply" : "reset"} through the worker`, !dispatch.isError && parseTextContent(dispatch).includes('"ok":true') && !state.isError && /\btrue\b/.test(parseTextContent(state)), parseTextContent(state));
     }

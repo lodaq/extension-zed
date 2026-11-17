@@ -96,6 +96,8 @@ describe("page actions", () => {
     ["hideYoutubeProgressBar", "youtubeHideProgress"],
     ["hideYoutubeControls", "youtubeHideControls"],
     ["hideYoutubeDuration", "youtubeHideDuration"],
+    ["hideYoutubeTimestamps", "youtubeHideTimestamps"],
+    ["hideAllYoutubeTimestamps", "youtubeHideAllTimestamps"],
     ["youtubeHalfScreen", "youtubeHalfScreen"],
   ])("persists both states for %s", async (event, key) => {
     for (const value of [true, false]) {

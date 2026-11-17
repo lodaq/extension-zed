@@ -96,6 +96,15 @@
     },
     {
       "matches": [
+        "https://*.youtube.com/*"
+      ],
+      "js": [
+        "scripts/youtubeStyles.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
         "https://*/*",
         "http://*/*"
       ],

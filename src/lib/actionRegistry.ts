@@ -1,3 +1,5 @@
+import { YOUTUBE_STYLES, type YoutubeStyleAction } from "./youtubeStyles"
+
 export type PageActionRequest = { tabId?: number } & (
   | { event: ModeAction; value?: boolean }
   | { event: ValueAction; value: number }
@@ -32,6 +34,8 @@ export const BOOLEAN_KEYS = {
   hideYoutubeProgressBar: "youtubeHideProgress",
   hideYoutubeControls: "youtubeHideControls",
   hideYoutubeDuration: "youtubeHideDuration",
+  hideYoutubeTimestamps: "youtubeHideTimestamps",
+  hideAllYoutubeTimestamps: "youtubeHideAllTimestamps",
   youtubeHalfScreen: "youtubeHalfScreen",
 } as const
 
@@ -41,6 +45,11 @@ export type PageAction = keyof typeof ACTION_REGISTRY
 
 function style(id: string, css = "", settingKey?: string): ActionExecution {
   return { type: "style", id, css, settingKey }
+}
+
+function youtubeStyle(action: YoutubeStyleAction): ActionExecution {
+  const { id, css, settingKey } = YOUTUBE_STYLES[action]
+  return style(id, css, settingKey)
 }
 
 export const ACTION_REGISTRY = {
@@ -53,12 +62,12 @@ export const ACTION_REGISTRY = {
   resetAllScrollBars: style("zed-hide-all-scrollbars"),
   applyCustomScrollbar: { type: "script", file: "scripts/applyCustomScrollbar.js", allFrames: true },
   resetCustomScrollbar: style("zed-custom-scrollbar"),
-  hideYoutubeProgressBar: style("zed-youtube-progress-bar", `.ytp-progress-bar-container, .ytp-progress-bar, #progress-bar, ytd-player .ytp-progress-bar-container, .ytp-chapter-container { display: none !important; }`, "youtubeHideProgress"),
-  hideYoutubeControls: style("zed-youtube-controls", `.ytp-chrome-bottom, .ytp-chrome-controls, .ytp-gradient-bottom, ytd-player .ytp-chrome-bottom { display: none !important; }`, "youtubeHideControls"),
-  hideYoutubeDuration: style("zed-youtube-duration", `.ytp-time-display, .ytp-time-duration, .ytp-time-current, .ytp-time-separator, .ytp-chapter-container { display: none !important; }`, "youtubeHideDuration"),
-  youtubeHalfScreen: style("zed-youtube-half-screen", `ytd-watch-flexy[flexy] #primary.ytd-watch-flexy { max-width: 100% !important; min-width: 0 !important; }
-    ytd-watch-flexy[flexy] #player-container-outer.ytd-watch-flexy { max-width: 100% !important; }
-    #secondary.ytd-watch-flexy { width: 100% !important; }`, "youtubeHalfScreen"),
+  hideYoutubeProgressBar: youtubeStyle("hideYoutubeProgressBar"),
+  hideYoutubeControls: youtubeStyle("hideYoutubeControls"),
+  hideYoutubeDuration: youtubeStyle("hideYoutubeDuration"),
+  hideYoutubeTimestamps: youtubeStyle("hideYoutubeTimestamps"),
+  hideAllYoutubeTimestamps: youtubeStyle("hideAllYoutubeTimestamps"),
+  youtubeHalfScreen: youtubeStyle("youtubeHalfScreen"),
   volumeBoost: { type: "script", file: "scripts/volumeBoost.js", allFrames: true },
   arabicRtlMode: { type: "script", file: "scripts/arabicRtlMode.js", allFrames: true },
   designMode: {

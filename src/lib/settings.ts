@@ -82,6 +82,8 @@ const validators = {
   youtubeHideProgress: isBoolean,
   youtubeHideControls: isBoolean,
   youtubeHideDuration: isBoolean,
+  youtubeHideTimestamps: isBoolean,
+  youtubeHideAllTimestamps: isBoolean,
   youtubeHalfScreen: isBoolean,
   youtubeQualityOpen: isBoolean,
   videoQuality: value => typeof value === "string" && (value === "auto" || Object.prototype.hasOwnProperty.call(QUALITY_LEVEL_MAP, value)),

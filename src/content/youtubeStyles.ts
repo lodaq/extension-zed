@@ -3,24 +3,30 @@ import {
   cssForYoutubeStyles,
   type YoutubeStyleState,
 } from "../lib/youtubeStyles"
+import { applyPageStyle } from "./pageStyle"
 
 const STYLE_ID = "zed-youtube-styles"
 const CACHE_KEY = "zed.youtubeStyles"
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
 function normalizeState(value: unknown): YoutubeStyleState {
+  const record = asRecord(value)
   const state: YoutubeStyleState = {}
-  if (!value || typeof value !== "object" || Array.isArray(value)) return state
+  if (!record) return state
   for (const key of YOUTUBE_STYLE_SETTING_KEYS) {
-    state[key] = (value as Record<string, unknown>)[key] === true
+    state[key] = record[key] === true
   }
   return state
 }
 
 function readCache(): YoutubeStyleState | null {
   try {
-    const value: unknown = JSON.parse(localStorage.getItem(CACHE_KEY) ?? "null")
-    if (!value || typeof value !== "object" || Array.isArray(value)) return null
-    return normalizeState(value)
+    const record = asRecord(JSON.parse(localStorage.getItem(CACHE_KEY) ?? "null"))
+    return record ? normalizeState(record) : null
   } catch {
     return null
   }
@@ -31,27 +37,13 @@ function writeCache(state: YoutubeStyleState) {
 }
 
 function applyStyles(state: YoutubeStyleState) {
-  const css = cssForYoutubeStyles(state)
-  const existing = document.getElementById(STYLE_ID)
-  if (!css) {
-    existing?.remove()
-    return
-  }
-
-  const style = (existing as HTMLStyleElement | null) ?? document.createElement("style")
-  if (!style.isConnected) {
-    style.id = STYLE_ID
-    const root = document.head || document.documentElement
-    if (!root) return
-    root.appendChild(style)
-  }
-  if (style.textContent !== css) style.textContent = css
+  applyPageStyle(STYLE_ID, cssForYoutubeStyles(state))
 }
 
 // Apply cached preferences synchronously so enabled styles are present before first paint.
 const cached = readCache()
 const state: YoutubeStyleState = cached ?? {}
-const changedDuringHydration = new Set<(typeof YOUTUBE_STYLE_SETTING_KEYS)[number]>()
+const changedDuringHydration = new Set<keyof YoutubeStyleState>()
 if (cached) applyStyles(state)
 
 void chrome.storage.local.get(YOUTUBE_STYLE_SETTING_KEYS).then((stored) => {

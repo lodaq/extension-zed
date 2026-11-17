@@ -1,6 +1,6 @@
 import "./savedPage"
 import { installSavedIndicator } from "./savedIndicator"
-import { readShortcuts, recordCombo } from "../lib/shortcuts"
+import { readShortcuts, recordCombo, SHORTCUT_ACTIONS } from "../lib/shortcuts"
 // Install/update backfill can reach a frame that already has the declarative script.
 const state = globalThis as typeof globalThis & { __zedShortcutsInstalled?: boolean }
 if (!state.__zedShortcutsInstalled) {
@@ -24,7 +24,7 @@ if (!state.__zedShortcutsInstalled) {
       let combo: string | null
       try { combo = recordCombo(event) } catch { return }
       if (!combo) return
-      const id = Object.keys(combos).find(id => combos[id] === combo)
+      const id = SHORTCUT_ACTIONS.find(action => combos[action.id] === combo)?.id
       if (!id) return
       event.preventDefault(); event.stopImmediatePropagation()
       const result = await chrome.runtime.sendMessage({ type: "zed:shortcut", id })

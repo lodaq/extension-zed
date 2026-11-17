@@ -23,7 +23,7 @@ describe('redesign data rules',()=>{
   expect(isRestrictedPage('https://chromewebstore.google.com.example.com/')).toBe(false)
   expect(isRestrictedPage('https://example.com')).toBe(false)
  })
- it('provides 28 actions and 11 defaults',()=>{expect(SHORTCUT_ACTIONS).toHaveLength(28);expect(Object.values(DEFAULT_SHORTCUTS).filter(Boolean)).toHaveLength(11)})
+ it('provides 28 page actions and 19 total defaults',()=>{expect(SHORTCUT_ACTIONS).toHaveLength(28);expect(Object.values(DEFAULT_SHORTCUTS).filter(Boolean)).toHaveLength(19)})
  it('uses physical letter codes and accepts Cmd shortcuts',()=>{
   const event={key:'ф',code:'KeyA',ctrlKey:false,altKey:true,shiftKey:true,metaKey:false}
   expect(recordCombo(event)).toBe('Alt+Shift+A')
@@ -41,3 +41,17 @@ it("validates popup locations including nested tools", () => {
 it("preserves save shortcuts edited inside Zed", () => {
  expect(readShortcuts({ action20: "Alt+Shift+S" }).action20).toBe("Alt+Shift+S")
 })
+
+ it("keeps popup assignments and merges defaults into older settings", () => {
+  const bindings = readShortcuts({ action0: "Cmd+K", tab0: "", hints: "G" })
+  expect(bindings.action0).toBe("Cmd+K")
+  expect(bindings.tab0).toBe("")
+  expect(bindings.tab1).toBe("2")
+  expect(bindings.hints).toBe("G")
+  expect(readSetting("keyboardShortcuts", bindings, null)).toEqual(bindings)
+ })
+ it("allows plain popup bindings while requiring page modifiers", () => {
+  const event = { key: "f", code: "KeyF", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false }
+  expect(recordCombo(event, true)).toBe("F")
+  expect(() => recordCombo(event)).toThrow()
+ })

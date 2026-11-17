@@ -24,6 +24,7 @@ import { LinksTab } from "@/components/LinksTab"
 import { saveCurrentTab } from "@/lib/links"
 import { getStoredScrollPosition, saveStoredScrollPosition } from "@/lib/bootCache"
 import { DEFAULT_SHORTCUTS, readShortcuts, recordCombo } from "@/lib/shortcuts"
+import { showClickHints } from "@/lib/clickHints"
 import ShortcutsTab from "@/components/ShortcutsTab"
 
 const tools = [
@@ -77,31 +78,35 @@ export default function App() {
   }, [tab, detail, settings])
   const setDetail = (detail: string | null) => void setLocation({ ...location, detail })
   const [shortcuts] = useStoredValue("keyboardShortcuts", DEFAULT_SHORTCUTS)
+  const bindings = readShortcuts(shortcuts)
   useEffect(() => {
+    let clearHints: (() => void) | undefined
     const listener = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat) return
-      if (event.key === "Escape") {
-        if (document.querySelector('dialog[open], [role="dialog"]')) return
-        if (settings || detail || tab !== "Misc") {
-          event.preventDefault()
-          event.stopPropagation()
-          void setLocation({ tab: settings ? tab : "Misc", settings: false, detail: settings || tab !== "Misc" ? detail : null })
-        }
-        return
-      }
+      if (event.isComposing || document.querySelector('dialog[open], [role="dialog"]')) return
       if (event.composedPath().some(node => node instanceof HTMLElement && (node.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(node.tagName)))) return
       let combo
-      try { combo = recordCombo(event) } catch { return }
+      try { combo = recordCombo(event, true) } catch { return }
       const id = Object.entries(readShortcuts(shortcuts)).find(([, value]) => value && value === combo)?.[0]
       if (!id) return
       event.preventDefault()
+      if (id.startsWith("tab")) {
+        const target = tabs[Number(id.slice(3))]
+        if (target) void setLocation({ ...location, tab: target, settings: false })
+        return
+      }
+      if (id === "hints") { clearHints?.(); clearHints = showClickHints(); return }
+      if (id === "back") {
+        void setLocation({ tab: settings ? tab : "Misc", settings: false, detail: settings || tab !== "Misc" ? detail : null })
+        return
+      }
       void chrome.runtime.sendMessage({ type: "zed:shortcut", id }).then(async result => {
         if (!result?.ok) throw new Error(result?.error || "Shortcut failed")
         if (result.password) await navigator.clipboard.writeText(result.password)
       }).catch(error => toast({ title: String(error), variant: "destructive" }))
     }
     window.addEventListener("keydown", listener)
-    return () => window.removeEventListener("keydown", listener)
+    return () => { window.removeEventListener("keydown", listener); clearHints?.() }
   }, [location, settings, detail, tab, shortcuts, setLocation])
   const [order] = useStoredValue("miscSectionOrder", DEFAULT_TOOL_ORDER)
   const [passwordOptions, setPasswordOptions] = useState(DEFAULT_PASSWORD_OPTIONS)
@@ -170,9 +175,9 @@ export default function App() {
     <main className="zed-shell">
       <nav className="zed-navigation" aria-label="Extension navigation">
         <div ref={tabbar} className="zed-tabbar">
-        {tabs.map(name => (
-          <button key={name} className="zed-tab" aria-current={!settings && tab === name ? "page" : undefined}
-            onClick={() => { void setLocation({ ...location, tab: name, settings: false }) }}>{name}</button>
+        {tabs.map((name, index) => (
+          <button key={name} title={bindings[`tab${index}`] ? `${name} (${bindings[`tab${index}`]})` : name} aria-keyshortcuts={bindings[`tab${index}`] || undefined} className="zed-tab" aria-current={!settings && tab === name ? "page" : undefined}
+            onClick={() => { void setLocation({ ...location, tab: name, settings: false }) }}>{name} {bindings[`tab${index}`] && <kbd aria-hidden="true" className="zed-key zed-tab-key">{bindings[`tab${index}`]}</kbd>}</button>
         ))}
         </div>
         <button className="zed-tab zed-settings" aria-label="Settings"

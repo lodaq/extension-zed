@@ -28,10 +28,16 @@ export const SHORTCUT_ACTIONS = [
   { id: "action26", group: 'Appearance', name: 'Toggle dark theme', combo: '' },
   { id: "action27", group: 'Appearance', name: 'Toggle black and white', combo: '' },
 ] as const
-export const DEFAULT_SHORTCUTS: Record<string, string> = Object.fromEntries(SHORTCUT_ACTIONS.map(action => [action.id, action.combo]))
-export function recordCombo(event: { key: string; code: string; ctrlKey: boolean; altKey: boolean; shiftKey: boolean; metaKey: boolean }): string | null {
+export const POPUP_SHORTCUT_ACTIONS = [
+  ...["Misc", "Extensions", "YouTube", "Links", "Saved", "Shortcuts"].map((name, index) => ({ id: `tab${index}`, group: "Popup · Tabs", name: `Open ${name}`, combo: String(index + 1) })),
+  { id: "back", group: "Popup · Navigation", name: "Back", combo: "Escape" },
+  { id: "hints", group: "Popup · Navigation", name: "Show click hints", combo: "F" },
+]
+export const ALL_SHORTCUT_ACTIONS = [...POPUP_SHORTCUT_ACTIONS, ...SHORTCUT_ACTIONS]
+export const DEFAULT_SHORTCUTS: Record<string, string> = Object.fromEntries(ALL_SHORTCUT_ACTIONS.map(action => [action.id, action.combo]))
+export function recordCombo(event: { key: string; code: string; ctrlKey: boolean; altKey: boolean; shiftKey: boolean; metaKey: boolean }, allowPlain = false): string | null {
   if (["Control", "Alt", "Shift", "Meta"].includes(event.key)) return null
-  if (!event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey) throw new Error("Add Ctrl, Alt, Shift or Cmd")
+  if (!allowPlain && !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey) throw new Error("Add Ctrl, Alt, Shift or Cmd")
   const aliases: Record<string, string> = { ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→", " ": "Space" }
   const key = aliases[event.key] ?? (/^(Key|Digit)/.test(event.code) ? event.code.replace(/^(Key|Digit)/, "") : event.key.length === 1 ? event.key.toUpperCase() : event.key)
   return [event.ctrlKey && "Ctrl", event.altKey && "Alt", event.shiftKey && "Shift", event.metaKey && "Cmd", key].filter(Boolean).join("+")
@@ -39,5 +45,5 @@ export function recordCombo(event: { key: string; code: string; ctrlKey: boolean
 
 export function readShortcuts(value: unknown): Record<string, string> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return { ...DEFAULT_SHORTCUTS }
-  return Object.fromEntries(SHORTCUT_ACTIONS.map(action => [action.id, typeof (value as Record<string, unknown>)[action.id] === "string" ? (value as Record<string, string>)[action.id] : action.combo]))
+  return Object.fromEntries(ALL_SHORTCUT_ACTIONS.map(action => [action.id, typeof (value as Record<string, unknown>)[action.id] === "string" ? (value as Record<string, string>)[action.id] : action.combo]))
 }

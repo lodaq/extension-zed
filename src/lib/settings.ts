@@ -1,3 +1,4 @@
+import { ALL_SHORTCUT_ACTIONS } from "./shortcuts"
 import { SAVED_KEY, readSaved } from "./saved"
 import { PLAYBACK_MAX, PLAYBACK_MIN } from "./playbackPresets"
 import { QUALITY_LEVEL_MAP } from "./videoQuality"
@@ -63,7 +64,7 @@ function isSavedLinks(value: unknown): boolean {
 }
 
 function isShortcutMap(value: unknown): boolean {
-  return isRecord(value) && Object.entries(value).every(([key, combo]) => /^action(?:[0-9]|1[0-9]|2[0-7])$/.test(key) && typeof combo === "string" && combo.length <= 100)
+  return isRecord(value) && Object.entries(value).every(([key, combo]) => ALL_SHORTCUT_ACTIONS.some(action => action.id === key) && typeof combo === "string" && combo.length <= 100)
 }
 
 const validators = {

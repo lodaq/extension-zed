@@ -91,6 +91,7 @@ export default function App() {
       if (!id) return
       event.preventDefault()
       if (id.startsWith("tab")) {
+        if (id === "tab6") { void setLocation({ ...location, settings: true }); return }
         const target = tabs[Number(id.slice(3))]
         if (target) void setLocation({ ...location, tab: target, settings: false })
         return
@@ -181,8 +182,10 @@ export default function App() {
         ))}
         </div>
         <button className="zed-tab zed-settings" aria-label="Settings"
+          title={bindings.tab6 ? `Settings (${bindings.tab6})` : "Settings"} aria-keyshortcuts={bindings.tab6 || undefined}
           aria-pressed={settings} onClick={() => { void setLocation({ ...location, settings: !settings }) }}>
           <Icon name="settings" />
+          {bindings.tab6 && <kbd aria-hidden="true" className="zed-key zed-tab-key">{bindings.tab6}</kbd>}
         </button>
       </nav>
       {(settings || selected) && (

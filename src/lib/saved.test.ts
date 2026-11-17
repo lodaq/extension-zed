@@ -79,3 +79,44 @@ it("normalizes LinkedIn share links and rejects unrelated or unsafe URLs", () =>
     "https://linkedin.com/feed/update/%ZZ/",
   ]) expect(mediaUrl(url)).toBeNull()
 })
+
+it("creates collections and moves existing saves without losing their content", async () => {
+  const values: Record<string, unknown> = {}
+  vi.stubGlobal("chrome", { storage: { local: {
+    get: async () => ({ ...values }),
+    set: async (patch: object) => { Object.assign(values, patch) },
+  } } })
+  await changeSaved({ type: "saved:text", text: "Funny", url: "https://example.com" })
+  const original = (values[SAVED_KEY] as { id: string }[])[0]
+  expect(original).not.toHaveProperty("collection")
+  await changeSaved({ type: "saved:collection", collection: " Work " })
+  await changeSaved({ type: "saved:collection", collection: "Work" })
+  expect(values.savedCollections).toEqual(["Work"])
+  await changeSaved({ type: "saved:move", id: original.id, collection: "Work" })
+  expect(values[SAVED_KEY]).toEqual([{ ...original, collection: "Work" }])
+  await expect(changeSaved({ type: "saved:move", id: original.id, collection: "Missing" })).rejects.toThrow("Collection not found")
+  await changeSaved({ type: "saved:move", id: original.id, collection: "" })
+  expect(values[SAVED_KEY]).toEqual([{ ...original, collection: "" }])
+  await expect(changeSaved({ type: "saved:collection", collection: " " })).rejects.toThrow()
+  await expect(changeSaved({ type: "saved:move", collection: "Work" })).rejects.toThrow()
+})
+
+it("renames and deletes collections while preserving saved items", async () => {
+  const item = { id: "a", kind: "text", text: "Keep me", url: "https://example.com", createdAt: 1, collection: "Work" }
+  const other = { ...item, id: "b", collection: "Funny" }
+  const values: Record<string, unknown> = { savedCollections: ["Work", "Funny"], savedItems: [item, other] }
+  vi.stubGlobal("chrome", { storage: { local: {
+    get: async () => ({ ...values }),
+    set: async (patch: object) => { Object.assign(values, patch) },
+  } } })
+  await expect(changeSaved({ type: "saved:rename", collection: "Work", name: "Funny" })).rejects.toThrow("already exists")
+  await expect(changeSaved({ type: "saved:rename", collection: "Work", name: " " })).rejects.toThrow("Invalid collection")
+  await expect(changeSaved({ type: "saved:delete-collection", collection: "" })).rejects.toThrow("Invalid collection")
+  await changeSaved({ type: "saved:rename", collection: "Work", name: " Office " })
+  expect(values.savedCollections).toEqual(["Office", "Funny"])
+  expect(values.savedItems).toEqual([{ ...item, collection: "Office" }, other])
+  await changeSaved({ type: "saved:delete-collection", collection: "Office" })
+  expect(values.savedCollections).toEqual(["Funny"])
+  expect(values.savedItems).toEqual([{ ...item, collection: "" }, other])
+  await expect(changeSaved({ type: "saved:delete-collection", collection: "Office" })).rejects.toThrow("not found")
+})

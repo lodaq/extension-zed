@@ -35,7 +35,7 @@ chrome.runtime.onMessage.addListener((data, sender, reply) => {
       .then(rules => reply({ ok: true, rules }), error => reply({ ok: false, error: String(error) }))
     return true
   }
-  if (["saved:add", "saved:remove"].includes(data?.type)) {
+  if (["saved:add", "saved:remove", "saved:collection", "saved:move", "saved:rename", "saved:delete-collection"].includes(data?.type)) {
     void changeSaved(data).then(reply, error => reply({ ok: false, error: String(error) }))
     return true
   }

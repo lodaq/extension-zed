@@ -12,7 +12,7 @@ export function hintLabels(count: number): string[] {
 }
 export function showClickHints(): () => void {
   const targets = [...document.querySelectorAll<HTMLElement>('main button, main a[href], main input:not([type="hidden"]), main select, main textarea, main [role="switch"], main [role="checkbox"], main summary')].filter(node => {
-    if (node.matches(':disabled, [aria-disabled="true"]') || node.closest('[inert], [hidden], .zed-tabbar')) return false
+    if (node.matches(':disabled, [aria-disabled="true"]') || node.closest('[inert], [hidden], .zed-tabbar, .zed-settings')) return false
     const rect = node.getBoundingClientRect()
     if (!rect.width || !rect.height || getComputedStyle(node).visibility !== "visible") return false
     const x = Math.max(0, rect.left) + Math.min(rect.width, innerWidth - Math.max(0, rect.left)) / 2
@@ -26,11 +26,11 @@ export function showClickHints(): () => void {
   overlay.setAttribute('aria-hidden', 'true')
   targets.forEach((node, index) => {
     const badge = document.createElement('kbd')
-    badge.className = 'zed-key zed-hint'
+    badge.className = 'zed-key zed-tab-key zed-hint'
     badge.textContent = labels[index]
     const rect = node.getBoundingClientRect()
-    badge.style.left = `${Math.max(0, Math.min(rect.left, innerWidth - 48))}px`
-    badge.style.top = `${Math.max(0, Math.min(rect.top, innerHeight - 24))}px`
+    badge.style.left = `${Math.max(16, Math.min(rect.right, innerWidth))}px`
+    badge.style.top = `${Math.max(0, Math.min(rect.top, innerHeight - 16))}px`
     overlay.append(badge)
   })
   document.body.append(overlay)

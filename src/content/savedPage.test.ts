@@ -85,10 +85,10 @@ it.each(["missing", "throwing"])("ignores deferred startup with a %s runtime", a
 })
 
 
-it("mounts LinkedIn controls beside post actions with bundled styles and removes them on invalidation", async () => {
+it.each([false, true])("mounts icon-only LinkedIn controls (saved: %s) and removes them on invalidation", async saved => {
   const callbacks: Record<string, () => void> = {}
   const disconnect = vi.fn()
-  const runtime: { id?: string } = { id: "zed" }
+  const runtime = { id: "zed" as string | undefined, sendMessage: vi.fn().mockRejectedValue(new Error("Save failed")) }
   const styles: { textContent?: string }[] = []
   const shadowAppend = vi.fn()
   const parent = { append: vi.fn() }
@@ -98,7 +98,13 @@ it("mounts LinkedIn controls beside post actions with bundled styles and removes
     hasAttribute: vi.fn(() => true), remove: vi.fn(), parentElement: parent,
   }
   const target = { querySelector: () => parent, parentElement: parent, before: vi.fn(), append: vi.fn(), matches: () => true, prepend: vi.fn(), style: { position: "" } }
-  const button = { setAttribute: vi.fn(), addEventListener: vi.fn() }
+  const buttonCallbacks: Record<string, (event: { preventDefault: () => void; stopPropagation: () => void }) => Promise<void>> = {}
+  const button = {
+    innerHTML: "", textContent: "", disabled: false, title: "",
+    setAttribute: vi.fn(),
+    addEventListener: vi.fn((name: string, callback: typeof buttonCallbacks[string]) => { buttonCallbacks[name] = callback }),
+  }
+  const url = "https://www.linkedin.com/feed/update/urn:li:activity:123/"
   vi.mocked(findMediaTargets).mockReturnValue(new Map([[target as unknown as HTMLElement, "https://www.linkedin.com/feed/update/urn:li:activity:123/"]]))
   const win = {
     top: null as unknown,
@@ -110,14 +116,18 @@ it("mounts LinkedIn controls beside post actions with bundled styles and removes
   vi.stubGlobal("location", { hostname: "www.linkedin.com", href: "https://www.linkedin.com/feed/" })
   const createElement = vi.fn((tag: string) => {
     if (tag === "div") return host
-    if (tag === "button") return button
+    if (tag === "button") {
+      if (!createElement.mock.calls.slice(0, -1).some(call => call[0] === "button")) return button
+      return { addEventListener: vi.fn() }
+    }
+    if (["label", "select", "span"].includes(tag)) return { setAttribute: vi.fn(), addEventListener: vi.fn(), append: vi.fn() }
     const style = {}
     styles.push(style)
     return style
   })
   vi.stubGlobal("document", { documentElement: {}, createElement })
   vi.stubGlobal("MutationObserver", class { observe() {} disconnect = disconnect })
-  vi.stubGlobal("chrome", { runtime, storage: { local: { get: async () => ({}) }, onChanged: { addListener: vi.fn(), removeListener: vi.fn() } } })
+  vi.stubGlobal("chrome", { runtime, storage: { local: { get: async () => ({ savedItems: saved ? [{ id: "post", kind: "link", text: url, url, createdAt: 1 }] : [] }) }, onChanged: { addListener: vi.fn(), removeListener: vi.fn() } } })
   delete (globalThis as { __zedSaveInstalled?: boolean }).__zedSaveInstalled
   await import("./savedPage")
   expect(parent.append).toHaveBeenCalledWith(host)
@@ -129,7 +139,20 @@ it("mounts LinkedIn controls beside post actions with bundled styles and removes
   expect(createElement).not.toHaveBeenCalledWith("link")
   expect(styles[0].textContent).toContain(":host {")
   expect(styles[0].textContent).toContain("--zed-bg:")
-  expect(shadowAppend).toHaveBeenCalledWith(styles[0], button)
+  expect(shadowAppend).toHaveBeenCalledWith(styles[0], button, expect.any(Object))
+  expect(button.innerHTML).toContain('<svg')
+  expect(button.innerHTML).toContain('aria-hidden="true"')
+  expect(button.textContent).toBe("")
+  expect(button.setAttribute).toHaveBeenCalledWith("aria-label", saved ? "Remove from Zed" : "Save to Zed")
+  expect(button.setAttribute).toHaveBeenCalledWith("aria-pressed", String(saved))
+  const icon = button.innerHTML
+  await buttonCallbacks.click({ preventDefault: vi.fn(), stopPropagation: vi.fn() })
+  expect(runtime.sendMessage).toHaveBeenCalledWith(saved ? { type: "saved:remove", id: "post" } : { type: "saved:add", url })
+  expect(button.innerHTML).toBe(icon)
+  expect(button.textContent).toBe("")
+  expect(button.disabled).toBe(false)
+  expect(button.title).toBe("Save failed")
+  expect(button.setAttribute).toHaveBeenCalledWith("aria-label", "Update failed — retry. Save failed")
   runtime.id = undefined
   callbacks.scroll()
   expect(disconnect).toHaveBeenCalledOnce()

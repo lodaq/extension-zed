@@ -1,5 +1,5 @@
 import { ALL_SHORTCUT_ACTIONS } from "./shortcuts"
-import { SAVED_KEY, readSaved } from "./saved"
+import { SAVED_KEY, readSaved, COLLECTIONS_KEY, readCollections } from "./saved"
 import { PLAYBACK_MAX, PLAYBACK_MIN } from "./playbackPresets"
 import { QUALITY_LEVEL_MAP } from "./videoQuality"
 
@@ -107,6 +107,7 @@ function isKnownSettingKey(key: string): key is KnownSettingKey {
 }
 
 export function readSetting<T>(key: string, value: unknown, fallback: T): T {
+  if (key === COLLECTIONS_KEY) return readCollections(value) as T
   if (key === SAVED_KEY) return readSaved(value) as T
   if (!isKnownSettingKey(key) || !validators[key](value)) return fallback
   if (key === "miscSectionOrder" && Array.isArray(value) && !value.includes("screenshot")) {

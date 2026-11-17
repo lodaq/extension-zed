@@ -152,7 +152,7 @@ input[type=range] { width: 100%; accent-color: var(--zed-accent); }
 }
 
 .zed-hints { position:fixed;inset:0;pointer-events:none;z-index:1000; }
-.zed-hint { position:absolute;color:var(--zed-text);box-shadow:var(--zed-shadow-pop); }
+.zed-hint.zed-tab-key { position:absolute;right:auto;color:var(--zed-text);transform:translateX(-100%); }
 .zed-hint[hidden] { display:none; }
 
 .zed-tab-key { position:absolute;top:calc(-1 * var(--zed-space-0));right:0;min-width:16px;height:16px;padding:0 var(--zed-space-0);font-size:var(--zed-fs-2xs);line-height:1;pointer-events:none; }

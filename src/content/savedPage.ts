@@ -1,5 +1,6 @@
 import tokens from "../design-system/tokens.css?raw"
-import { readSaved, mediaUrl, SAVED_BUTTONS_KEY, SAVED_KEY, type SavedItem } from "../lib/saved"
+import saveIcon from "../design-system/save.svg?raw"
+import { COLLECTIONS_KEY, readCollections, readSaved, mediaUrl, SAVED_BUTTONS_KEY, SAVED_KEY, type SavedItem } from "../lib/saved"
 import { findMediaTargets, findLinkedInActionRow, LINKEDIN_CARD } from "../lib/mediaTargets"
 
 type SaveEntry = { mount: HTMLElement; previousPosition: string | null; host: HTMLDivElement; button: HTMLButtonElement; url: string | null; busy: boolean }
@@ -25,7 +26,7 @@ function installSaveButtons() {
       entry.host.classList.toggle("dark", dark)
       if (entry.busy) continue
       const saved = entry.url !== null && items.some(item => item.kind === "link" && mediaUrl(item.url) === entry.url)
-      entry.button.textContent = saved ? "Remove from Zed" : "Save to Zed"
+      entry.button.setAttribute("aria-label", saved ? "Remove from Zed" : "Save to Zed")
       entry.button.setAttribute("aria-pressed", String(saved))
       entry.button.title = saved ? "Remove from Zed" : entry.url ? `Save ${entry.url} to Zed` : "Save this post to Zed"
       entry.button.disabled = false
@@ -113,18 +114,51 @@ function installSaveButtons() {
         :host([data-zed-post]) { position: relative !important; display: block; top: auto; right: auto; padding: var(--zed-space-3); }
         :host([data-zed-post-inline]) { display: inline-flex; vertical-align: middle; }
         :host([data-zed-post-action]) { display: inline-flex; flex: 0 0 auto; align-self: center; padding: 0 var(--zed-space-1); }
-        :host([data-zed-post-action]) button { padding-inline: var(--zed-space-3); font-size: var(--zed-fs-sm); white-space: nowrap; }
         :host([hidden]) { display: none !important; }
         *, *::before, *::after { box-sizing: border-box; animation: none !important; transition: none !important; }
-        button { background: var(--zed-surface-raised); color: var(--zed-text); border: 1px solid var(--zed-border); border-radius: var(--zed-radius-md); font: 600 var(--zed-fs-base) var(--zed-font); height: var(--zed-h-compact); padding: 0 var(--zed-space-6); cursor: pointer; }
+        button { display: inline-flex; align-items: center; justify-content: center; background: var(--zed-surface-raised); color: var(--zed-text); border: 1px solid var(--zed-border); border-radius: var(--zed-radius-md); height: var(--zed-h-compact); width: var(--zed-h-compact); padding: 0; cursor: pointer; }
+        button:not([aria-pressed="true"]) .unsave { display: none; }
         button:hover:not(:disabled) { background: var(--zed-surface-hover); border-color: var(--zed-border-strong); }
         button:disabled { opacity: .5; cursor: default; }
         button:focus-visible { outline: 2px solid var(--zed-accent); outline-offset: 2px; }`
       const button = document.createElement("button")
       button.type = "button"
+      button.innerHTML = saveIcon
       button.setAttribute("aria-live", "polite")
       button.title = url ? `Save ${url} to Zed` : "Save this post to Zed"
-      shadow.append(style, button)
+      const picker = document.createElement("label")
+      picker.hidden = true
+      picker.textContent = "Saved in All saved · Move to collection "
+      const select = document.createElement("select")
+      select.setAttribute("aria-label", "Move to collection")
+      const status = document.createElement("span")
+      status.setAttribute("role", "status")
+      const done = document.createElement("button")
+      done.type = "button"
+      done.textContent = "Done"
+      done.addEventListener("click", event => { event.stopPropagation(); picker.hidden = true; button.focus() })
+      picker.addEventListener("click", event => event.stopPropagation())
+      picker.addEventListener("keydown", event => {
+        event.stopPropagation()
+        if (event.key === "Escape") { picker.hidden = true; button.focus() }
+      })
+      select.addEventListener("change", async () => {
+        const item = items.find(item => item.kind === "link" && mediaUrl(item.url) === entry.url)
+        if (!item) return
+        select.disabled = true
+        try {
+          const result = await chrome.runtime.sendMessage({ type: "saved:move", id: item.id, collection: select.value })
+          if (!result?.ok) throw new Error(result?.error || "Move failed")
+          status.textContent = "Collection updated"
+        } catch (error) { status.textContent = String(error); select.value = item.collection || "" }
+        finally { select.disabled = false }
+      })
+      picker.append(select, done, status)
+      style.textContent += `label:not([hidden]) { display: flex; flex-direction: column; gap: var(--zed-space-2); padding: var(--zed-space-3); background: var(--zed-bg); color: var(--zed-text); border: 1px solid var(--zed-border); border-radius: var(--zed-radius-md); font: var(--zed-fs-sm) var(--zed-font); }
+        select { background: var(--zed-bg); color: var(--zed-text); font: inherit; max-width: 100%; }
+        select:focus-visible { outline: 2px solid var(--zed-accent); }
+        label button { width: auto; padding: var(--zed-space-2); }`
+      shadow.append(style, button, picker)
       const previousPosition = !post && getComputedStyle(target).position === "static" ? target.style.position : null
       if (previousPosition !== null) target.style.position = "relative"
       const mount = actions ?? (post ? target.parentElement : target)
@@ -143,7 +177,8 @@ function installSaveButtons() {
         if (!contextAvailable()) return
         entry.busy = true
         button.disabled = true
-        button.textContent = "Updating…"
+        button.setAttribute("aria-label", "Updating…")
+        button.title = "Updating…"
         try {
           // Facebook hydrates timestamp hrefs in response to pointer events.
           if (!url) {
@@ -158,13 +193,26 @@ function installSaveButtons() {
           const result = await chrome.runtime.sendMessage(saved ? { type: "saved:remove", id: saved.id } : { type: "saved:add", url: resolvedUrl })
           if (!result?.ok) throw new Error(result?.error || "Save failed")
           items = readSaved((await chrome.storage.local.get(SAVED_KEY))[SAVED_KEY])
+          picker.hidden = true
+          if (!saved) {
+            const stored = await chrome.storage.local.get(COLLECTIONS_KEY)
+            select.replaceChildren()
+            for (const name of ["", ...readCollections(stored[COLLECTIONS_KEY])]) {
+              const option = document.createElement("option")
+              option.value = name
+              option.textContent = name || "All saved"
+              select.append(option)
+            }
+            status.textContent = select.options.length === 1 ? "Create collections in Zed’s Saved tab." : ""
+            picker.hidden = false
+          }
           entry.busy = false
           render()
         } catch (error) {
           button.title = error instanceof Error ? error.message : "Save failed"
           entry.busy = false
           button.disabled = false
-          button.textContent = "Update failed — retry"
+          button.setAttribute("aria-label", `Update failed — retry. ${button.title}`)
         }
       })
     }

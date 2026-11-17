@@ -23,7 +23,7 @@ describe('redesign data rules',()=>{
   expect(isRestrictedPage('https://chromewebstore.google.com.example.com/')).toBe(false)
   expect(isRestrictedPage('https://example.com')).toBe(false)
  })
- it('provides 28 page actions and 19 total defaults',()=>{expect(SHORTCUT_ACTIONS).toHaveLength(28);expect(Object.values(DEFAULT_SHORTCUTS).filter(Boolean)).toHaveLength(19)})
+ it('provides 28 page actions and 20 total defaults',()=>{expect(SHORTCUT_ACTIONS).toHaveLength(28);expect(Object.values(DEFAULT_SHORTCUTS).filter(Boolean)).toHaveLength(20)})
  it('uses physical letter codes and accepts Cmd shortcuts',()=>{
   const event={key:'ф',code:'KeyA',ctrlKey:false,altKey:true,shiftKey:true,metaKey:false}
   expect(recordCombo(event)).toBe('Alt+Shift+A')
@@ -55,3 +55,7 @@ it("preserves save shortcuts edited inside Zed", () => {
   expect(recordCombo(event, true)).toBe("F")
   expect(() => recordCombo(event)).toThrow()
  })
+
+it("adds Settings as the seventh popup shortcut for existing users", () => {
+  expect(readShortcuts({ tab0: "1" }).tab6).toBe("7")
+})

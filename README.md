@@ -21,7 +21,7 @@ Open `chrome://extensions` or `brave://extensions`, enable Developer mode, choos
 - **YouTube:** focus/half-screen layouts and independent progress, player duration, thumbnail timestamp, all-timestamp, and control hiding. All-timestamp hiding covers the player, thumbnails, comments/descriptions, chapters, and transcripts. Saved YouTube styles are reapplied before first paint on every page load.
 - **Passwords:** cryptographic generation, 4–128 characters, selectable character groups, and explicit copy. Generated passwords are not saved or backed up.
 - **Extensions:** optional management access; list, enable/disable, reload, open settings, and uninstall other extensions. Browser policy restrictions are respected.
-- **Links/Saved:** save tabs and media links, collect selected text through the context menu, toggle in-page save buttons, and open/copy/remove saved items. Opening a link from Links removes it after the new tab opens.
+- **Links/Saved:** save tabs and media links, collect selected text through the context menu, toggle in-page save buttons, organize saved items into collections, and open/copy/remove saved items. New saves appear in All saved; the in-page picker lets you move them to a collection. Create collections in Saved. Opening a link from Links removes it after the new tab opens.
 - **Shortcuts/settings:** configurable keyboard shortcuts, tool order, remembered popup views/scroll, theme, validated JSON preference export/merge-import, and reset.
 - **Site limiter:** timed domain/subdomain blocks and daily foreground-usage limits, with no early-unblock control. Browser-only rules require Zed to remain enabled. Optional system protection requires the separate [administrator companion](companion/README.md).
 

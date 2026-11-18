@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import { resolve, dirname } from "node:path"
+import { unzipSync } from "fflate"
 import { Script } from "node:vm"
 
 const root = resolve("dist")
@@ -10,6 +11,16 @@ const paths = [manifest.action.default_popup, manifest.background.service_worker
   ...manifest.web_accessible_resources.flatMap((entry) => entry.resources),
   ...Object.values(manifest.icons), ...manifest.content_scripts.flatMap((entry) => entry.js)]
 for (const file of paths) assert.ok(existsSync(resolve(root, file)), `Missing manifest asset: ${file}`)
+const helperData = readFileSync(resolve(root, "downloader-setup-data.js"), "utf8")
+assert.ok(helperData.startsWith("export default "), "Missing setup command data")
+const setup = JSON.parse(helperData.slice("export default ".length))
+assert.ok(setup.unix.includes("dependencies_ready") && setup.windows.includes("winget install"),
+  "Missing prerequisite setup commands")
+const helper = unzipSync(Buffer.from(setup.helper, "base64"))
+assert.ok(existsSync(resolve(root, "downloader-setup.js")), "Missing setup command script")
+for (const file of ["install.py", "zed_downloader.py", "native-launcher.cs"]) {
+  assert.ok(helper[file]?.length, `Missing helper file: ${file}`)
+}
 const worker = readFileSync(resolve(root, manifest.background.service_worker), "utf8")
 for (const match of worker.matchAll(/(?:from|import)\s*["'](\.[^"']+)["']/g)) {
   assert.ok(existsSync(resolve(root, dirname(manifest.background.service_worker), match[1])), `Missing worker import: ${match[1]}`)

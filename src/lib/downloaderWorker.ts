@@ -1,109 +1,118 @@
-import { DOWNLOADER_ENABLED, DOWNLOADER_STATE_KEY, EMPTY_DOWNLOADER, validDownloadUrl, type DownloaderState } from "./downloader"
+import { DOWNLOADER_ENABLED, DOWNLOADER_STATE_KEY, EMPTY_DOWNLOADER, findInstagramReelMedia, findPageMedia, instagramReelCode, mediaExtension, mediaFilename, validDownloadUrl, type DownloaderState } from "./downloader"
+import { isRestrictedPage } from "./withActiveTab"
 
-const HOST = "com.extension_zed.downloader"
-let port: chrome.runtime.Port | undefined
-let serial = 0
-const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
-let writes = Promise.resolve()
-
-function save(state: DownloaderState) {
-  // Serialize updates so a slow progress write cannot replace completion.
-  writes = writes.catch(console.error).then(() => chrome.storage.session.set({ [DOWNLOADER_STATE_KEY]: state }))
-  return writes
+let operations = Promise.resolve<unknown>(undefined)
+function enqueue<T>(run: () => Promise<T>): Promise<T> {
+  const result = operations.then(run, run)
+  operations = result.catch(() => {})
+  return result
+}
+async function save(state: DownloaderState) {
+  await chrome.storage.session.set({ [DOWNLOADER_STATE_KEY]: state })
+  return state
+}
+async function storedState(): Promise<DownloaderState> {
+  return (await chrome.storage.session.get(DOWNLOADER_STATE_KEY))[DOWNLOADER_STATE_KEY] as DownloaderState ?? EMPTY_DOWNLOADER
+}
+async function refresh(): Promise<DownloaderState> {
+  const state = await storedState()
+  if (state.phase === "reading") return save({ ...state, phase: "error", error: "The link check was interrupted. Try again." })
+  if (state.downloadId === undefined || state.phase !== "downloading") return state
+  const [item] = await chrome.downloads.search({ id: state.downloadId })
+  if (!item) return save({ ...state, phase: "error", error: "This download is no longer available in the browser." })
+  const cancelled = item.state === "interrupted" && item.error === "USER_CANCELED"
+  return save({ ...state, phase: cancelled ? "ready" : item.state === "complete" ? "done" : item.state === "interrupted" ? "error" : "downloading",
+    cancelled, error: item.state === "interrupted" && !cancelled ? `The browser stopped the download: ${item.error || "network error"}. Try the link again.` : undefined,
+    filename: item.filename.split(/[\\/]/).pop() || state.filename, downloaded: item.bytesReceived,
+    total: item.totalBytes > 0 ? item.totalBytes : undefined, pct: item.state === "complete" ? 100 : item.totalBytes > 0 ? Math.min(100, Math.round(item.bytesReceived / item.totalBytes * 100)) : null })
 }
 
-function disconnect(connection: chrome.runtime.Port, error: Error) {
-  if (port !== connection) return
-  port = undefined
-  for (const request of pending.values()) { clearTimeout(request.timer); request.reject(error) }
-  pending.clear()
-  void save({ phase: "setup", error: error.message }).catch(console.error)
-  connection.disconnect()
+async function inspectMedia(url: string) {
+  if (!validDownloadUrl(url)) throw new Error("Use a direct HTTP(S) media link without embedded credentials.")
+  if (/\.(m3u8|mpd)(?:[?#]|$)/i.test(new URL(url).pathname)) throw new Error("Streaming playlists cannot be downloaded here. Use a direct media file link.")
+  const signal = AbortSignal.timeout(10000)
+  const response = await fetch(url, { headers: { Range: "bytes=0-0" }, credentials: "include", signal })
+  await response.body?.cancel()
+  if (!response.ok) throw new Error(`The media server returned HTTP ${response.status}. Check that the link is still accessible.`)
+  if (!validDownloadUrl(response.url || url)) throw new Error("The link redirected to an unsupported address.")
+  const type = (response.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase()
+  if (!type.startsWith("video/") && !type.startsWith("audio/") && !(type === "application/octet-stream" && mediaExtension(response.url || url))) {
+    throw new Error("This link is a webpage or unsupported stream. Paste a direct video/audio file link, or find media on the current page.")
+  }
+  return mediaFilename(response.url || url, type)
 }
 
-function validState(value: unknown): value is DownloaderState {
-  if (!value || typeof value !== "object") return false
-  const state = value as DownloaderState
-  if (!["checking", "ready", "reading", "updating", "results", "downloading", "done", "error"].includes(state.phase)) return false
-  if (state.ffmpeg !== undefined && typeof state.ffmpeg !== "boolean") return false
-  for (const key of ["version", "url", "error", "stage", "filename", "summary"] as const) {
-    if (state[key] !== undefined && (typeof state[key] !== "string" || state[key]!.length > 8192)) return false
+async function reelMedia(tab: chrome.tabs.Tab | undefined, code: string) {
+  if (tab?.id === undefined || !tab.url || instagramReelCode(tab.url) !== code) {
+    throw new Error("Open the matching Instagram Reel in the active tab, then try Download again.")
   }
-  for (const key of ["pct", "downloaded", "total", "speed", "eta", "size"] as const) {
-    if (state[key] !== undefined && state[key] !== null && (typeof state[key] !== "number" || !Number.isFinite(state[key]) || state[key]! < 0)) return false
+  const [{ result }] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: findInstagramReelMedia,
+    args: [new URL(tab.url).origin, code],
+  })
+  if (!result || !validDownloadUrl(result)) {
+    throw new Error("Instagram hasn’t exposed a direct video file for this Reel. Start playback and try again.")
   }
-  if (state.pct != null && state.pct > 100) return false
-  if (state.media) {
-    const media = state.media
-    if (![media.title, media.uploader, media.host].every(v => typeof v === "string") || !Number.isFinite(media.duration)) return false
-    for (const formats of [media.video, media.audio]) {
-      if (!Array.isArray(formats) || formats.length > 500 || !formats.every(f => f &&
-        [f.id, f.label, f.meta].every(v => typeof v === "string") && Number.isFinite(f.size) && f.size >= 0 &&
-        typeof f.approximate === "boolean" && Array.isArray(f.tags) && f.tags.every(t => typeof t === "string"))) return false
-    }
-  }
-  return true
+  return result
 }
 
-export async function readDownloaderState(): Promise<DownloaderState> {
-  await writes
-  const stored = (await chrome.storage.session.get(DOWNLOADER_STATE_KEY))[DOWNLOADER_STATE_KEY] as DownloaderState | undefined
-  if (!stored) return EMPTY_DOWNLOADER
-  if (!port && ["downloading", "reading", "checking", "updating", "results"].includes(stored.phase)) {
-    const state: DownloaderState = { phase: "error", error: "The helper disconnected. Read the link again to start a new task." }
-    await save(state)
+async function run(data: Record<string, unknown>) {
+  const state = await refresh()
+  if (data.command === "state") return state
+  if (data.command === "seen") return state.phase === "done" ? save({ ...state, seen: true }) : state
+  if (data.command === "reveal") {
+    if (state.phase !== "done" || state.downloadId === undefined) throw new Error("Complete a download first.")
+    await chrome.downloads.show(state.downloadId)
     return state
   }
-  return stored
+  if (data.command === "cancel") {
+    if (state.phase === "downloading" && state.downloadId !== undefined) await chrome.downloads.cancel(state.downloadId)
+    return refresh()
+  }
+  if (state.phase === "downloading") throw new Error("Cancel the current download before starting another.")
+  if (data.command === "reset") return save(EMPTY_DOWNLOADER)
+  if (data.command === "scan") {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (tab?.id === undefined || isRestrictedPage(tab.url ?? "")) throw new Error("Open a regular website to find media. Direct links work on any page.")
+    const code = instagramReelCode(tab.url ?? "")
+    if (code) {
+      const url = await reelMedia(tab, code)
+      return save({ phase: "ready", sources: [{ url, label: "Instagram Reel video" }] })
+    }
+    const frames = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: findPageMedia })
+    const urls = [...new Set(frames.flatMap(frame => Array.isArray(frame.result) ? frame.result : []))].filter(url => typeof url === "string" && validDownloadUrl(url)).slice(0, 100)
+    return save({ phase: "ready", sources: urls.map(url => ({ url, label: new URL(url).pathname.split("/").pop() || new URL(url).hostname })),
+      error: urls.length ? undefined : "No direct media files were found. Start playback and try again. Streaming and protected players are not supported." })
+  }
+  if (data.command !== "download" || typeof data.url !== "string") throw new Error("Invalid downloader command")
+  const url = data.url.trim()
+  if (!validDownloadUrl(url)) throw new Error("Use a direct HTTP(S) media link without embedded credentials.")
+  await save({ phase: "reading", url, sources: state.sources })
+  try {
+    const code = instagramReelCode(url)
+    let mediaUrl = url
+    if (code) {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      mediaUrl = await reelMedia(tab, code)
+    }
+    const filename = await inspectMedia(mediaUrl)
+    const downloadId = await chrome.downloads.download({ url: mediaUrl, filename, conflictAction: "uniquify", saveAs: false })
+    await save({ phase: "downloading", url, downloadId, filename: filename.slice(4), sources: state.sources, pct: null })
+    return refresh()
+  } catch (error) {
+    return save({ phase: "error", url, sources: state.sources, error: error instanceof Error ? error.message : String(error) })
+  }
 }
 
 export async function handleDownloaderCommand(data: Record<string, unknown>, sender: chrome.runtime.MessageSender) {
   if (!DOWNLOADER_ENABLED || sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL("index.html")) throw new Error("Downloader access denied")
-  const command = data.command
-  if (command === "state") return { ok: true, state: await readDownloaderState() }
-  if (command === "connect") {
-    const state = await readDownloaderState()
-    if (port || state.phase === "done") return { ok: true, state }
-    return handleDownloaderCommand({ command: "ping" }, sender)
-  }
-  if (command === "seen") {
-    const state = await readDownloaderState()
-    if (state.phase === "done") await save({ ...state, seen: true })
-    return { ok: true, state }
-  }
-  if (typeof command !== "string" || !["ping", "formats", "download", "cancel", "open", "reveal", "update", "reset"].includes(command)) throw new Error("Invalid downloader command")
-  if (command === "formats" && (typeof data.url !== "string" || !validDownloadUrl(data.url))) throw new Error("Only HTTP(S) video links are supported")
-  if (command === "download" && (typeof data.formatId !== "string" || !/^(video|audio|mp3):[\w.-]{1,100}$/.test(data.formatId))) throw new Error("Invalid format")
-  if (!port) {
-    if (["download", "cancel", "open", "reveal"].includes(command)) throw new Error("The helper disconnected. Start a new download.")
-    const connection = chrome.runtime.connectNative(HOST)
-    port = connection
-    connection.onMessage.addListener((message: { id?: string; ok?: boolean; error?: string; state?: unknown; event?: string } | null) => {
-      if (!message || typeof message !== "object" || (message.state !== undefined && !validState(message.state))) {
-        disconnect(connection, new Error("The downloader helper sent an invalid response"))
-        return
-      }
-      if (message.event === "state" && message.state) void save(message.state as DownloaderState).catch(console.error)
-      const request = message.id ? pending.get(message.id) : undefined
-      if (!request) return
-      clearTimeout(request.timer)
-      pending.delete(message.id!)
-      if (!message.ok) request.reject(new Error(message.error || "The helper could not complete this task"))
-      else request.resolve({ ok: true, state: message.state })
-    })
-    connection.onDisconnect.addListener(() => {
-      const error = new Error(chrome.runtime.lastError?.message || "The downloader helper disconnected")
-      disconnect(connection, error)
-    })
-  }
-  const connection = port
-  const id = String(++serial)
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      disconnect(connection, new Error("The downloader helper did not respond. Check the setup guide."))
-    }, 15000)
-    pending.set(id, { resolve, reject, timer })
-    try { connection.postMessage({ id, command, url: data.url, formatId: data.formatId }) }
-    catch (error) { disconnect(connection, error instanceof Error ? error : new Error(String(error))) }
+  return { ok: true, state: await enqueue(() => run(data)) }
+}
+
+export function installDownloader() {
+  if (!DOWNLOADER_ENABLED || !chrome.downloads) return
+  chrome.downloads.onChanged.addListener(delta => {
+    void enqueue(async () => { const state = await storedState(); if (state.downloadId === delta.id) await refresh() }).catch(console.error)
   })
 }

@@ -70,7 +70,7 @@ function isShortcutMap(value: unknown): boolean {
 const validators = {
   popupLocation: value => isRecord(value) &&
     ["Misc", "Extensions", "YouTube", "Links", "Saved", "Shortcuts"].includes(value.tab as string) &&
-    (value.detail === null || ["playback", "quality", "password", "volume", "scrollbars", "modes", "capture", "limiter", "downloader"].includes(value.detail as string)) &&
+    (value.detail === null || ["playback", "quality", "password", "volume", "scrollbars", "modes", "capture", "limiter", "downloader", "advanced-downloader"].includes(value.detail as string)) &&
     typeof value.settings === "boolean",
   keyboardShortcuts: isShortcutMap,
   savedButtonsEnabled: isBoolean,

@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shlex
 import shutil
+import subprocess
 import sys
 
 HOST = "com.extension_zed.downloader"
@@ -53,6 +54,16 @@ def discover_ids(browser):
     return sorted(ids)
 
 
+def compile_windows_launcher(source, launcher):
+    powershell = Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"
+    env = dict(os.environ, ZED_LAUNCHER_SOURCE=str(source), ZED_LAUNCHER_OUTPUT=str(launcher))
+    subprocess.run([
+        str(powershell), "-NoProfile", "-NonInteractive", "-Command",
+        "$ErrorActionPreference = 'Stop'; Add-Type -Path $env:ZED_LAUNCHER_SOURCE "
+        "-OutputAssembly $env:ZED_LAUNCHER_OUTPUT -OutputType ConsoleApplication",
+    ], check=True, env=env)
+
+
 def install(extension_id, browser, extension_ids=None):
     ids = extension_ids or [extension_id]
     if not all(isinstance(value, str) and re.fullmatch(r"[a-p]{32}", value) for value in ids):
@@ -71,7 +82,7 @@ def install(extension_id, browser, extension_ids=None):
         # Chrome launches an executable on Windows; a .cmd file is insufficient.
         launcher = root / "zed-downloader.exe"
         if not launcher.exists():
-            raise ValueError("Run install-windows.ps1 first to compile the native launcher")
+            compile_windows_launcher(source / "native-launcher.cs", launcher)
         (root / "python-path.txt").write_text(sys.executable, encoding="utf-8")
         manifest = root / (HOST + "." + browser + ".json")
     else:
@@ -91,7 +102,7 @@ def install(extension_id, browser, extension_ids=None):
         vendor = "Google\\Chrome" if browser == "chrome" else "BraveSoftware\\Brave-Browser"
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, "Software\\" + vendor + "\\NativeMessagingHosts\\" + HOST) as key:
             winreg.SetValueEx(key, "", 0, winreg.REG_SZ, str(manifest))
-    print(f"Installed {manifest}. Open Video downloader in Zed; it connects automatically.")
+    print(f"Installed {manifest}. Open Advanced video downloader in Zed; it connects automatically.")
 
 
 def setup(extension_id=None, browser=None):

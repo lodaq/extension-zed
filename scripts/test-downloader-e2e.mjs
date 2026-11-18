@@ -1,28 +1,34 @@
 import assert from "node:assert/strict"
-import fs from "node:fs/promises"
-import path from "node:path"
+import { createServer } from "node:http"
+import { once } from "node:events"
 import { DevToolsClient, EXTENSION_DIST, parseTextContent } from "./test-browser.mjs"
 
 const client = new DevToolsClient()
-const screenshots = path.resolve("docs/design/screenshots")
-await fs.mkdir(screenshots, { recursive: true })
+const filename = `zed-e2e-${Date.now()}.wav`
+const wave = Buffer.from("524946462500000057415645666d74201000000001000100401f0000401f000001000800646174610100000080", "hex")
+const server = createServer((request, response) => {
+  if (request.url === `/${filename}`) {
+    response.writeHead(200, { "Content-Type": "audio/wav", "Content-Length": wave.length })
+    response.end(wave)
+  } else {
+    response.writeHead(200, { "Content-Type": "text/html" })
+    response.end(`<a href="/${filename}">Media fixture</a>`)
+  }
+})
+server.listen(0, "127.0.0.1")
+await once(server, "listening")
+const base = `http://127.0.0.1:${server.address().port}`
 
-async function call(name, args) {
-  const result = await client.callTool(name, args)
-  assert.ok(!result.isError, `${name}: ${parseTextContent(result)}`)
-  return parseTextContent(result)
+async function call(name, params) {
+  const result = await client.callTool(name, params)
+  const text = parseTextContent(result)
+  assert.ok(!result.isError, `${name}: ${text}`)
+  return text
 }
-async function evaluate(fn, worker) {
-  return call("evaluate_script", { ...(worker ? { serviceWorkerId: worker } : { pageId: 1 }), function: fn })
-}
+
 async function check(fn) {
-  const result = await evaluate(fn)
+  const result = await call("evaluate_script", { pageId: 1, function: fn })
   assert.match(result, /\btrue\b/, result)
-}
-async function shot(name) {
-  await call("take_screenshot", { pageId: 1, filePath: path.join(screenshots, `downloader-${name}.png`) })
-  await check(`() => document.querySelector('.zed-shell').scrollWidth <= 640 && document.querySelector('.zed-content').scrollWidth <= document.querySelector('.zed-content').clientWidth`)
-  console.log(`✓ ${name}`)
 }
 
 try {
@@ -30,79 +36,52 @@ try {
   await call("install_extension", { path: EXTENSION_DIST })
   const id = (await call("list_extensions")).match(/[a-p]{32}/)?.[0]
   assert.ok(id)
-  const url = `chrome-extension://${id}/index.html`
-  const navigation = await call("navigate_page", { pageId: 1, url })
-  const worker = navigation.match(/sw-\d+/)?.[0]
-  assert.ok(worker, navigation)
-  await evaluate(`() => { chrome.runtime.connectNative = () => { throw new Error('Specified native messaging host not found.'); }; }`, worker)
-  await call("resize_page", { pageId: 1, width: 640, height: 600 })
-  await evaluate(`async () => {
-    document.documentElement.style.setProperty('--zed-popup-width', '640px');
-    document.documentElement.style.setProperty('--zed-popup-h', '600px');
-    await chrome.storage.local.set({ popupLocation: { tab: 'Misc', detail: 'downloader', settings: false } });
-    await new Promise(r => setTimeout(r, 100));
+  await call("navigate_page", { pageId: 1, url: `chrome-extension://${id}/index.html` })
+  await check(`async () => {
+    await chrome.storage.local.set({ popupLocation: { tab: "Misc", detail: "downloader", settings: false } })
+    return true
   }`)
-  await shot("setup")
-  await evaluate(`async () => { [...document.querySelectorAll('button')].find(b => b.textContent === 'Check again').click(); await new Promise(r => setTimeout(r, 100)); }`)
-  await check(`() => document.querySelectorAll('[role=alert]').length === 1 && document.body.textContent.includes('Specified native messaging host not found.')`)
-  // Mock only the native transport in this disposable profile. All popup/worker code is real.
-  await evaluate(`() => {
-    let listeners = [];
-    const media = { title: 'A sample video', uploader: 'Example creator', host: 'example.com', duration: 123,
-      video: [ { id: 'video:2160', label: '2160p', meta: 'WebM · VP9 · 30 fps', size: 800000000, approximate: true, tags: ['Best quality'] },
-        { id: 'video:1080', label: '1080p', meta: 'MP4 · H.264 · 30 fps', size: 214000000, approximate: false, tags: ['Most compatible'] } ],
-      audio: [ { id: 'audio:aac', label: 'M4A · AAC', meta: 'M4A · AAC · 128 kbps', size: 5000000, approximate: true, tags: ['Recommended'] },
-        { id: 'mp3:aac', label: 'MP3 · Converted', meta: '128 kbps', size: 0, approximate: true, tags: [] } ] };
-    let state = { phase: 'ready', version: '2026.11.17', ffmpeg: true };
-    globalThis.zedTestEmit = patch => { state = { ...state, ...patch }; listeners.forEach(fn => fn({ event: 'state', state })); };
-    chrome.runtime.connectNative = () => ({
-      onMessage: { addListener: fn => listeners.push(fn) }, onDisconnect: { addListener: () => {} }, disconnect: () => {},
-      postMessage: request => {
-        const phase = { ping: 'ready', formats: 'reading', download: 'downloading', cancel: 'results', reset: 'ready', update: 'ready' }[request.command];
-        if (phase) globalThis.zedTestEmit({ phase, ...(request.command === 'formats' ? { url: request.url } : {}),
-          ...(request.command === 'download' ? { pct: 25, downloaded: 50000000, total: 214000000, speed: 3000000, eta: 55, stage: 'Downloading…' } : {}),
-          ...(request.command === 'reset' ? { media: undefined, url: '' } : {}) });
-        listeners.forEach(fn => fn({ id: request.id, ok: true, state }));
+  await call("wait_for", { pageId: 1, text: ["Media link"] })
+  await check(`async () => {
+    const send = (command, url) => chrome.runtime.sendMessage({ type: "downloader:command", command, url })
+    const rejected = await send("download", ${JSON.stringify(base)})
+    return rejected.state.phase === "error" && rejected.state.error.includes("webpage")
+  }`)
+  await check(`async () => {
+    const url = ${JSON.stringify(base)}
+    const tab = await chrome.tabs.create({ url })
+    try {
+      for (let i = 0; i < 50; i++) {
+        if ((await chrome.tabs.get(tab.id)).status === "complete") break
+        await new Promise(resolve => setTimeout(resolve, 50))
       }
-    });
-    globalThis.zedTestMedia = media;
-  }`, worker)
-  await call("navigate_page", { pageId: 1, url })
-  await check(`async () => { await new Promise(r => setTimeout(r, 200)); document.documentElement.style.setProperty('--zed-popup-width', '640px'); document.documentElement.style.setProperty('--zed-popup-h', '600px'); return !!document.getElementById('zed-video-link'); }`)
-  await shot("ready")
-  await evaluate(`async () => { document.querySelector('form').requestSubmit(); await new Promise(r => setTimeout(r, 50)); }`)
-  await check(`() => document.body.textContent.includes('Paste a link first.') && document.activeElement.id === 'zed-video-link'`)
-  await shot("validation")
-  await evaluate(`async () => {
-    const input = document.getElementById('zed-video-link');
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'https://example.com/watch');
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 50)); document.querySelector('form').requestSubmit();
-    await new Promise(r => setTimeout(r, 100));
+      const result = await chrome.runtime.sendMessage({ type: "downloader:command", command: "scan" })
+      return result.state.sources.some(source => source.url === url + "/${filename}")
+    } finally { await chrome.tabs.remove(tab.id) }
   }`)
-  await shot("busy")
-  await evaluate(`() => globalThis.zedTestEmit({ phase: 'error', error: 'This video is unavailable' })`, worker)
-  await shot("error")
-  await evaluate(`() => globalThis.zedTestEmit({ phase: 'results', media: globalThis.zedTestMedia })`, worker)
-  await check(`() => document.querySelector('[role=radio][aria-checked=true]').textContent.includes('1080p')`)
-  await shot("video")
-  await evaluate(`async () => { const radio = document.querySelector('[role=radio][aria-checked=true]'); radio.focus(); radio.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true })); await new Promise(r => setTimeout(r, 50)); }`)
-  await check(`() => document.activeElement.getAttribute('aria-checked') === 'true' && document.activeElement.textContent.includes('2160p')`)
-  await evaluate(`async () => { [...document.querySelectorAll('button')].find(b => b.textContent === 'Audio only').click(); await new Promise(r => setTimeout(r, 50)); }`)
-  await shot("audio")
-  await evaluate(`async () => { [...document.querySelectorAll('button')].find(b => b.textContent === 'Download').click(); await new Promise(r => setTimeout(r, 100)); }`)
-  await shot("downloading")
-  await call("navigate_page", { pageId: 1, url: "about:blank" })
-  await evaluate(`() => globalThis.zedTestEmit({ phase: 'downloading', pct: 70 })`, worker)
-  await call("navigate_page", { pageId: 1, url })
-  await evaluate(`() => { document.documentElement.style.setProperty('--zed-popup-width', '640px'); document.documentElement.style.setProperty('--zed-popup-h', '600px'); }`)
-  await check(`async () => { await new Promise(r => setTimeout(r, 200)); return document.body.textContent.includes('70%') && document.body.textContent.includes('Cancel download'); }`)
-  await evaluate(`() => globalThis.zedTestEmit({ phase: 'done', filename: 'A_sample_video.mp4', size: 214000000, summary: '1080p · MP4' })`, worker)
-  await shot("done")
-  await check(`() => [...document.querySelectorAll('button')].some(b => b.textContent === 'Show in folder')`)
-  await call("resize_page", { pageId: 1, width: 320, height: 600 })
-  await check(`() => document.querySelector('.zed-content').scrollWidth <= document.querySelector('.zed-content').clientWidth`)
-  console.log("Downloader browser checks passed; screenshots saved to docs/design/screenshots/.")
+  await check(`async () => {
+    const send = (command, url) => chrome.runtime.sendMessage({ type: "downloader:command", command, url })
+    const started = await send("download", ${JSON.stringify(`${base}/${filename}`)})
+    const id = started.state.downloadId
+    if (id === undefined) return started
+    try {
+      for (let i = 0; i < 50; i++) {
+        const { state } = await send("state")
+        if (state.phase === "done") return state.filename === ${JSON.stringify(filename)} && state.downloaded === ${wave.length}
+        if (state.phase === "error") return state
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+      return false
+    } finally {
+      const [item] = await chrome.downloads.search({ id })
+      if (item?.state === "complete") await chrome.downloads.removeFile(id)
+      else await chrome.downloads.cancel(id)
+      await chrome.downloads.erase({ id })
+    }
+  }`)
+  await call("wait_for", { pageId: 1, text: ["Download complete"] })
+  console.log("Downloader found page media, rejected HTML, and completed a real browser download.")
 } finally {
+  server.close()
   await client.close()
 }

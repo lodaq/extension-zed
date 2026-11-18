@@ -197,7 +197,12 @@ input[type=range] { width: 100%; accent-color: var(--zed-accent); }
 @media (max-width:260px) {
   .zed-settings-header>.zed-actions { grid-template-columns:minmax(0,1fr); }
 }
-.zed-downloader-link { flex:1;min-width:0; }
+.zed-downloader-link { min-width:0; }
+.zed-downloader-source { min-width:0;white-space:normal;overflow-wrap:anywhere;height:auto; }
+.zed-downloader-done { align-items:center;text-align:center; }
+.zed-downloader-done>.zed-well { width:52px;height:52px; }
+.zed-downloader-filename { max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--zed-fs-sm); }
+.zed-download-progress { width:100%;accent-color:var(--zed-accent); }
 .zed-downloader-text { flex:1;min-width:0;overflow-wrap:anywhere; }
 .zed-downloader-media { gap:12px; }
 .zed-downloader-media strong { display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:var(--zed-fs-sm); }
@@ -210,9 +215,6 @@ input[type=range] { width: 100%; accent-color: var(--zed-accent); }
 .zed-format[aria-checked=true]>.zed-format-radio { border-color:var(--zed-accent);background:var(--zed-accent);box-shadow:inset 0 0 0 3px var(--zed-surface); }
 .zed-downloader-footer { position:sticky;bottom:-12px;display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:12px 0;background:var(--zed-bg);border-top:1px solid var(--zed-border);font-size:var(--zed-fs-sm); }
 .zed-downloader-footer>.zed-downloader-text { min-width:min(240px,100%); }
-.zed-downloader-done { align-items:center;text-align:center; }
-.zed-downloader-done>.zed-well { width:52px;height:52px; }
-.zed-downloader-filename { max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--zed-fs-sm); }
 .zed-downloader-error { color:var(--zed-warn);font-size:var(--zed-fs-sm);font-weight:600; }
-.zed-download-progress { width:100%;accent-color:var(--zed-accent); }
 @media (max-width:360px) { .zed-downloader-thumbnail { width:64px; } .zed-format { flex-wrap:wrap; } }
+.zed-actions>.zed-downloader-link { flex:1; }

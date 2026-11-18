@@ -5,24 +5,23 @@
 <title>Video downloader setup · Extension Zed</title>
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="downloader-setup.css">
+<script type="module" src="downloader-setup.js"></script>
 <body>
 <main>
-<h1>Set up the Zed downloader</h1>
-<p>Full video and audio downloads need a one-time local helper installation. Browser extensions cannot install native programs themselves. Once installed, Zed connects automatically; no extension ID or browser configuration is needed.</p>
-<ol>
-<li>Install Python 3.10 or newer, yt-dlp, and optionally ffmpeg using your operating system’s package manager or their official installers. Make sure <code>yt-dlp --version</code> and <code>ffmpeg -version</code> work in a terminal.</li>
-<li>Install Extension Zed in Chrome or Brave before running the helper installer.</li>
-<li>From the Extension Zed source folder, run the command below for your system. The installer detects Zed in your Chrome and Brave profiles automatically.</li>
-</ol>
-<h2>Linux / macOS</h2>
-<pre><code>python3 downloader/install.py</code></pre>
-<h2>Windows PowerShell</h2>
-<pre><code>.\downloader\install-windows.ps1</code></pre>
-<p>Keep the source folder available until installation finishes. The installer copies the helper to your user profile and registers it for the detected Zed extension IDs only. It does not install Python, yt-dlp or ffmpeg.</p>
-<p>Return to Zed → Misc → Video downloader. It connects automatically when opened. If the view was already open, choose Check again. Restart the browser if you changed PATH.</p>
-<p>Files are saved to <code>~/Downloads/Zed</code>. Without ffmpeg, only single-file videos and native audio formats are available. MP3 conversion and merging need ffmpeg.</p>
-<p>Update asks yt-dlp to self-update. If your package manager installed it, update it through that package manager when self-update is unavailable.</p>
-<p>Download only content you own or have permission to save.</p>
+<h1>Advanced video downloader setup</h1>
+<p>Copy the command for your OS, paste it into a terminal as your normal user, and press Enter. It installs missing Python, yt-dlp, and FFmpeg packages, then registers the Zed helper. Your package manager may prompt for approval.</p>
+
+<h2>Linux or macOS</h2>
+<p>Supported package managers are apt on Debian or Ubuntu, pacman on Arch Linux, and Homebrew on macOS.</p>
+<p><button type="button" data-python="python3">Copy Linux or macOS setup command</button></p>
+
+<h2>Windows</h2>
+<p>Use Windows PowerShell with WinGet (App Installer). Restart Chrome or Brave after installing packages so it picks up your updated PATH.</p>
+<p><button type="button" data-python="python">Copy Windows setup command</button></p>
+
+<p id="copy-status" role="status"></p>
+<textarea id="setup-command" aria-label="Setup command" readonly hidden rows="4"></textarea>
+<p>Return to Zed → Misc → Advanced video downloader and click <strong>Check again</strong> if shown.</p>
 </main>
 </body>
 </html>

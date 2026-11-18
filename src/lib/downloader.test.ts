@@ -1,128 +1,41 @@
-import { afterEach, expect, it, vi } from "vitest"
-import { defaultDownloadFormat, downloadSize, validDownloadUrl } from "./downloader"
-import { readSetting } from "./settings"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { findInstagramReelMedia, instagramReelCode, mediaExtension, mediaFilename, validDownloadUrl } from "./downloader"
 
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers() })
-
-it("validates HTTP(S) URLs without accepting credentials, options or local files", () => {
-  for (const value of ["", "example.com", "file:///tmp/video", "--exec=bad", "https://user:pass@example.com", "https://example.com/\nnext"]) expect(validDownloadUrl(value)).toBe(false)
-  expect(validDownloadUrl("https://example.com/watch?name=$(safe-as-an-argument)")).toBe(true)
-  expect(validDownloadUrl(" http://localhost/video ")).toBe(true)
-})
-
-it("selects compatibility/recommendation defaults and reports unknown or approximate sizes", () => {
-  const rows = [{ id: "4k", tags: ["Best quality"] }, { id: "hd", tags: ["Most compatible"] }]
-  expect(defaultDownloadFormat(rows as Parameters<typeof defaultDownloadFormat>[0])).toBe("hd")
-  expect(defaultDownloadFormat([])).toBe("")
-  expect(downloadSize(1024 ** 2, true)).toBe("~1.0 MB")
-  expect(downloadSize(0)).toBe("Size unknown")
-  const location = { tab: "Misc", detail: "downloader", settings: false }
-  expect(readSetting("popupLocation", location, null)).toEqual(location)
-})
-
-function nativeMock() {
-  const events: Record<string, (data?: unknown) => void> = {}
-  const values: Record<string, unknown> = {}
-  const postMessage = vi.fn()
-  const connection = {
-    postMessage,
-    disconnect: vi.fn(),
-    onMessage: { addListener: (fn: (value?: unknown) => void) => { events.message = fn } },
-    onDisconnect: { addListener: (fn: () => void) => { events.disconnect = fn } },
-  }
-  const connectNative = vi.fn(() => connection)
-  vi.stubGlobal("chrome", {
-    runtime: { id: "zed", getURL: (p: string) => `chrome-extension://zed/${p}`, connectNative },
-    storage: { session: { get: async () => values, set: async (patch: object) => { Object.assign(values, patch) } } },
+describe("direct media links", () => {
+  it("accepts HTTP(S) and rejects credentials, control characters and browser-only URLs", () => {
+    expect(validDownloadUrl("https://example.test/a.mp4?token=abc")).toBe(true)
+    for (const url of ["https://user:pass@example.test/a.mp4", "https://exa\nmple.test/a.mp4", "blob:https://example.test/id", "file:///a.mp4"]) {
+      expect(validDownloadUrl(url)).toBe(false)
+    }
   })
-  return { events, values, connection, connectNative, postMessage }
-}
-const sender = { id: "zed", url: "chrome-extension://zed/index.html" }
 
-it("rejects content scripts and malformed commands before opening a native connection", async () => {
-  vi.resetModules()
-  const { connectNative } = nativeMock()
-  const { handleDownloaderCommand } = await import("./downloaderWorker")
-  await expect(handleDownloaderCommand({ command: "ping" }, { ...sender, url: "https://example.com", tab: { id: 1 } } as chrome.runtime.MessageSender)).rejects.toThrow("denied")
-  await expect(handleDownloaderCommand({ command: "formats", url: "file:///tmp/a" }, sender)).rejects.toThrow("HTTP(S)")
-  await expect(handleDownloaderCommand({ command: "download", formatId: "hd+evil" }, sender)).rejects.toThrow("format")
-  expect(connectNative).not.toHaveBeenCalled()
+  it("keeps filenames inside Zed and recognizes direct media despite query strings", () => {
+    expect(mediaExtension("https://example.test/a.MP4?token=abc")).toBe("mp4")
+    expect(mediaFilename("https://example.test/x%2Fdemo", "audio/mpeg")).toBe("Zed/x_demo.mp3")
+    expect(() => mediaFilename("https://example.test/watch", "text/html")).toThrow()
+  })
 })
 
-it("keeps download progress and completion in worker storage without a popup", async () => {
-  vi.resetModules()
-  const { events, postMessage } = nativeMock()
-  const { handleDownloaderCommand, readDownloaderState } = await import("./downloaderWorker")
-  const result = handleDownloaderCommand({ command: "ping" }, sender)
-  expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ command: "ping" }))
-  events.message({ id: "1", ok: true, state: { phase: "checking" } })
-  await expect(result).resolves.toEqual({ ok: true, state: { phase: "checking" } })
-  events.message({ event: "state", state: { phase: "downloading", pct: 42 } })
-  expect(await readDownloaderState()).toMatchObject({ phase: "downloading", pct: 42 })
-  events.message({ event: "state", state: { phase: "done", filename: "video.mp4", size: 123 } })
-  expect(await readDownloaderState()).toMatchObject({ phase: "done", filename: "video.mp4" })
-  await handleDownloaderCommand({ command: "seen" }, sender)
-  expect(await readDownloaderState()).toMatchObject({ phase: "done", seen: true })
-})
+describe("Instagram Reel links", () => {
+  afterEach(() => vi.unstubAllGlobals())
 
-it("reports missing helpers and interrupts state left by a terminated worker", async () => {
-  vi.resetModules()
-  const { events, values } = nativeMock()
-  const { handleDownloaderCommand, readDownloaderState } = await import("./downloaderWorker")
-  values.downloaderState = { phase: "downloading", pct: 20 }
-  expect(await readDownloaderState()).toMatchObject({ phase: "error", error: expect.stringContaining("disconnected") })
-  const result = handleDownloaderCommand({ command: "ping" }, sender)
-  events.disconnect()
-  await expect(result).rejects.toThrow("disconnected")
-  expect(await readDownloaderState()).toMatchObject({ phase: "setup" })
-})
+  it("matches the copied link and browser URL by Reel code", () => {
+    expect(instagramReelCode("https://www.instagram.com/reel/DfzcZNYgZ3s/?share=1")).toBe("DfzcZNYgZ3s")
+    expect(instagramReelCode("https://www.instagram.com/reels/DfzcZNYgZ3s/")).toBe("DfzcZNYgZ3s")
+    expect(instagramReelCode("https://www.instagram.com.example.test/reel/DfzcZNYgZ3s/")).toBeUndefined()
+  })
 
-it("disconnects on invalid native state instead of putting it into the popup", async () => {
-  vi.resetModules()
-  const { events, connection } = nativeMock()
-  const { handleDownloaderCommand } = await import("./downloaderWorker")
-  const result = handleDownloaderCommand({ command: "ping" }, sender)
-  events.message({ event: "state", state: { phase: "downloading", pct: 999 } })
-  await expect(result).rejects.toThrow("invalid response")
-  expect(connection.disconnect).toHaveBeenCalled()
-})
-
-it("rejects downloader commands when the build flag disables the feature", async () => {
-  vi.resetModules()
-  vi.stubEnv("VITE_VIDEO_DOWNLOADER", "false")
-  const { connectNative } = nativeMock()
-  const { handleDownloaderCommand } = await import("./downloaderWorker")
-  await expect(handleDownloaderCommand({ command: "ping" }, sender)).rejects.toThrow("denied")
-  expect(connectNative).not.toHaveBeenCalled()
-})
-
-it("cleans up a silent native connection so Check again can reconnect", async () => {
-  vi.resetModules()
-  vi.useFakeTimers()
-  const { events, connectNative, connection } = nativeMock()
-  const { handleDownloaderCommand, readDownloaderState } = await import("./downloaderWorker")
-  const result = handleDownloaderCommand({ command: "ping" }, sender)
-  const rejected = expect(result).rejects.toThrow("did not respond")
-  await vi.advanceTimersByTimeAsync(15000)
-  await rejected
-  expect(connection.disconnect).toHaveBeenCalled()
-  expect(await readDownloaderState()).toMatchObject({ phase: "setup" })
-  const retry = handleDownloaderCommand({ command: "ping" }, sender)
-  expect(connectNative).toHaveBeenCalledTimes(2)
-  events.message({ id: "2", ok: true, state: { phase: "ready" } })
-  await expect(retry).resolves.toMatchObject({ ok: true })
-})
-
-it("automatically connects once and preserves an existing download on repeated opens", async () => {
-  vi.resetModules()
-  const { events, connectNative } = nativeMock()
-  const { handleDownloaderCommand, readDownloaderState } = await import("./downloaderWorker")
-  const result = handleDownloaderCommand({ command: "connect" }, sender)
-  await vi.waitFor(() => expect(connectNative).toHaveBeenCalledTimes(1))
-  events.message({ id: "1", ok: true, state: { phase: "checking" } })
-  await result
-  events.message({ event: "state", state: { phase: "downloading", pct: 42 } })
-  expect(await readDownloaderState()).toMatchObject({ phase: "downloading" })
-  await expect(handleDownloaderCommand({ command: "connect" }, sender)).resolves.toMatchObject({ state: { phase: "downloading", pct: 42 } })
-  expect(connectNative).toHaveBeenCalledTimes(1)
+  it("uses the matching Reel's full file even when several Reels are in the page data", () => {
+    vi.stubGlobal("location", new URL("https://www.instagram.com/reels/target/"))
+    const full = "https://cdn.example.test/target.mp4?signature=123"
+    const entries = [
+      { code: "target", video_versions: [{ url: full + "&bytestart=0&byteend=123" }, { url: full }] },
+      { code: "neighbor", video_versions: [{ url: "https://cdn.example.test/neighbor.mp4" }] },
+    ]
+    vi.stubGlobal("document", {
+      querySelectorAll: (selector: string) => selector === "video" ? [] : [{ textContent: JSON.stringify(entries) }],
+    })
+    expect(findInstagramReelMedia("https://www.instagram.com", "target")).toBe(full)
+    expect(findInstagramReelMedia("https://www.instagram.com", "neighbor")).toBeUndefined()
+  })
 })

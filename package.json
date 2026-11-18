@@ -31,6 +31,7 @@
   },
   "overrides": {
     "minimatch": "11.0.8",
+    "picomatch": "github:micromatch/picomatch#3975e4a0e6b4c4fb2c0119863b243ce04612c5e3",
     "zod": "4.6.6"
   },
   "devDependencies": {

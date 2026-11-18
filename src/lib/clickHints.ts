@@ -35,12 +35,13 @@ export function showClickHints(): () => void {
   })
   document.body.append(overlay)
   let prefix = ''
+  const capture = { capture: true }
   const cleanup = () => {
     overlay.remove()
-    window.removeEventListener('keydown', keydown, true)
-    window.removeEventListener('scroll', cleanup, true)
+    window.removeEventListener('keydown', keydown, capture)
+    window.removeEventListener('scroll', cleanup, capture)
     window.removeEventListener('resize', cleanup)
-    window.removeEventListener('pointerdown', cleanup, true)
+    window.removeEventListener('pointerdown', cleanup, capture)
   }
   const keydown = (event: KeyboardEvent) => {
     if (event.isComposing || event.repeat || event.key === 'Shift') return
@@ -60,9 +61,9 @@ export function showClickHints(): () => void {
     if (!labels.some(label => label.startsWith(prefix))) { cleanup(); return }
     Array.from(overlay.children).forEach((badge, index) => { (badge as HTMLElement).hidden = !labels[index].startsWith(prefix) })
   }
-  window.addEventListener('keydown', keydown, true)
-  window.addEventListener('scroll', cleanup, true)
+  window.addEventListener('keydown', keydown, capture)
+  window.addEventListener('scroll', cleanup, capture)
   window.addEventListener('resize', cleanup)
-  window.addEventListener('pointerdown', cleanup, true)
+  window.addEventListener('pointerdown', cleanup, capture)
   return cleanup
 }

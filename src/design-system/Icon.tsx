@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react"
 
 const icons = {
+  download: <><path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4" /></>,
   settings: <><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></>,
   back: <><path d="m15 6-6 6 6 6" /></>,
   playback: <><path d="M4 17a8 8 0 1 1 16 0" /><path d="m12 13 3.5-4" /></>,

@@ -1,0 +1,344 @@
+#!/usr/bin/env python3
+"""User-level native messaging host. Requires user-installed yt-dlp and ffmpeg."""
+import json
+import math
+import os
+from pathlib import Path
+import re
+import shutil
+import signal
+import struct
+import subprocess
+import sys
+import tempfile
+import threading
+from urllib.parse import urlsplit
+import uuid
+
+HOST = "com.extension_zed.downloader"
+OUTPUT = Path.home() / "Downloads" / "Zed"
+MAX_MESSAGE = 256 * 1024
+
+
+def valid_url(value):
+    if not isinstance(value, str) or len(value) > 8192 or any(ord(c) < 32 for c in value):
+        raise ValueError("That doesn’t look like a link.")
+    parsed = urlsplit(value.strip())
+    if parsed.scheme not in ("https", "http") or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError("Only HTTP(S) links without embedded credentials are supported.")
+    return value.strip()
+
+
+def number(value):
+    return value if isinstance(value, (int, float)) and math.isfinite(value) and value >= 0 else 0
+
+
+def media_info(info, ffmpeg):
+    """Reduce extractor data to selectable, safe format IDs; never accept raw selectors."""
+    formats = [f for f in info.get("formats", []) if isinstance(f, dict)
+               and re.fullmatch(r"[\w.-]{1,100}", str(f.get("format_id", "")))
+               and not f.get("has_drm") and f.get("protocol") != "mhtml"]
+    audio = [f for f in formats if f.get("vcodec") == "none" and f.get("acodec") not in (None, "none")]
+    best_audio = max(audio, key=lambda f: number(f.get("abr")) or number(f.get("tbr")), default=None)
+    conversion_source = best_audio or max((f for f in formats if f.get("acodec") != "none"),
+                                         key=lambda f: number(f.get("tbr")), default=None)
+
+    def row(f, mode, label, merge=None):
+        size = number(f.get("filesize")) or number(f.get("filesize_approx"))
+        if merge:
+            other = number(merge.get("filesize")) or number(merge.get("filesize_approx"))
+            size = size + other if size and other else 0
+        return {"id": f'{mode}:{f["format_id"]}', "label": label,
+                "meta": " · ".join(str(x) for x in [str(f.get("ext", "")).upper(),
+                    f.get("vcodec") if mode == "video" else f.get("acodec"),
+                    f'{f["fps"]} fps' if mode == "video" and f.get("fps") else
+                    f'{round(number(f.get("abr")) or number(f.get("tbr")))} kbps' if mode != "video" else ""] if x),
+                "size": size, "approximate": not bool(f.get("filesize")) or bool(merge and not merge.get("filesize")),
+                "selector": str(f["format_id"]) + ("+" + str(merge["format_id"]) if merge else ""), "tags": []}
+
+    heights = {}
+    for f in formats:
+        if f.get("vcodec") == "none":
+            continue
+        separate = f.get("acodec") == "none"
+        if separate and (not ffmpeg or not best_audio):
+            continue
+        height = int(number(f.get("height")))
+        rank = (f.get("ext") == "mp4" and str(f.get("vcodec", "")).startswith(("avc", "h264")),
+                number(f.get("tbr")), number(f.get("fps")))
+        if height not in heights or rank > heights[height][0]:
+            heights[height] = (rank, row(f, "video", f"{height}p" if height else "Original", best_audio if separate else None))
+    video = [heights[h][1] for h in sorted(heights, reverse=True)]
+    if video:
+        video[0]["tags"].append("Best quality")
+        compatible = next((heights[h][1] for h in sorted(heights, reverse=True) if h <= 1080 and heights[h][0][0]), None)
+        if compatible:
+            compatible["tags"].append("Most compatible")
+    rows = []
+    for extension, label in [("m4a", "M4A · AAC"), ("webm", "WebM · Opus")]:
+        candidates = [f for f in audio if f.get("ext") == extension]
+        if candidates:
+            f = max(candidates, key=lambda f: number(f.get("abr")) or number(f.get("tbr")))
+            rows.append(row(f, "audio", label))
+    if not rows and best_audio:
+        rows.append(row(best_audio, "audio", str(best_audio.get("ext", "Audio")).upper()))
+    if rows:
+        rows[0]["tags"].append("Recommended")
+    if ffmpeg and conversion_source:
+        converted = row(conversion_source, "mp3", "MP3 · Converted")
+        converted.update(size=0, approximate=True, meta="MP3 · Variable bitrate")
+        rows.append(converted)
+    if not video and not rows:
+        raise ValueError("No supported, unencrypted formats were found.")
+    return {"title": str(info.get("title", "Untitled"))[:500], "uploader": str(info.get("uploader") or "")[:200],
+            "host": urlsplit(info.get("webpage_url") or "").hostname or "", "duration": number(info.get("duration")),
+            "video": video, "audio": rows}
+
+
+def read_message(stream):
+    def exact(size):
+        data = bytearray()
+        while len(data) < size:
+            chunk = stream.read(size - len(data))
+            if not chunk:
+                if not data:
+                    return None
+                raise ValueError("Truncated native message")
+            data.extend(chunk)
+        return bytes(data)
+    header = exact(4)
+    if header is None:
+        return None
+    size = struct.unpack("=I", header)[0]
+    if size > MAX_MESSAGE:
+        raise ValueError("Native message too large")
+    payload = exact(size)
+    if payload is None:
+        raise ValueError("Missing native message")
+    return json.loads(payload)
+
+
+class Host:
+    def __init__(self, emit, output=OUTPUT):
+        self.emit = emit
+        self.output = Path(output)
+        self.lock = threading.RLock()
+        self.process = None
+        self.thread = None
+        self.cancelled = threading.Event()
+        self.ytdlp = shutil.which("yt-dlp")
+        self.ffmpeg = shutil.which("ffmpeg") is not None
+        self.state = {"phase": "ready", "version": "", "ffmpeg": self.ffmpeg}
+        self.media = None
+        self.url = ""
+        self.completed = None
+
+    def publish(self, **patch):
+        with self.lock:
+            self.state.update(patch)
+            self.emit({"event": "state", "state": self.public_state()})
+
+    def public_state(self):
+        # Selectors stay in the host; the extension can only select a listed ID.
+        state = dict(self.state)
+        if self.media:
+            state["media"] = {**self.media, **{mode: [{k: v for k, v in f.items() if k != "selector"}
+                                    for f in self.media[mode]] for mode in ("video", "audio")}}
+        return state
+
+    def spawn(self, args):
+        with self.lock:
+            if self.cancelled.is_set():
+                raise ValueError("Cancelled")
+            self.process = subprocess.Popen([self.ytdlp, "--ignore-config", "--no-playlist", *args],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
+                start_new_session=os.name != "nt", creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
+            return self.process
+
+    def run_text(self, args, timeout=120):
+        process = self.spawn(args)
+        try:
+            output, _ = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            self.stop_process()
+            process.communicate()
+            raise ValueError("yt-dlp timed out. Try again.") from None
+        if process.returncode:
+            raise ValueError((output.strip().splitlines() or ["yt-dlp failed"])[-1][-120:])
+        return output
+
+    def stop_process(self):
+        with self.lock:
+            process = self.process
+            if process and process.poll() is None:
+                if os.name == "nt":
+                    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+                else:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+
+    def handle(self, message):
+        if not isinstance(message, dict) or not isinstance(message.get("id"), str):
+            raise ValueError("Invalid command")
+        command = message.get("command")
+        with self.lock:
+            busy = self.thread and self.thread.is_alive()
+            if command == "cancel":
+                if busy and self.state["phase"] in ("reading", "downloading", "checking", "updating"):
+                    self.cancelled.set()
+                    self.stop_process()
+            elif command in ("open", "reveal"):
+                path = self.completed
+                if not path or not path.is_file() or path.resolve().parent != self.output.resolve():
+                    raise ValueError("Downloaded file is unavailable")
+                if sys.platform == "win32":
+                    if command == "open":
+                        os.startfile(str(path))
+                    else:
+                        subprocess.Popen(["explorer.exe", "/select,", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                else:
+                    args = ["open", "-R", str(path)] if sys.platform == "darwin" and command == "reveal" else ["open" if sys.platform == "darwin" else "xdg-open", str(path if command == "open" else path.parent)]
+                    subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            elif command == "reset":
+                if busy:
+                    raise ValueError("Cancel the current task first")
+                self.media = None
+                self.completed = None
+                self.url = ""
+                self.state = {"phase": "ready", "version": self.state.get("version", ""), "ffmpeg": self.ffmpeg}
+                self.publish()
+            elif command in ("ping", "formats", "download", "update"):
+                if busy:
+                    raise ValueError("Another task is already running")
+                if command == "ping":
+                    self.ytdlp = shutil.which("yt-dlp")
+                    self.ffmpeg = shutil.which("ffmpeg") is not None
+                    self.state["ffmpeg"] = self.ffmpeg
+                if not self.ytdlp:
+                    raise ValueError("yt-dlp was not found on PATH. See the setup guide.")
+                if command == "formats":
+                    self.url = valid_url(message.get("url"))
+                    self.media = None
+                if command == "download":
+                    choices = self.media["video"] + self.media["audio"] if self.media else []
+                    choice = next((f for f in choices if f["id"] == message.get("formatId")), None)
+                    if not choice:
+                        raise ValueError("Choose an available format first")
+                    message = {**message, "choice": choice}
+                self.cancelled.clear()
+                self.publish(phase={"ping": "checking", "formats": "reading", "download": "downloading", "update": "updating"}[command],
+                             error="", pct=0, stage="Downloading…", url=self.url, cancelled=False,
+                             summary=message["choice"]["label"] + " · " + message["choice"]["meta"] if command == "download" else "")
+                self.thread = threading.Thread(target=self.work, args=(command, message), daemon=True)
+                self.thread.start()
+            else:
+                raise ValueError("Unknown command")
+            return {"id": message["id"], "ok": True, "state": self.public_state()}
+
+    def work(self, command, message):
+        try:
+            if command in ("ping", "update"):
+                if command == "update":
+                    self.run_text(["--update"], timeout=300)
+                version = self.run_text(["--version"], timeout=15).strip()[:80]
+                self.publish(phase="results" if self.media else "ready", version=version)
+            elif command == "formats":
+                info = json.loads(self.run_text(["--dump-single-json", "--skip-download", "--", self.url]))
+                media = media_info(info, self.ffmpeg)
+                if self.cancelled.is_set():
+                    return
+                self.media = media
+                self.publish(phase="results")
+            else:
+                self.download(message["choice"])
+        except Exception as error:
+            if not self.cancelled.is_set():
+                self.publish(phase="error", error=str(error)[-120:])
+        finally:
+            self.stop_process()
+            if self.cancelled.is_set():
+                self.publish(phase="results" if self.media else "ready", error="", cancelled=True)
+            with self.lock:
+                self.process = None
+                self.thread = None
+
+    def download(self, choice):
+        self.output.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=".zed-", dir=self.output) as staging:
+            args = ["--no-simulate", "--newline", "--progress", "--progress-delta", "0.5",
+                    "--progress-template", 'download:ZED_PROGRESS %(progress)j',
+                    "--progress-template", 'postprocess:ZED_STAGE %(progress.status)s',
+                    "--print", "after_move:ZED_FILE %(filepath)j", "--restrict-filenames", "--no-overwrites",
+                    "--paths", staging, "--output", "%(title).100s [%(id).50s].%(ext)s", "--format", choice["selector"]]
+            if choice["id"].startswith("mp3:"):
+                args += ["--extract-audio", "--audio-format", "mp3", "--audio-quality", "0"]
+            process = self.spawn([*args, "--", self.url])
+            last_error = "yt-dlp did not produce a file"
+            result = None
+            for line in process.stdout:
+                line = line.strip()
+                if line.startswith("ZED_PROGRESS "):
+                    progress = json.loads(line[len("ZED_PROGRESS "):])
+                    total = number(progress.get("total_bytes")) or number(progress.get("total_bytes_estimate"))
+                    downloaded = number(progress.get("downloaded_bytes"))
+                    self.publish(pct=min(100, round(100 * downloaded / total)) if total else None,
+                                 downloaded=downloaded, total=total, speed=number(progress.get("speed")), eta=number(progress.get("eta")),
+                                 stage="Downloading…")
+                elif line.startswith("ZED_STAGE "):
+                    self.publish(pct=None, stage="Converting to MP3…" if choice["id"].startswith("mp3:") else "Merging video and audio…")
+                elif line.startswith("ZED_FILE "):
+                    result = Path(json.loads(line[len("ZED_FILE "):]))
+                elif line:
+                    last_error = line[-120:]
+            process.wait()
+            if self.cancelled.is_set():
+                return
+            if process.returncode or not result or not result.is_file() or result.resolve().parent != Path(staging).resolve():
+                raise ValueError(last_error)
+            # Never replace an earlier download, even when the extractor repeats a title.
+            destination = self.output / (result.stem + "-" + uuid.uuid4().hex[:8] + result.suffix)
+            with self.lock:
+                if self.cancelled.is_set():
+                    return
+                result.rename(destination)
+                self.completed = destination
+                self.publish(phase="done", pct=100, filename=destination.name, size=destination.stat().st_size,
+                             summary=choice["label"] + " · " + choice["meta"])
+
+
+def main():
+    if os.name == "nt":
+        import msvcrt
+        msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
+        msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+    write_lock = threading.Lock()
+
+    def emit(message):
+        payload = json.dumps(message, allow_nan=False).encode("utf-8")
+        if len(payload) > 1024 * 1024:
+            raise ValueError("Native response too large")
+        with write_lock:
+            sys.stdout.buffer.write(struct.pack("=I", len(payload)) + payload)
+            sys.stdout.buffer.flush()
+
+    host = Host(emit)
+    try:
+        while True:
+            message = read_message(sys.stdin.buffer)
+            if message is None:
+                break
+            try:
+                emit(host.handle(message))
+            except Exception as error:
+                emit({"id": message.get("id") if isinstance(message, dict) else None, "ok": False, "error": str(error)[:120]})
+    finally:
+        host.cancelled.set()
+        host.stop_process()
+        if host.thread:
+            host.thread.join(timeout=10)
+
+
+if __name__ == "__main__":
+    main()

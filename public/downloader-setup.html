@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" class="dark">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video downloader setup · Extension Zed</title>
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="downloader-setup.css">
+<script type="module" src="downloader-setup.js"></script>
+<body>
+<main>
+<h1>Advanced video downloader setup</h1>
+<p>Copy the command for your OS, paste it into a terminal as your normal user, and press Enter. It installs missing Python, yt-dlp, and FFmpeg packages, then registers the Zed helper. Your package manager may prompt for approval.</p>
+
+<h2>Linux or macOS</h2>
+<p>Supported package managers are apt on Debian or Ubuntu, pacman on Arch Linux, and Homebrew on macOS.</p>
+<p><button type="button" data-python="python3">Copy Linux or macOS setup command</button></p>
+
+<h2>Windows</h2>
+<p>Use Windows PowerShell with WinGet (App Installer). Restart Chrome or Brave after installing packages so it picks up your updated PATH.</p>
+<p><button type="button" data-python="python">Copy Windows setup command</button></p>
+
+<p id="copy-status" role="status"></p>
+<textarea id="setup-command" aria-label="Setup command" readonly hidden rows="4"></textarea>
+<p>Return to Zed → Misc → Advanced video downloader and click <strong>Check again</strong> if shown.</p>
+</main>
+</body>
+</html>

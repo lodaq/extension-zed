@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs"
+import { zipSync } from "fflate"
 import react from "@vitejs/plugin-react"
 import { defineConfig, type Plugin } from "vite"
 
@@ -40,6 +41,19 @@ export default defineConfig({
   plugins: [react(), inlinePopupCss(), {
     name: "extension-ui-styles",
     generateBundle() {
+      this.emitFile({ type: "asset", fileName: "downloader-setup.css", source: readFileSync("src/design-system/downloader-setup.css", "utf8") })
+      const helperFiles = ["install.py", "zed_downloader.py", "native-launcher.cs"]
+      const helper = zipSync(Object.fromEntries(helperFiles.map(name => [name, readFileSync(`downloader/${name}`)])))
+      const setup = {
+        helper: Buffer.from(helper).toString("base64"),
+        unix: readFileSync("downloader/setup-dependencies.sh", "utf8"),
+        windows: readFileSync("downloader/setup-dependencies.ps1", "utf8"),
+      }
+      this.emitFile({
+        type: "asset",
+        fileName: "downloader-setup-data.js",
+        source: `export default ${JSON.stringify(setup)}\n`,
+      })
       for (const name of ["theme", "scrollbar"]) {
         this.emitFile({ type: "asset", fileName: `${name}.css`, source: name === "theme" ? '@font-face{font-family:Inter;font-weight:100 900;font-display:swap;src:url("fonts/Inter.woff2") format("woff2")}\n' + readFileSync("src/design-system/tokens.css", "utf8").replaceAll(":root", ":root, :host") + readFileSync("src/theme.css", "utf8").replace(/@import[^;]+;/g, "") : readFileSync(`src/${name}.css`, "utf8") })
       }

@@ -20,6 +20,8 @@ Open `chrome://extensions` or `brave://extensions`, enable Developer mode, choos
 - **Page tools:** inspect element details, temporarily edit page content, adjust Arabic-leading text to RTL, apply grayscale, and restyle/hide scrollbars. Reloading restores website content edited in design mode.
 - **YouTube:** focus/half-screen layouts and independent progress, player duration, thumbnail timestamp, all-timestamp, and control hiding. All-timestamp hiding covers the player, thumbnails, comments/descriptions, chapters, and transcripts. Saved YouTube styles are reapplied before first paint on every page load.
 - **Passwords:** cryptographic generation, 4–128 characters, selectable character groups, and explicit copy. Generated passwords are not saved or backed up.
+- **Advanced video downloader:** choose yt-dlp video quality and audio formats, with merging and MP3 conversion when ffmpeg is installed. Requires the one-time [native helper setup](docs/downloader-setup.md).
+- **Video downloader:** paste a direct HTTP(S) video or audio link, or find media exposed on the current page. For Instagram Reel links, open the matching Reel in the active tab so Zed can look for an exposed direct file. Files save under Zed in the browser’s downloads directory. Downloads continue after closing the popup and can be cancelled. Watch pages, segmented streams, and protected players are unsupported.
 - **Extensions:** optional management access; list, enable/disable, reload, open settings, and uninstall other extensions. Browser policy restrictions are respected.
 - **Links/Saved:** save tabs and media links, collect selected text through the context menu, toggle in-page save buttons, organize saved items into collections, and open/copy/remove saved items. New saves appear in All saved; the in-page picker lets you move them to a collection. Create collections in Saved. Opening a link from Links removes it after the new tab opens.
 - **Shortcuts/settings:** configurable keyboard shortcuts, tool order, remembered popup views/scroll, theme, validated JSON preference export/merge-import, and reset.
@@ -35,6 +37,9 @@ bun run check:build
 python3 -m unittest discover -s companion -p 'test_*.py'
 bun run test:e2e
 bun run test:e2e:video-quality
+bun run test:e2e:downloader
+bun run test:e2e:advanced-downloader
+python3 -m unittest discover -s downloader
 ```
 
 Browser tests use isolated temporary profiles, the built extension, and the pinned Chrome DevTools MCP runner through `npx` (Node.js/npm required). Set `CHROME_PATH` to your Chrome/Chromium executable. Test profiles are removed automatically. Build/test checks do not install the companion or change OS policy.

@@ -26,6 +26,10 @@ import { getStoredScrollPosition, saveStoredScrollPosition } from "@/lib/bootCac
 import { DEFAULT_SHORTCUTS, readShortcuts, recordCombo } from "@/lib/shortcuts"
 import { showClickHints } from "@/lib/clickHints"
 import ShortcutsTab from "@/components/ShortcutsTab"
+import AdvancedVideoDownloader from "@/components/AdvancedVideoDownloader"
+import VideoDownloader from "@/components/VideoDownloader"
+import { DOWNLOADER_ENABLED } from "@/lib/downloader"
+import { useAdvancedDownloader, useDownloader } from "@/lib/useDownloader"
 
 const tools = [
   { id: "limiter", title: "Site limiter", description: "Locked website blocks and daily usage limits", component: SiteLimiter },
@@ -59,6 +63,14 @@ export default function App() {
   }, [])
   const [location, setLocation] = useStoredValue("popupLocation", DEFAULT_LOCATION)
   const { tab, detail, settings } = location
+  const download = useDownloader()
+  const advancedDownload = useAdvancedDownloader()
+  const restoredDownload = useRef(false)
+  useEffect(() => {
+    if (!DOWNLOADER_ENABLED || detail === "advanced-downloader" || restoredDownload.current || !(download.phase === "downloading" || (download.phase === "done" && !download.seen))) return
+    restoredDownload.current = true
+    void setLocation({ tab: "Misc", detail: "downloader", settings: false })
+  }, [detail, download.phase, download.seen, setLocation])
   const viewTitle = useRef<HTMLHeadingElement>(null)
   const previousView = useRef({ tab, detail, settings })
   useLayoutEffect(() => {
@@ -138,8 +150,12 @@ export default function App() {
     window.addEventListener(PAGE_ACTION_FEEDBACK_EVENT, listener)
     return () => window.removeEventListener(PAGE_ACTION_FEEDBACK_EVENT, listener)
   }, [])
-  const selected = tab === "Misc" ? tools.find(tool => tool.id === detail) : undefined
-  const Detail = selected?.component
+  const downloaders = DOWNLOADER_ENABLED ? [
+    { id: "downloader", title: "Video downloader", description: "Save direct video and audio files", state: download, view: <VideoDownloader state={download} /> },
+    { id: "advanced-downloader", title: "Advanced video downloader", description: "Choose video quality, audio formats, or MP3 with the local helper", state: advancedDownload, view: <AdvancedVideoDownloader state={advancedDownload} /> },
+  ] : []
+  const selected = tab === "Misc" ? tools.find(tool => tool.id === detail) ?? downloaders.find(tool => tool.id === detail) : undefined
+  const Detail = selected && "component" in selected ? selected.component : undefined
   const pageTitle = settings ? "Settings" : selected?.title ?? tab
   useEffect(() => { document.title = `${pageTitle} · Extension Zed` }, [pageTitle])
   const modesOn = [inspect, design, rtl].filter(value => value === "on").length
@@ -165,12 +181,13 @@ export default function App() {
   else if (tab === "Links") content = <LinksTab />
   else if (tab === "Shortcuts") content = <ShortcutsTab />
   else if (detail === "password") content = <PasswordGenerator initialOptions={passwordOptions} onOptionsChange={setPasswordOptions} />
+  else if (selected && "view" in selected) content = selected.view
   else if (Detail) content = <Detail />
   else content = (
     <div className="zed-stack zed-root">
       {restricted && (
         <Notice title="Zed can’t run on this page">
-          Browser pages like this one block extensions. Open a regular website to use the page tools. Password generator and Save &amp; close tab still work.
+          Browser pages like this one block extensions. Open a regular website to use the page tools. Password generator{DOWNLOADER_ENABLED ? ", Video downloader" : ""} and Save &amp; close tab still work.
         </Notice>
       )}
       <div className="zed-tiles">
@@ -179,6 +196,9 @@ export default function App() {
             badge={badges[tool.id]} disabled={restricted && tool.id !== "password" && tool.id !== "limiter"}
             onClick={() => setDetail(tool.id)} />
         ))}
+        {downloaders.map(({ id, title, description, state }) => <Tile key={id} id={`zed-tool-${id}`} title={title} description={description} icon="download"
+          badge={state.phase === "downloading" ? state.pct == null ? "Working" : `${state.pct}%` : state.phase === "done" && !state.seen ? "Done" : undefined}
+          onClick={() => setDetail(id)} />)}
         <Tile title="Save & close tab" description="Save this tab’s URL to Links, then close the tab" icon="save" onClick={saveTab} />
       </div>
     </div>

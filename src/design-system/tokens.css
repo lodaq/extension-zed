@@ -81,6 +81,7 @@
   /* ── Control heights ── */
   --zed-h-inline: 28px;
   --zed-h-control: 36px;
+  --zed-h-save: 40px;
   --zed-h-compact: 44px;
   --zed-h-primary: 52px;
   --zed-h-option: 64px;

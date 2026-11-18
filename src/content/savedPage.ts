@@ -117,12 +117,14 @@ function installSaveButtons() {
         :host([hidden]) { display: none !important; }
         *, *::before, *::after { box-sizing: border-box; animation: none !important; transition: none !important; }
         button { display: inline-flex; align-items: center; justify-content: center; background: var(--zed-surface-raised); color: var(--zed-text); border: 1px solid var(--zed-border); border-radius: var(--zed-radius-md); height: var(--zed-h-compact); width: var(--zed-h-compact); padding: 0; cursor: pointer; }
-        button:not([aria-pressed="true"]) .unsave { display: none; }
         button:hover:not(:disabled) { background: var(--zed-surface-hover); border-color: var(--zed-border-strong); }
+        .save-button { width: var(--zed-h-save); height: var(--zed-h-save); border: 0; border-radius: var(--zed-radius-pill); background: transparent; }
+        .save-button[aria-pressed="true"] svg { fill: currentColor; }
         button:disabled { opacity: .5; cursor: default; }
         button:focus-visible { outline: 2px solid var(--zed-accent); outline-offset: 2px; }`
       const button = document.createElement("button")
       button.type = "button"
+      button.className = "save-button"
       button.innerHTML = saveIcon
       button.setAttribute("aria-live", "polite")
       button.title = url ? `Save ${url} to Zed` : "Save this post to Zed"

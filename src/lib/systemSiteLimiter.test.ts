@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi } from "@/test/bun-test"
 import type { SystemSiteLimit } from "./systemSiteLimiter"
 
 afterEach(() => vi.unstubAllGlobals())
@@ -25,7 +25,8 @@ it("rejects ordinary or unpacked installs without creating weaker substitutes", 
   const { native, update } = setup("development")
   const { systemSiteLimiter } = await import("./systemSiteLimiter")
   await expect(systemSiteLimiter("add", { url: "example.com", mode: "block", minutes: 30 })).rejects.toThrow("mandatory")
-  expect(native).toHaveBeenCalledExactlyOnceWith("com.extension_zed.limiter", { action: "status" })
+  expect(native).toHaveBeenCalledTimes(1)
+  expect(native).toHaveBeenCalledWith("com.extension_zed.limiter", { action: "status" })
   expect(update).not.toHaveBeenCalled()
 })
 

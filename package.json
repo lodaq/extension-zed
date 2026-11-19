@@ -5,10 +5,10 @@
   "packageManager": "bun@1.4.4",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build && vite build --config vite.content.config.ts && vite build --config vite.content.config.ts --mode shortcuts && vite build --config vite.content.config.ts --mode youtube",
-    "lint": "bun run check:tokens && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "test": "vitest run",
+    "dev": "bun scripts/build.mjs --watch",
+    "build": "tsc && bun scripts/build.mjs",
+    "lint": "bun run check:tokens && oxlint --deny-warnings src scripts",
+    "test": "bun test --isolate",
     "test:e2e": "node scripts/test-extension-e2e.mjs",
     "test:e2e:video-quality": "node scripts/test-video-quality-e2e.mjs",
     "test:e2e:downloader": "node scripts/test-downloader-e2e.mjs",
@@ -16,7 +16,6 @@
     "check:build": "node scripts/check-build.mjs",
     "package:store": "bun run build && bun run check:build && bun scripts/package-extension.mjs",
     "cws:status": "bun scripts/chrome-web-store-status.mjs",
-    "preview": "vite preview",
     "check:tokens": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
@@ -31,27 +30,19 @@
   },
   "overrides": {
     "minimatch": "11.0.8",
-    "picomatch": "github:micromatch/picomatch#3975e4a0e6b4c4fb2c0119863b243ce04612c5e3",
     "zod": "4.6.6"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.3.5",
+    "@types/bun": "^1.4.4",
     "@types/node": "^26.5.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
-    "@typescript-eslint/eslint-plugin": "^8.72.2",
-    "@typescript-eslint/parser": "^8.72.2",
-    "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.5.5",
-    "eslint": "^10.15.0",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.6",
     "fflate": "^0.8.3",
+    "oxlint": "^1.94.0",
     "postcss": "^8.5.33",
     "tailwindcss": "^4.3.3",
-    "typescript": "^6.0.3",
-    "vite": "^8.2.2",
-    "vitest": "^5.1.0"
+    "typescript": "^6.0.3"
   }
 }

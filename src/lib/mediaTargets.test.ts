@@ -1,4 +1,4 @@
-import { expect, it } from "vitest"
+import { expect, it } from "@/test/bun-test"
 import { findMediaTargets, findLinkedInActionRow } from "./mediaTargets"
 
 it("binds each media card to its own URL and deduplicates title/thumbnail links", () => {

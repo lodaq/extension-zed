@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi } from "@/test/bun-test"
 import { defaultDownloadFormat, downloadSize, validDownloadUrl } from "./advancedDownloader"
 import { readSetting } from "./settings"
 
@@ -17,7 +17,7 @@ it("selects compatibility/recommendation defaults and reports unknown or approxi
   expect(downloadSize(1024 ** 2, true)).toBe("~1.0 MB")
   expect(downloadSize(0)).toBe("Size unknown")
   const location = { tab: "Misc", detail: "advanced-downloader", settings: false }
-  expect(readSetting("popupLocation", location, null)).toEqual(location)
+  expect(readSetting<typeof location | null>("popupLocation", location, null)).toEqual(location)
 })
 
 function nativeMock() {
@@ -102,9 +102,10 @@ it("cleans up a silent native connection so Check again can reconnect", async ()
   const { events, connectNative, connection } = nativeMock()
   const { handleAdvancedDownloaderCommand, readDownloaderState } = await import("./advancedDownloaderWorker")
   const result = handleAdvancedDownloaderCommand({ command: "ping" }, sender)
-  const rejected = expect(result).rejects.toThrow("did not respond")
+  // Bun's `expect(promise).rejects` blocks when the promise depends on fake timers.
+  const rejection = result.then(() => undefined, (error: Error) => error.message)
   await vi.advanceTimersByTimeAsync(15000)
-  await rejected
+  await expect(rejection).resolves.toContain("did not respond")
   expect(connection.disconnect).toHaveBeenCalled()
   expect(await readDownloaderState()).toMatchObject({ phase: "setup" })
   const retry = handleAdvancedDownloaderCommand({ command: "ping" }, sender)

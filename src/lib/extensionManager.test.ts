@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "@/test/bun-test"
 import {
   currentExtensionId,
   getExtensionSettingsUrl,
@@ -136,10 +136,8 @@ describe("management actions", () => {
 
     await reloadExtension("abc")
 
-    expect(setEnabled.mock.calls).toEqual([
-      ["abc", false],
-      ["abc", true],
-    ])
+    expect(setEnabled).toHaveBeenCalledWith("abc", false)
+    expect(setEnabled).toHaveBeenCalledWith("abc", true)
   })
 
   it("reloads self via chrome.runtime.reload when available", async () => {

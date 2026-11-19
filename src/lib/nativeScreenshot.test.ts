@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi } from "@/test/bun-test"
 import { captureFullPage, restoreFullPage } from "./nativeScreenshot"
 
 afterEach(() => vi.unstubAllGlobals())

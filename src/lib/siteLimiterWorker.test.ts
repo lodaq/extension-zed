@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi } from "@/test/bun-test"
 import { LIMITER_KEY } from "./siteLimiter"
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 it("persists locked rules, installs domain blocks, closes open pages, rejects replacement and expires automatically", async () => {

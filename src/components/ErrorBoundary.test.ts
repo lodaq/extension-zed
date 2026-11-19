@@ -1,5 +1,5 @@
 import React from "react"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "@/test/bun-test"
 import { ErrorBoundary } from "./ErrorBoundary"
 
 // Mock React render/component tree testing in node environment

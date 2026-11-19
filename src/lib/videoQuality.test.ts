@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs"
 import { runInNewContext } from "node:vm"
-import { vi } from "vitest"
-import { describe, expect, it } from "vitest"
+import { vi } from "@/test/bun-test"
+import { describe, expect, it } from "@/test/bun-test"
 import { QUALITY_OPTIONS, QUALITY_LEVEL_MAP } from "./videoQuality"
 
 describe("videoQuality resolution", () => {

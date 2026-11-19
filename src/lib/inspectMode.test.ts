@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 import { runInNewContext } from "node:vm"
-import { expect, it, vi } from "vitest"
+import { expect, it, vi } from "@/test/bun-test"
 
 it("renders every inspection detail as text and removes listeners when disabled", async () => {
   interface Element {

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "@/test/bun-test"
 import {
   exportSettings,
   importSettings,
@@ -27,7 +27,7 @@ describe("settings transfer", () => {
     storage({ miscSectionOrder: order })
     expect((await exportSettings()).settings.miscSectionOrder).toEqual([...order, "screenshot"])
     await importSettings({ version: 1, settings: { miscSectionOrder: order } })
-    expect(readSetting("miscSectionOrder", order, [])).toEqual([...order, "screenshot"])
+    expect(readSetting<string[]>("miscSectionOrder", order, [])).toEqual([...order, "screenshot"])
   })
 
   it("preserves the new screenshot section wherever the user placed it", async () => {
@@ -36,7 +36,7 @@ describe("settings transfer", () => {
     expect((await exportSettings()).settings.miscSectionOrder).toEqual(order)
     await importSettings({ version: 1, settings: { miscSectionOrder: order } })
     expect(p.values.miscSectionOrder).toEqual(order)
-    expect(readSetting("miscSectionOrder", order, [])).toEqual(order)
+    expect(readSetting<string[]>("miscSectionOrder", order, [])).toEqual(order)
   })
 
   it("preserves expanded sections in backups and partial imports", async () => {
@@ -44,7 +44,7 @@ describe("settings transfer", () => {
     storage({ miscExpandedSections: expanded })
     expect((await exportSettings()).settings.miscExpandedSections).toEqual(expanded)
     await importSettings({ version: 1, settings: { miscExpandedSections: expanded } })
-    expect(readSetting("miscExpandedSections", expanded, [])).toEqual(expanded)
+    expect(readSetting<string[]>("miscExpandedSections", expanded, [])).toEqual(expanded)
   })
 
   it.each([

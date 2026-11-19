@@ -1,6 +1,6 @@
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { expect, it } from "vitest"
+import { expect, it } from "@/test/bun-test"
 import SiteLimiter from "./SiteLimiter"
 
 it("starts with ordinary timed blocking and leaves administrator protection explicitly opt-in", () => {

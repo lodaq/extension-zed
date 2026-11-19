@@ -1,15 +1,12 @@
-import { afterEach, expect, it, vi } from "vitest"
-import { readFileSync } from "node:fs"
-import { findMediaTargets } from "../lib/mediaTargets"
+import { afterEach, beforeEach, expect, it, mock, vi } from "@/test/bun-test"
+import * as mediaTargets from "../lib/mediaTargets"
 
-vi.mock("../design-system/tokens.css?raw", () => ({
-  default: readFileSync(new URL("../design-system/tokens.css", import.meta.url), "utf8"),
-}))
+const findMediaTargets = vi.fn(mediaTargets.findMediaTargets)
+findMediaTargets.mockImplementation(() => new Map())
 
-vi.mock("../lib/mediaTargets", async importOriginal => ({
-  ...await importOriginal<typeof import("../lib/mediaTargets")>(),
-  findMediaTargets: vi.fn(() => new Map()),
-}))
+beforeEach(() => {
+  mock.module("../lib/mediaTargets", () => ({ ...mediaTargets, findMediaTargets }))
+})
 
 afterEach(() => {
   vi.unstubAllGlobals()

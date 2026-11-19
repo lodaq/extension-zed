@@ -1,5 +1,5 @@
 import { readSetting } from "./settings"
-import { afterEach, expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi } from "@/test/bun-test"
 import { changeSaved, mediaUrl, SAVED_KEY } from "./saved"
 afterEach(() => vi.unstubAllGlobals())
 it("rejects malformed runtime payloads before accessing storage", async () => {
@@ -33,8 +33,8 @@ it("serializes concurrent saves, deduplicates, and removes", async () => {
   ])
   const items = values[SAVED_KEY] as { id: string }[]
   expect(items).toHaveLength(2)
-  expect(readSetting(SAVED_KEY, values[SAVED_KEY], [])).toEqual(items)
-  expect(readSetting(SAVED_KEY, [{ url: "javascript:alert(1)" }], [])).toEqual([])
+  expect(readSetting<{ id: string }[]>(SAVED_KEY, values[SAVED_KEY], [])).toEqual(items)
+  expect(readSetting<{ url: string }[]>(SAVED_KEY, [{ url: "javascript:alert(1)" }], [])).toEqual([])
   await changeSaved({ type: "saved:remove", id: items[0].id })
   expect(values[SAVED_KEY]).toHaveLength(1)
   await expect(changeSaved({ type: "saved:add", url: "https://example.com" })).rejects.toThrow()

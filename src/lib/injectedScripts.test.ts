@@ -3,7 +3,7 @@ import { applyPageStyle } from "../content/pageStyle"
 /// <reference types="node" />
 import { readFileSync } from "node:fs"
 import { runInNewContext as runContext, type Context } from "node:vm"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "@/test/bun-test"
 
 const script = (name: string) => readFileSync(new URL(`../../public/scripts/${name}.js`, import.meta.url), "utf8")
 const runInNewContext = (source: string, context: Context) => runContext(source, { setTimeout, clearTimeout, ...context })

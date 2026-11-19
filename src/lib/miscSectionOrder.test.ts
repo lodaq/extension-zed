@@ -1,4 +1,4 @@
-import { expect, it } from "vitest"
+import { expect, it } from "@/test/bun-test"
 import { moveMiscSection } from "./miscSectionOrder"
 import { MISC_SECTION_ORDER } from "./settings"
 
@@ -12,5 +12,5 @@ it("moves a section backward", () => {
 })
 
 it.each([[0, 0], [0, -1], [6, 7], [-1, 2]])("ignores unchanged or out-of-range moves (%i, %i)", (from, to) => {
-  expect(moveMiscSection(MISC_SECTION_ORDER, from, to)).toEqual(MISC_SECTION_ORDER)
+  expect(moveMiscSection(MISC_SECTION_ORDER, from, to)).toEqual([...MISC_SECTION_ORDER])
 })

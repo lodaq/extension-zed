@@ -1,6 +1,6 @@
 import { ACTION_REGISTRY, type ActionExecution, type PageAction } from "./actionRegistry"
 import { applyPageStyle } from "../content/pageStyle"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "@/test/bun-test"
 import { handlePageAction } from "./pageActions"
 
 let values: Record<string, unknown>

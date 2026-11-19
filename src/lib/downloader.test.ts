@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "@/test/bun-test"
 import { findInstagramReelMedia, instagramReelCode, mediaExtension, mediaFilename, validDownloadUrl } from "./downloader"
 
 describe("direct media links", () => {

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 import { runInNewContext } from "node:vm"
-import { expect, it, vi } from "vitest"
+import { expect, it, vi } from "@/test/bun-test"
 
 it("keeps editing enabled on focus and pointer events, then cleans up every listener", () => {
   const handlers = new Map<string, () => void>()
@@ -24,8 +24,8 @@ it("keeps editing enabled on focus and pointer events, then cleans up every list
   run()
   expect(document.designMode).toBe("off")
   expect(handlers.size).toBe(0)
-  expect(window.removeEventListener).toHaveBeenCalledWith("focus", expect.any(Function), false)
-  expect(document.removeEventListener).toHaveBeenCalledWith("pointerdown", expect.any(Function), true)
+  expect(window.removeEventListener).toHaveBeenCalledWith("focus", expect.anything(), false)
+  expect(document.removeEventListener).toHaveBeenCalledWith("pointerdown", expect.anything(), true)
 })
 
 it("awaits the saved design mode when no explicit flag is provided", async () => {

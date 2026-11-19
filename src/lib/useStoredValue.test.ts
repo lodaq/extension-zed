@@ -1,17 +1,23 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest"
-import { useStoredValue } from "./useStoredValue"
+import { afterEach, beforeEach, expect, it, vi } from "@/test/bun-test"
 
-const hooks = vi.hoisted(() => ({
+const hooks: {
+  setValue: ReturnType<typeof vi.fn>
+  loadedKey: string | null
+  setLoadedKey: ReturnType<typeof vi.fn>
+  effect: undefined | (() => void | (() => void))
+} = {
   setValue: vi.fn(),
-  loadedKey: null as string | null,
+  loadedKey: null,
   setLoadedKey: vi.fn((key: string) => { hooks.loadedKey = key }),
-  effect: undefined as undefined | (() => void | (() => void)),
-}))
+  effect: undefined,
+}
 vi.mock("react", () => ({
   useState: (initial: unknown) => initial === null ? [hooks.loadedKey, hooks.setLoadedKey] : [typeof initial === "function" ? (initial as () => unknown)() : initial, hooks.setValue],
   useEffect: (effect: () => void | (() => void)) => { hooks.effect = effect },
   useRef: (initial: unknown) => ({ current: initial }),
 }))
+
+const { useStoredValue } = await import("./useStoredValue")
 
 function deferred<T>() {
   let resolve!: (value: T) => void

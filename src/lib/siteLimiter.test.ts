@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it } from "@/test/bun-test"
 import { accountUsage, isSiteBlocked, localDay, matchesSite, midnight, siteHost, type SiteLimit } from "./siteLimiter"
 import { importSettings, resetSettings } from "./settings"
-import { afterEach, vi } from "vitest"
+import { afterEach, vi } from "@/test/bun-test"
 const now = new Date(2026, 10, 14, 12).getTime()
 const daily: SiteLimit = { id: 700000, host: "example.com", mode: "daily", minutes: 1, until: 0, day: localDay(now), used: 0 }
 afterEach(() => vi.unstubAllGlobals())

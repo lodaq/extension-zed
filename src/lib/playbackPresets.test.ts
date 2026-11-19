@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it } from "@/test/bun-test"
 import { PLAYBACK_MAX, PLAYBACK_MIN, clampPlayback, nearestPreset, stepPlayback } from "./playbackPresets"
 
 describe("playback presets", () => {

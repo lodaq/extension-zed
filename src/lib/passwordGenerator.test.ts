@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "@/test/bun-test"
 import { generatePassword, type PasswordOptions } from "./passwordGenerator"
 
 const options: PasswordOptions = { length: 20, uppercase: true, lowercase: true, numbers: true, symbols: true }

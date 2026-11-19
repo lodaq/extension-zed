@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { readFileSync } from "node:fs"
 import { runInNewContext } from "node:vm"
-import { expect, it } from "vitest"
+import { expect, it } from "@/test/bun-test"
 
 async function page() {
   const operations: string[] = []

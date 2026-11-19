@@ -1,5 +1,5 @@
 import { isRestrictedPage } from "./withActiveTab"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it } from "@/test/bun-test"
 import { readSetting } from "./settings"
 import { normalizeLink } from "./links"
 import { readShortcuts, recordCombo, SHORTCUT_ACTIONS, DEFAULT_SHORTCUTS } from "./shortcuts"
@@ -13,8 +13,8 @@ describe('redesign data rules',()=>{
  })
  it('reads saved links and rejects executable imported destinations',()=>{
   const links=[normalizeLink('example.com')]
-  expect(readSetting('savedLinks',links,[])).toEqual(links)
-  expect(readSetting('savedLinks',[{url:'bad',title:'bad',href:'javascript:alert(1)'}],[])).toEqual([])
+  expect(readSetting<(typeof links)[number][]>('savedLinks',links,[])).toEqual(links)
+  expect(readSetting<(typeof links)[number][]>('savedLinks',[{url:'bad',title:'bad',href:'javascript:alert(1)'}],[])).toEqual([])
  })
  it('detects restricted URLs without blocking lookalike domains',()=>{
   expect(isRestrictedPage('chrome://settings')).toBe(true)
@@ -34,8 +34,8 @@ describe('redesign data rules',()=>{
 
 it("validates popup locations including nested tools", () => {
  const location = { tab: "Misc", detail: "playback", settings: false }
- expect(readSetting("popupLocation", location, null)).toEqual(location)
- expect(readSetting("popupLocation", { ...location, detail: "unknown" }, null)).toBeNull()
+ expect(readSetting<typeof location | null>("popupLocation", location, null)).toEqual(location)
+ expect(readSetting<typeof location | null>("popupLocation", { ...location, detail: "unknown" }, null)).toBeNull()
 })
 
 it("preserves save shortcuts edited inside Zed", () => {
@@ -48,7 +48,7 @@ it("preserves save shortcuts edited inside Zed", () => {
   expect(bindings.tab0).toBe("")
   expect(bindings.tab1).toBe("2")
   expect(bindings.hints).toBe("G")
-  expect(readSetting("keyboardShortcuts", bindings, null)).toEqual(bindings)
+  expect(readSetting<typeof bindings | null>("keyboardShortcuts", bindings, null)).toEqual(bindings)
  })
  it("allows plain popup bindings while requiring page modifiers", () => {
   const event = { key: "f", code: "KeyF", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false }

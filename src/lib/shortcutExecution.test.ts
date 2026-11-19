@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest"
-const page=vi.hoisted(()=>vi.fn(async()=>({ok:true})))
+import { afterEach, beforeEach, expect, it, vi } from "@/test/bun-test"
+const page=vi.fn(async()=>({ok:true}))
 vi.mock('./pageActions',()=>({handlePageAction:page}))
 vi.mock('./screenshots',()=>({handleScreenshotMessage:vi.fn()}))
-import { executeShortcut } from "./shortcutExecution"
+const { executeShortcut } = await import("./shortcutExecution")
 beforeEach(()=>{vi.stubGlobal('chrome',{storage:{local:{get:vi.fn(async()=>({volumeBoost:1995})),set:vi.fn()}},tabs:{get:vi.fn(),remove:vi.fn()}})})
 afterEach(()=>{vi.unstubAllGlobals();vi.clearAllMocks()})
 it('dispatches existing playback contracts and clamps boosted volume',async()=>{

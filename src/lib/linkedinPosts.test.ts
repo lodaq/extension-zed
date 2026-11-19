@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 import { runInNewContext } from "node:vm"
-import { expect, it, vi } from "vitest"
+import { expect, it, vi } from "@/test/bun-test"
 
 const source = readFileSync(new URL("../../public/scripts/linkedinPosts.js", import.meta.url), "utf8")
 

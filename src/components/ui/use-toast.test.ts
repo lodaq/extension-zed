@@ -1,6 +1,6 @@
-import { afterEach, expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi } from "@/test/bun-test"
 
-const subscriptions = vi.hoisted(() => ({ subscribe: undefined as undefined | ((listener: () => void) => () => void) }))
+const subscriptions: { subscribe: undefined | ((listener: () => void) => () => void) } = { subscribe: undefined }
 vi.mock("react", () => ({ useSyncExternalStore: (subscribe: typeof subscriptions.subscribe, snapshot: () => unknown) => {
   subscriptions.subscribe = subscribe
   return snapshot()

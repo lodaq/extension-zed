@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 import { runInNewContext } from "node:vm"
-import { expect, it, vi } from "vitest"
+import { expect, it, vi } from "@/test/bun-test"
 
 const script = readFileSync(new URL("../../public/screenshot-clipboard.js", import.meta.url), "utf8")
 const data = "data:image/png;base64,cG5n"

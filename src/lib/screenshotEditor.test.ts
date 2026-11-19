@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi } from "@/test/bun-test"
 import { openScreenshotEditor, sendScreenshotToEditor } from "./screenshotEditor"
 
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
@@ -16,7 +16,8 @@ it("passes the original PNG to miniPaint and waits for its image layer", async (
   let settled = false
   const result = sendScreenshotToEditor(image).then((value) => { settled = true; return value })
   await vi.advanceTimersByTimeAsync(100)
-  expect(open).toHaveBeenCalledExactlyOnceWith(image)
+  expect(open).toHaveBeenCalledTimes(1)
+  expect(open).toHaveBeenCalledWith(image)
   expect(settled).toBe(false)
   Object.assign(window, { AppConfig: { layers: [{ id: 2, name: "Data URL", width: 1920, height: 1080 }] } })
   await vi.advanceTimersByTimeAsync(25)

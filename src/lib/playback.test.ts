@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "@/test/bun-test"
 import { stepPlayback } from "./playbackPresets"
 import { installPlayback } from "./playback"
 

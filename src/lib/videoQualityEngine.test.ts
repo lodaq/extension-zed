@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 import { runInNewContext } from "node:vm"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "@/test/bun-test"
 
 const source = readFileSync(new URL("../../public/scripts/applyVideoQuality.js", import.meta.url), "utf8")
 const speedSource = readFileSync(new URL("../../public/scripts/metaPlayback.js", import.meta.url), "utf8")

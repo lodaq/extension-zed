@@ -88,6 +88,18 @@ describe("settings transfer", () => {
     expect(p.values.videoQualityFallback).toBe("higher")
   })
 
+  it("round-trips keyboard hints and the download folder", async () => {
+    const p = storage({ hintMode: "always", downloaderDirectory: "/home/me/Videos" })
+    const backup = await exportSettings()
+    expect(backup.settings.hintMode).toBe("always")
+    expect(backup.settings.downloaderDirectory).toBe("/home/me/Videos")
+    await importSettings({ version: 1, settings: { hintMode: "off", downloaderDirectory: "~/Downloads/Zed" } })
+    expect(p.values.hintMode).toBe("off")
+    expect(p.values.downloaderDirectory).toBe("~/Downloads/Zed")
+    await expect(importSettings({ version: 1, settings: { hintMode: "sometimes" } })).rejects.toThrow("hintMode")
+    await expect(importSettings({ version: 1, settings: { downloaderDirectory: "relative" } })).rejects.toThrow("downloaderDirectory")
+  })
+
   it("merges partial imports, ignores unknown keys, and preserves theme", async () => {
     const p = storage({ darkTheme: true, speed: "2" })
     await importSettings({ version: 1, settings: { speed: "3", unused: "ignored" } })

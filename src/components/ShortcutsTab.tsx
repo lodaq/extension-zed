@@ -17,7 +17,7 @@ export default function ShortcutsTab() {
   return <section className="zed-stack zed-root">
     <div className="zed-helper-row"><span className="zed-helper">Edit shortcuts here. Popup shortcuts work while Zed is open, outside text fields and dialogs. Page shortcuts also work on websites, including text fields. Browser-protected pages block page shortcuts.</span><span className="zed-count">{SHORTCUT_ACTIONS.filter(a => combos[a.id]).length} of {SHORTCUT_ACTIONS.length} shortcuts set</span></div>
     <h2 className="zed-group">Standard controls · Fixed</h2>
-    <p className="zed-helper">Standard controls: Tab / Shift+Tab move focus; Enter / Space activate controls; Escape closes dialogs, dismisses hints or cancels recording. In hint mode, type the displayed label to click. Scroll or click to dismiss hints.</p>
+    <p className="zed-helper">Standard controls: Tab / Shift+Tab move focus; Enter / Space activate controls; Escape closes dialogs or cancels recording. In hint mode, type the displayed label to click. With the F shortcut, Escape, scrolling or clicking dismisses hints; always-on hints stay visible.</p>
     <h2 className="zed-group">Capture and inspection · Fixed</h2>
     <p className="zed-helper">Screenshot selection: arrows move the area; Shift+arrows resize; Enter captures; Escape cancels. Element selection: ↑ parent, ↓ child, ←/→ siblings, Enter captures. Tab stays in the picker. Escape also closes the screenshot preview and exits inspect mode.</p>
     {recording && <p id={instructionsId} className="zed-helper">Press a shortcut. Tab or Escape cancels recording.</p>}

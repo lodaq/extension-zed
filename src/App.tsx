@@ -24,12 +24,11 @@ import { LinksTab } from "@/components/LinksTab"
 import { saveCurrentTab } from "@/lib/links"
 import { getStoredScrollPosition, saveStoredScrollPosition } from "@/lib/bootCache"
 import { DEFAULT_SHORTCUTS, readShortcuts, recordCombo } from "@/lib/shortcuts"
-import { showClickHints } from "@/lib/clickHints"
+import { DEFAULT_HINT_MODE, showClickHints } from "@/lib/clickHints"
 import ShortcutsTab from "@/components/ShortcutsTab"
-import AdvancedVideoDownloader from "@/components/AdvancedVideoDownloader"
 import VideoDownloader from "@/components/VideoDownloader"
 import { DOWNLOADER_ENABLED } from "@/lib/downloader"
-import { useAdvancedDownloader, useDownloader } from "@/lib/useDownloader"
+import { useDownloader } from "@/lib/useDownloader"
 
 const tools = [
   { id: "limiter", title: "Site limiter", description: "Locked website blocks and daily usage limits", component: SiteLimiter },
@@ -64,10 +63,9 @@ export default function App() {
   const [location, setLocation] = useStoredValue("popupLocation", DEFAULT_LOCATION)
   const { tab, detail, settings } = location
   const download = useDownloader()
-  const advancedDownload = useAdvancedDownloader()
   const restoredDownload = useRef(false)
   useEffect(() => {
-    if (!DOWNLOADER_ENABLED || detail === "advanced-downloader" || restoredDownload.current || !(download.phase === "downloading" || (download.phase === "done" && !download.seen))) return
+    if (!DOWNLOADER_ENABLED || detail === "downloader" || restoredDownload.current || !(download.phase === "downloading" || (download.phase === "done" && !download.seen))) return
     restoredDownload.current = true
     void setLocation({ tab: "Misc", detail: "downloader", settings: false })
   }, [detail, download.phase, download.seen, setLocation])
@@ -90,6 +88,7 @@ export default function App() {
   }, [tab, detail, settings])
   const setDetail = (detail: string | null) => void setLocation({ ...location, detail })
   const [shortcuts] = useStoredValue("keyboardShortcuts", DEFAULT_SHORTCUTS)
+  const [hintMode] = useStoredValue("hintMode", DEFAULT_HINT_MODE)
   const bindings = readShortcuts(shortcuts)
   useEffect(() => {
     void (async () => {
@@ -102,7 +101,23 @@ export default function App() {
     })().catch(error => toast({ title: String(error), variant: "destructive" }))
   }, [])
   const clearHints = useRef<(() => void) | undefined>(undefined)
-  useEffect(() => () => { clearHints.current?.() }, [location, shortcuts])
+  useEffect(() => {
+    if (hintMode !== "always") return
+    const timer = window.setTimeout(() => {
+      if (clearHints.current) return
+      clearHints.current = showClickHints(true)
+    }, 150)
+    return () => {
+      window.clearTimeout(timer)
+      clearHints.current?.()
+      clearHints.current = undefined
+    }
+  }, [hintMode])
+  useEffect(() => {
+    if (hintMode === "always") return
+    clearHints.current?.()
+    clearHints.current = undefined
+  }, [hintMode, location, shortcuts])
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat) return
@@ -112,6 +127,14 @@ export default function App() {
       try { combo = recordCombo(event, true) } catch { return }
       const id = Object.entries(readShortcuts(shortcuts)).find(([, value]) => value && value === combo)?.[0]
       if (!id) return
+      if (id === "hints") {
+        if (hintMode === "off") return
+        event.preventDefault()
+        if (hintMode === "always" && clearHints.current) return
+        clearHints.current?.()
+        clearHints.current = showClickHints(hintMode === "always")
+        return
+      }
       event.preventDefault()
       if (id.startsWith("tab")) {
         if (id === "tab6") { void setLocation({ ...location, settings: true }); return }
@@ -119,7 +142,6 @@ export default function App() {
         if (target) void setLocation({ ...location, tab: target, settings: false })
         return
       }
-      if (id === "hints") { clearHints.current?.(); clearHints.current = showClickHints(); return }
       if (id === "back") {
         void setLocation({ tab: settings ? tab : "Misc", settings: false, detail: settings || tab !== "Misc" ? detail : null })
         return
@@ -131,7 +153,7 @@ export default function App() {
     }
     window.addEventListener("keydown", listener)
     return () => { window.removeEventListener("keydown", listener) }
-  }, [location, settings, detail, tab, shortcuts, setLocation])
+  }, [location, settings, detail, tab, shortcuts, hintMode, setLocation])
   const [order] = useStoredValue("miscSectionOrder", DEFAULT_TOOL_ORDER)
   const [passwordOptions, setPasswordOptions] = useState(DEFAULT_PASSWORD_OPTIONS)
   const [restricted, setRestricted] = useState(false)
@@ -151,8 +173,7 @@ export default function App() {
     return () => window.removeEventListener(PAGE_ACTION_FEEDBACK_EVENT, listener)
   }, [])
   const downloaders = DOWNLOADER_ENABLED ? [
-    { id: "downloader", title: "Video downloader", description: "Save direct video and audio files", state: download, view: <VideoDownloader state={download} /> },
-    { id: "advanced-downloader", title: "Advanced video downloader", description: "Choose video quality, audio formats, or MP3 with the local helper", state: advancedDownload, view: <AdvancedVideoDownloader state={advancedDownload} /> },
+    { id: "downloader", title: "Video downloader", description: "Choose video quality, audio formats, or MP3 with the local helper", state: download, view: <VideoDownloader state={download} /> },
   ] : []
   const selected = tab === "Misc" ? tools.find(tool => tool.id === detail) ?? downloaders.find(tool => tool.id === detail) : undefined
   const Detail = selected && "component" in selected ? selected.component : undefined

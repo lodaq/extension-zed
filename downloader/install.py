@@ -102,7 +102,7 @@ def install(extension_id, browser, extension_ids=None):
         vendor = "Google\\Chrome" if browser == "chrome" else "BraveSoftware\\Brave-Browser"
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, "Software\\" + vendor + "\\NativeMessagingHosts\\" + HOST) as key:
             winreg.SetValueEx(key, "", 0, winreg.REG_SZ, str(manifest))
-    print(f"Installed {manifest}. Open Advanced video downloader in Zed; it connects automatically.")
+    print(f"Installed {manifest}. Open Video downloader in Zed; it connects automatically.")
 
 
 def setup(extension_id=None, browser=None):

@@ -139,7 +139,6 @@
     "alarms",
     "idle",
     "declarativeNetRequest",
-    "downloads",
     "nativeMessaging"
   ],
   "host_permissions": [

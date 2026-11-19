@@ -1,8 +1,9 @@
 import { DEFAULT_TOOL_ORDER } from "@/lib/popupLayout"
 import { moveMiscSection } from "@/lib/miscSectionOrder"
-import { Dialog, SwitchRow } from "@/design-system/components"
+import { Dialog, ChoiceGroup, SwitchRow } from "@/design-system/components"
 import { Button } from "@/components/ui/button"
 import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLayout"
+import { DEFAULT_HINT_MODE, HINT_MODES, type HintMode } from "@/lib/clickHints"
 import { cn } from "@/lib/utils"
 import { toast } from "@/components/ui/use-toast"
 import { ChangeEvent, useRef, useState } from "react"
@@ -33,6 +34,7 @@ export default function SettingsTab() {
   const [dark, setDark] = useStoredValue("darkTheme", true)
   const [blackAndWhite, setBlackAndWhite] = useStoredValue<boolean>("blackAndWhite", false)
   const [order,setOrder] = useStoredValue<readonly MiscSectionId[]>("miscSectionOrder", DEFAULT_TOOL_ORDER)
+  const [hintMode, setHintMode] = useStoredValue<HintMode>("hintMode", DEFAULT_HINT_MODE)
   const [busy, setBusy] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [showPrivacy, setShowPrivacy] = useState(false)
@@ -113,6 +115,10 @@ export default function SettingsTab() {
       <h2 className={popupSectionTitle}>Appearance</h2>
       <SwitchRow label="Dark theme" checked={dark} onChange={toggle}/>
       <SwitchRow label="Black and white" description="Show all websites in grayscale." checked={blackAndWhite} onChange={enabled=>void setBlackAndWhite(enabled).catch(error=>toast({title:String(error),variant:"destructive"}))}/>
+
+      <h2 className={popupSectionTitle}>Keyboard hints</h2>
+      <ChoiceGroup label="Keyboard hints" value={hintMode} options={HINT_MODES}
+        onChange={mode => void setHintMode(mode).catch(error => toast({ title: "Could not save keyboard hints", description: String(error), variant: "destructive" }))} />
 
       <h2 className={popupSectionTitle}>Backup and reset</h2>
       <div className="zed-backup-actions">

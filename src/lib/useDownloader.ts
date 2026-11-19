@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react"
-import * as advanced from "./advancedDownloader"
-import * as direct from "./downloader"
+import * as downloader from "./downloader"
 
 function useDownloaderState<State extends { phase: string; error?: string }>(
   initial: State, key: string, command: (name: string) => Promise<State>, errorPhase: State["phase"],
 ) {
   const [state, setState] = useState(initial)
   useEffect(() => {
-    if (!direct.DOWNLOADER_ENABLED) return
+    if (!downloader.DOWNLOADER_ENABLED) return
     let active = true
     let changed = false
     const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
@@ -26,19 +25,7 @@ function useDownloaderState<State extends { phase: string; error?: string }>(
 }
 
 export function useDownloader() {
-  const state = useDownloaderState(direct.EMPTY_DOWNLOADER, direct.DOWNLOADER_STATE_KEY, direct.downloaderCommand, "error")
-  useEffect(() => {
-    if (state.phase !== "downloading") return
-    const timer = window.setInterval(() => {
-      void direct.downloaderCommand("state").catch(console.error)
-    }, 1000)
-    return () => window.clearInterval(timer)
-  }, [state.phase])
-  return state
-}
-
-export function useAdvancedDownloader() {
-  return useDownloaderState(advanced.EMPTY_DOWNLOADER, advanced.DOWNLOADER_STATE_KEY, advanced.downloaderCommand, "setup")
+  return useDownloaderState(downloader.EMPTY_DOWNLOADER, downloader.DOWNLOADER_STATE_KEY, downloader.downloaderCommand, "setup")
 }
 
 export function useDownloadActions(

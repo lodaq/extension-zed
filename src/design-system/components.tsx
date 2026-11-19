@@ -35,3 +35,24 @@ export function Dialog({ title, children, onClose }: { title: string; children: 
 export function CheckboxTile({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return <button type="button" className="zed-check" role="checkbox" aria-checked={checked} onClick={() => onChange(!checked)}><span className="zed-checkbox">{checked && <Icon name="check" size={16} />}</span><span><strong>{label}</strong><span className="zed-helper block">{hint}</span></span></button>
 }
+
+export function ChoiceGroup<T extends string>({ label, value, options, onChange }: {
+  label: string
+  value: T
+  options: readonly { id: T; label: string; description?: string }[]
+  onChange: (value: T) => void
+}) {
+  const current = Math.max(0, options.findIndex(option => option.id === value))
+  return <div className="zed-stack" role="radiogroup" aria-label={label} onKeyDown={event => {
+    if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || !options.length) return
+    event.preventDefault()
+    const index = event.key === "Home" ? 0 : event.key === "End" ? options.length - 1
+      : (current + (event.key === "ArrowUp" || event.key === "ArrowLeft" ? -1 : 1) + options.length) % options.length
+    onChange(options[index].id)
+    event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')[index]?.focus()
+  }}>
+    {options.map(option => <button type="button" key={option.id} role="radio" aria-checked={value === option.id} tabIndex={value === option.id ? 0 : -1} className="zed-choice" onClick={() => onChange(option.id)}>
+      <span className="zed-choice-radio" aria-hidden="true" /><span><strong>{option.label}</strong>{option.description && <span className="zed-helper block">{option.description}</span>}</span>
+    </button>)}
+  </div>
+}

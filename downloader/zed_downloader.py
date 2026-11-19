@@ -18,6 +18,8 @@ import uuid
 HOST = "com.extension_zed.downloader"
 OUTPUT = Path.home() / "Downloads" / "Zed"
 MAX_MESSAGE = 256 * 1024
+INVALID_FILENAME = re.compile(r'[\\/:*?"<>|\x00-\x1f\x7f]')
+WINDOWS_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
 
 
 def valid_url(value):
@@ -27,6 +29,31 @@ def valid_url(value):
     if parsed.scheme not in ("https", "http") or not parsed.hostname or parsed.username or parsed.password:
         raise ValueError("Only HTTP(S) links without embedded credentials are supported.")
     return value.strip()
+
+
+def safe_name(value):
+    """Keep a requested file name inside the output directory and valid on every OS."""
+    if not isinstance(value, str):
+        raise ValueError("Invalid file name.")
+    name = re.sub(r"\s+", " ", INVALID_FILENAME.sub("_", value)).strip(" .")
+    if not name:
+        return ""
+    if name.split(".")[0].upper() in WINDOWS_RESERVED:
+        name = "_" + name
+    return name[:120].rstrip(" .")
+
+
+def valid_directory(value):
+    """Accept only an absolute folder path, expanding a leading ~ for this user."""
+    if not isinstance(value, str) or not value.strip() or len(value) > 4096 or any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise ValueError("Enter a valid download folder.")
+    path = Path(os.path.expanduser(value.strip()))
+    if not path.is_absolute():
+        raise ValueError("Use an absolute folder path, or one starting with ~.")
+    path = Path(os.path.normpath(str(path)))
+    if path.exists() and not path.is_dir():
+        raise ValueError("That download folder is a file.")
+    return path
 
 
 def number(value):
@@ -132,6 +159,7 @@ class Host:
         self.media = None
         self.url = ""
         self.completed = None
+        self.completed_root = None
 
     def publish(self, **patch):
         with self.lock:
@@ -191,7 +219,8 @@ class Host:
                     self.stop_process()
             elif command in ("open", "reveal"):
                 path = self.completed
-                if not path or not path.is_file() or path.resolve().parent != self.output.resolve():
+                root = self.completed_root or self.output
+                if not path or not path.is_file() or path.resolve().parent != Path(root).resolve():
                     raise ValueError("Downloaded file is unavailable")
                 if sys.platform == "win32":
                     if command == "open":
@@ -206,6 +235,7 @@ class Host:
                     raise ValueError("Cancel the current task first")
                 self.media = None
                 self.completed = None
+                self.completed_root = None
                 self.url = ""
                 self.state = {"phase": "ready", "version": self.state.get("version", ""), "ffmpeg": self.ffmpeg}
                 self.publish()
@@ -226,11 +256,13 @@ class Host:
                     choice = next((f for f in choices if f["id"] == message.get("formatId")), None)
                     if not choice:
                         raise ValueError("Choose an available format first")
-                    message = {**message, "choice": choice}
+                    output = valid_directory(message["directory"]) if message.get("directory") is not None else self.output
+                    message = {**message, "choice": choice, "output": output}
                 self.cancelled.clear()
                 self.publish(phase={"ping": "checking", "formats": "reading", "download": "downloading", "update": "updating"}[command],
                              error="", pct=0, stage="Downloading…", url=self.url, cancelled=False,
-                             summary=message["choice"]["label"] + " · " + message["choice"]["meta"] if command == "download" else "")
+                             summary=message["choice"]["label"] + " · " + message["choice"]["meta"] if command == "download" else "",
+                             **({"directory": str(message["output"])} if command == "download" else {}))
                 self.thread = threading.Thread(target=self.work, args=(command, message), daemon=True)
                 self.thread.start()
             else:
@@ -252,7 +284,7 @@ class Host:
                 self.media = media
                 self.publish(phase="results")
             else:
-                self.download(message["choice"])
+                self.download(message["choice"], message.get("filename"), message.get("output"))
         except Exception as error:
             if not self.cancelled.is_set():
                 self.publish(phase="error", error=str(error)[-120:])
@@ -264,9 +296,11 @@ class Host:
                 self.process = None
                 self.thread = None
 
-    def download(self, choice):
-        self.output.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix=".zed-", dir=self.output) as staging:
+    def download(self, choice, filename=None, output=None):
+        custom_name = safe_name(filename) if filename is not None else ""
+        directory = Path(output) if output else self.output
+        directory.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=".zed-", dir=directory) as staging:
             args = ["--no-simulate", "--newline", "--progress", "--progress-delta", "0.5",
                     "--progress-template", 'download:ZED_PROGRESS %(progress)j',
                     "--progress-template", 'postprocess:ZED_STAGE %(progress.status)s',
@@ -298,14 +332,23 @@ class Host:
             if process.returncode or not result or not result.is_file() or result.resolve().parent != Path(staging).resolve():
                 raise ValueError(last_error)
             # Never replace an earlier download, even when the extractor repeats a title.
-            destination = self.output / (result.stem + "-" + uuid.uuid4().hex[:8] + result.suffix)
+            if custom_name:
+                base = custom_name
+                if result.suffix and base.lower().endswith(result.suffix.lower()):
+                    base = base[:-len(result.suffix)].rstrip(" .") or result.stem
+                destination = directory / (base + result.suffix)
+                if destination.exists():
+                    destination = directory / (base + "-" + uuid.uuid4().hex[:8] + result.suffix)
+            else:
+                destination = directory / (result.stem + "-" + uuid.uuid4().hex[:8] + result.suffix)
             with self.lock:
                 if self.cancelled.is_set():
                     return
                 result.rename(destination)
                 self.completed = destination
+                self.completed_root = directory
                 self.publish(phase="done", pct=100, filename=destination.name, size=destination.stat().st_size,
-                             summary=choice["label"] + " · " + choice["meta"])
+                             directory=str(directory), summary=choice["label"] + " · " + choice["meta"])
 
 
 def main():

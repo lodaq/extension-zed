@@ -1,4 +1,6 @@
 import { ALL_SHORTCUT_ACTIONS } from "./shortcuts"
+import { isHintMode } from "./clickHints"
+import { validDownloadDirectory } from "./downloader"
 import { SAVED_KEY, readSaved, COLLECTIONS_KEY, readCollections } from "./saved"
 import { PLAYBACK_MAX, PLAYBACK_MIN } from "./playbackPresets"
 import { QUALITY_LEVEL_MAP } from "./videoQuality"
@@ -70,9 +72,11 @@ function isShortcutMap(value: unknown): boolean {
 const validators = {
   popupLocation: value => isRecord(value) &&
     ["Misc", "Extensions", "YouTube", "Links", "Saved", "Shortcuts"].includes(value.tab as string) &&
-    (value.detail === null || ["playback", "quality", "password", "volume", "scrollbars", "modes", "capture", "limiter", "downloader", "advanced-downloader"].includes(value.detail as string)) &&
+    (value.detail === null || ["playback", "quality", "password", "volume", "scrollbars", "modes", "capture", "limiter", "downloader"].includes(value.detail as string)) &&
     typeof value.settings === "boolean",
   keyboardShortcuts: isShortcutMap,
+  hintMode: isHintMode,
+  downloaderDirectory: value => typeof value === "string" && validDownloadDirectory(value),
   savedButtonsEnabled: isBoolean,
   savedLinks: isSavedLinks,
   speed: isValidSpeed,

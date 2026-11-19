@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from zed_downloader import Host, MAX_MESSAGE, media_info, read_message, valid_url
+from zed_downloader import Host, MAX_MESSAGE, media_info, read_message, safe_name, valid_directory, valid_url
 from install import discover_ids, install, setup
 
 
@@ -115,6 +115,73 @@ class DownloaderTests(unittest.TestCase):
             snapshots = [call.args[0]["state"] for call in host.emit.call_args_list]
             self.assertTrue(any(s.get("pct") == 50 for s in snapshots))
             self.assertTrue(any(s.get("stage") == "Merging video and audio…" for s in snapshots))
+
+    def test_download_folder_validation_and_custom_destination(self):
+        self.assertEqual(valid_directory(" ~/Videos/Clips "), Path.home() / "Videos" / "Clips")
+        for value in ["", "relative/path", "bad\npath", "--exec=bad"]:
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                valid_directory(value)
+        with tempfile.TemporaryDirectory() as root:
+            file_path = Path(root) / "not-a-folder"
+            file_path.write_bytes(b"x")
+            with self.assertRaises(ValueError):
+                valid_directory(str(file_path))
+            host = self.make_host(root)
+            folder = Path(root) / "Custom folder"
+            process = Mock(returncode=0)
+            process.poll.return_value = 0
+            def spawn(args):
+                staging = Path(args[args.index("--paths") + 1])
+                result = staging / "A_video.mp4"
+                result.write_bytes(b"new")
+                process.stdout = iter(['ZED_FILE ' + json.dumps(str(result))])
+                host.process = process
+                return process
+            with patch.object(host, "spawn", side_effect=spawn):
+                host.download(host.media["video"][1], "Clip", folder)
+            self.assertEqual(host.completed.parent, folder)
+            self.assertEqual(host.completed_root, folder)
+            self.assertEqual(host.state["directory"], str(folder))
+            self.assertEqual(host.completed.read_bytes(), b"new")
+            self.assertFalse(list(folder.glob(".zed-*")))
+
+    def test_handle_passes_validated_directory_to_download(self):
+        with tempfile.TemporaryDirectory() as root:
+            host = self.make_host(root)
+            folder = Path(root) / "Chosen"
+            with patch("zed_downloader.threading.Thread"):
+                reply = host.handle({"id": "1", "command": "download", "formatId": "video:hd", "directory": str(folder)})
+            self.assertEqual(reply["state"]["phase"], "downloading")
+            self.assertEqual(reply["state"]["directory"], str(folder))
+            host.thread = None
+            for directory in ["relative", "", "bad\npath"]:
+                with self.subTest(directory=directory), self.assertRaises(ValueError):
+                    host.handle({"id": "2", "command": "download", "formatId": "video:hd", "directory": directory})
+
+    def test_custom_file_name_stays_inside_output_and_never_overwrites(self):
+        self.assertEqual(safe_name(" My: video?.mp4 "), "My_ video_.mp4")
+        self.assertEqual(safe_name("../../etc/passwd"), "_.._etc_passwd")
+        self.assertEqual(safe_name("CON.mp4"), "_CON.mp4")
+        self.assertEqual(safe_name("   "), "")
+        with tempfile.TemporaryDirectory() as root:
+            host = self.make_host(root)
+            existing = Path(root) / "Clip.mp4"
+            existing.write_bytes(b"old")
+            process = Mock(returncode=0)
+            process.poll.return_value = 0
+            def spawn(args):
+                staging = Path(args[args.index("--paths") + 1])
+                result = staging / "A_video.mp4"
+                result.write_bytes(b"new")
+                process.stdout = iter(['ZED_FILE ' + json.dumps(str(result))])
+                host.process = process
+                return process
+            with patch.object(host, "spawn", side_effect=spawn):
+                host.download(host.media["video"][1], "Clip.mp4")
+            self.assertEqual(existing.read_bytes(), b"old")
+            self.assertEqual(host.completed.parent, Path(root))
+            self.assertRegex(host.completed.name, r"^Clip-[a-f0-9]{8}\.mp4$")
+            self.assertEqual(host.completed.read_bytes(), b"new")
 
     def test_cancel_cleans_staging_and_stops_process_tree(self):
         with tempfile.TemporaryDirectory() as root:

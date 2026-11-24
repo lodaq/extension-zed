@@ -84,8 +84,12 @@ describe("injected script completion", () => {
     for (const selector of [
       ".ytp-time-display",
       ".ytp-tooltip-progress-bar-pill-time-stamp",
+      ".ytp-progress-bar-hover .ytp-tooltip-text",
+      ".ytp-progress-bar-hover .ytp-tooltip-bottom-text",
       ".ytp-tooltip-progress-bar-pill:not(:has(",
       "yt-thumbnail-badge-view-model",
+      ".ytp-modern-videowall-still-info-duration",
+      ".ytp-videowall-still-info-duration",
       ".ytInlinePlayerControlsTimeDisplay",
       "a[href*=\"&t=\"]",
       "ytd-macro-markers-list-item-renderer #time",
@@ -97,6 +101,9 @@ describe("injected script completion", () => {
 
     const thumbnails = ACTION_REGISTRY.hideYoutubeTimestamps as Extract<ActionExecution, { type: "style" }>
     expect(thumbnails.css).toContain(".ytInlinePlayerControlsTimeDisplay")
+    expect(thumbnails.css).toContain(".ytPlayerStoryboardTimestamp")
+    expect(thumbnails.css).toContain('ytd-video-preview [class*="TimeDisplay"]')
+    expect(thumbnails.css).toContain('yt-inline-player-controls [class*="Timestamp"]')
   })
 
   it("reversibly applies and resets youtubeFocusMode without mutating element inline styles", () => {

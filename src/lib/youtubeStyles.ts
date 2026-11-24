@@ -1,5 +1,5 @@
 const PLAYER_TIME_SELECTORS = `.ytp-time-display, .ytp-time-current, .ytp-time-duration, .ytp-time-separator, .ytp-chapter-container`
-const THUMBNAIL_TIMESTAMP_SELECTORS = `ytd-thumbnail-overlay-time-status-renderer, yt-thumbnail-overlay-time-status-renderer, yt-thumbnail-overlay-badge-view-model, yt-thumbnail-badge-view-model, .thumbnail-overlay-time-status-renderer, ytm-thumbnail-overlay-time-status-renderer, .ytInlinePlayerControlsTimeDisplay`
+const THUMBNAIL_TIMESTAMP_SELECTORS = `ytd-thumbnail-overlay-time-status-renderer, yt-thumbnail-overlay-time-status-renderer, yt-thumbnail-overlay-badge-view-model, yt-thumbnail-badge-view-model, .thumbnail-overlay-time-status-renderer, ytm-thumbnail-overlay-time-status-renderer, .ytp-modern-videowall-still-info-duration, .ytp-videowall-still-info-duration, .ytInlinePlayerControlsTimeDisplay, .ytPlayerStoryboardTimestamp, ytd-video-preview [class*="TimeDisplay"], ytd-video-preview [class*="Timestamp"], #video-preview-container [class*="TimeDisplay"], #video-preview-container [class*="Timestamp"], yt-inline-player-controls [class*="TimeDisplay"], yt-inline-player-controls [class*="Timestamp"]`
 
 export const YOUTUBE_STYLES = {
   hideYoutubeProgressBar: {
@@ -27,6 +27,7 @@ export const YOUTUBE_STYLES = {
     settingKey: "youtubeHideAllTimestamps",
     css: `${PLAYER_TIME_SELECTORS},
     .ytp-preview .ytp-tooltip-text, .ytp-tooltip-duration, .ytp-tooltip-progress-bar-pill-time-stamp,
+    .ytp-progress-bar-hover .ytp-tooltip-text, .ytp-progress-bar-hover .ytp-tooltip-bottom-text,
     .ytp-tooltip-progress-bar-pill:not(:has(.ytp-tooltip-progress-bar-pill-title:not(:empty))), .ytp-storyboard-framepreview-timestamp,
     ${THUMBNAIL_TIMESTAMP_SELECTORS},
     a[href*="&t="], a[href*="?t="], a[href*="#t="], a[href*="&start="], a[href*="?start="], a[href*="#start="],

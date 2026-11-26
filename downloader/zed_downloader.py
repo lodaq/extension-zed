@@ -22,6 +22,34 @@ MAX_MESSAGE = 256 * 1024
 INVALID_FILENAME = re.compile(r'[\\/:*?"<>|\x00-\x1f\x7f]')
 FFMPEG_TIME = re.compile(r"time=(\d+):(\d+):(\d+(?:\.\d+)?)")
 WINDOWS_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
+ERROR_LIMIT = 300
+TRANSIENT_NETWORK_ERRORS = (
+    "transporterror",
+    "timed out",
+    "timeouterror",
+    "failed to establish a new connection",
+    "network is unreachable",
+    "connection reset",
+    "connection aborted",
+    "remotedisconnected",
+    "temporary failure in name resolution",
+)
+
+
+def format_error(message, limit=ERROR_LIMIT):
+    text = re.sub(r"\s+", " ", str(message or "")).strip()
+    if " (caused by " in text:
+        prefix, _, _ = text.partition(" (caused by ")
+        if ": " in prefix:
+            text = prefix.strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit - 1].rstrip() + "…"
+
+
+def is_transient_error(message):
+    lowered = str(message or "").lower()
+    return any(token in lowered for token in TRANSIENT_NETWORK_ERRORS)
 
 
 def valid_url(value):
@@ -222,22 +250,42 @@ class Host:
                 start_new_session=os.name != "nt", creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
             return self.process
 
-    def run_text(self, args, timeout=120):
-        process = self.spawn(args, merge_stderr=False)
-        try:
-            stdout, stderr = process.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            self.stop_process()
-            process.communicate()
-            raise ValueError("yt-dlp timed out. Try again.") from None
-        if process.returncode:
-            lines = [l.strip() for l in (stderr or "").splitlines() if l.strip() and l.strip() != "null"]
-            if not lines:
-                lines = [l.strip() for l in (stdout or "").splitlines() if l.strip() and l.strip() != "null"]
-            raise ValueError((lines or ["yt-dlp failed"])[-1][-120:])
-        if not stdout or not stdout.strip() or stdout.strip() == "null":
-            raise ValueError("yt-dlp returned no output. The link may be invalid, private, or region-locked.")
-        return stdout
+    def should_retry(self, attempt, attempts, error_message):
+        if attempt >= attempts or self.cancelled.is_set() or not is_transient_error(error_message):
+            return False
+        return not self.cancelled.wait(0.5 * attempt)
+
+    def run_text(self, args, timeout=120, retries=1, socket_timeout=None):
+        full_args = [*args]
+        if socket_timeout is not None and "--socket-timeout" not in full_args:
+            full_args = ["--socket-timeout", str(socket_timeout), *full_args]
+        attempts = max(1, int(retries))
+        for attempt in range(1, attempts + 1):
+            process = self.spawn(full_args, merge_stderr=False)
+            try:
+                stdout, stderr = process.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                self.stop_process()
+                process.communicate()
+                error_message = "yt-dlp timed out. Try again."
+                if self.should_retry(attempt, attempts, error_message):
+                    continue
+                if self.cancelled.is_set():
+                    raise ValueError("Cancelled") from None
+                raise ValueError(error_message) from None
+            if process.returncode:
+                lines = [l.strip() for l in (stderr or "").splitlines() if l.strip() and l.strip() != "null"]
+                if not lines:
+                    lines = [l.strip() for l in (stdout or "").splitlines() if l.strip() and l.strip() != "null"]
+                raw_error = (lines or ["yt-dlp failed"])[-1]
+                if self.should_retry(attempt, attempts, raw_error):
+                    continue
+                if self.cancelled.is_set():
+                    raise ValueError("Cancelled")
+                raise ValueError(format_error(raw_error))
+            if not stdout or not stdout.strip() or stdout.strip() == "null":
+                raise ValueError("yt-dlp returned no output. The link may be invalid, private, or region-locked.")
+            return stdout
 
     def stop_process(self):
         with self.lock:
@@ -335,7 +383,12 @@ class Host:
                 version = self.run_text(["--version"], timeout=15).strip()[:80]
                 self.publish(phase="results" if self.media else "ready", version=version)
             elif command == "formats":
-                raw = self.run_text(["--no-warnings", "--dump-single-json", "--skip-download", "--", self.url])
+                raw = self.run_text(
+                    ["--no-warnings", "--dump-single-json", "--skip-download", "--", self.url],
+                    timeout=45,
+                    retries=3,
+                    socket_timeout=10,
+                )
                 try:
                     start = raw.find("{")
                     end = raw.rfind("}")
@@ -354,7 +407,7 @@ class Host:
                 self.download(message["choice"], message.get("filename"), message.get("output"), message.get("section"), message.get("precise", True))
         except Exception as error:
             if not self.cancelled.is_set():
-                self.publish(phase="error", error=str(error)[-120:])
+                self.publish(phase="error", error=format_error(error))
         finally:
             self.stop_process()
             if self.cancelled.is_set():
@@ -365,89 +418,97 @@ class Host:
                 self.process = None
                 self.thread = None
 
-    def download(self, choice, filename=None, output=None, section=None, precise=True):
+    def download(self, choice, filename=None, output=None, section=None, precise=True, retries=3):
         custom_name = safe_name(filename) if filename is not None else ""
         directory = Path(output) if output else self.output
         directory.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix=".zed-", dir=directory) as staging:
-            args = ["--no-simulate", "--newline", "--progress", "--progress-delta", "0.5",
-                    "--progress-template", 'download:ZED_PROGRESS %(progress)j',
-                    "--progress-template", 'postprocess:ZED_STAGE %(progress.status)s',
-                    "--print", "after_move:ZED_FILE %(filepath)j", "--restrict-filenames", "--no-overwrites",
-                    "--paths", staging, "--output", "%(title).100s [%(id).50s].%(ext)s", "--format", choice["selector"]]
-            if section:
-                args += ["--download-sections", f"*{section['start']}-{section['end']}"]
-                if precise:
-                    args += ["--force-keyframes-at-cuts"]
-            if choice["id"].startswith("mp3:"):
-                args += ["--extract-audio", "--audio-format", "mp3", "--audio-quality", "0"]
-            process = self.spawn([*args, "--", self.url])
-            last_error = "yt-dlp did not produce a file"
-            result = None
-            clip_duration = (section["end"] - section["start"]) if section else 0
-            last_clip_pct = -1
-            for line in process.stdout:
-                line = line.strip()
-                if line.startswith("ZED_PROGRESS "):
-                    progress = json.loads(line[len("ZED_PROGRESS "):])
-                    total = number(progress.get("total_bytes")) or number(progress.get("total_bytes_estimate"))
-                    downloaded = number(progress.get("downloaded_bytes"))
-                    self.publish(pct=min(100, round(100 * downloaded / total)) if total else None,
-                                 downloaded=downloaded, total=total, speed=number(progress.get("speed")), eta=number(progress.get("eta")),
-                                 stage="Downloading clip…" if section else "Downloading…")
-                elif line.startswith("ZED_STAGE "):
-                    if choice["id"].startswith("mp3:"):
-                        stage = "Converting to MP3…"
-                    elif section:
-                        stage = "Cutting precisely…" if precise else "Finishing…"
-                    else:
-                        stage = "Merging video and audio…"
-                    self.publish(pct=None, stage=stage)
-                elif line.startswith("ZED_FILE "):
-                    result = Path(json.loads(line[len("ZED_FILE "):]))
-                elif section and clip_duration > 0 and (match := FFMPEG_TIME.search(line)):
-                    elapsed = int(match.group(1)) * 3600 + int(match.group(2)) * 60 + float(match.group(3))
-                    pct = min(99, max(0, round(100 * elapsed / clip_duration)))
-                    if pct != last_clip_pct:
-                        last_clip_pct = pct
-                        self.publish(pct=pct, stage="Cutting precisely…" if precise else "Downloading clip…")
-                elif line and line.strip() != "null":
-                    last_error = line[-120:]
-            process.wait()
-            if self.cancelled.is_set():
-                return
-            if process.returncode or not result or not result.is_file() or result.resolve().parent != Path(staging).resolve():
-                raise ValueError(last_error)
-            # Never replace an earlier download, even when the extractor repeats a title.
-            if custom_name:
-                base = custom_name
-                if result.suffix and base.lower().endswith(result.suffix.lower()):
-                    base = base[:-len(result.suffix)].rstrip(" .") or result.stem
-                destination = directory / (base + result.suffix)
-                if destination.exists():
-                    destination = directory / (base + "-" + uuid.uuid4().hex[:8] + result.suffix)
-            elif section:
-                suffix = f" [{format_clock_filename(section['start'])} to {format_clock_filename(section['end'])}]"
-                title_part = safe_name(self.media.get("title") or "") if self.media else ""
-                if not title_part:
-                    title_part = result.stem
-                max_title = max(1, 120 - len(suffix))
-                base = (title_part[:max_title].rstrip(" .") + suffix).strip(" .")
-                destination = directory / (base + result.suffix)
-                if destination.exists():
-                    max_title_uuid = max(1, 120 - len(suffix) - 9)
-                    base = (title_part[:max_title_uuid].rstrip(" .") + suffix + "-" + uuid.uuid4().hex[:8]).strip(" .")
-                    destination = directory / (base + result.suffix)
-            else:
-                destination = directory / (result.stem + "-" + uuid.uuid4().hex[:8] + result.suffix)
-            with self.lock:
+        attempts = max(1, int(retries))
+        for attempt in range(1, attempts + 1):
+            with tempfile.TemporaryDirectory(prefix=".zed-", dir=directory) as staging:
+                args = ["--socket-timeout", "15", "--no-simulate", "--newline", "--progress", "--progress-delta", "0.5",
+                        "--progress-template", 'download:ZED_PROGRESS %(progress)j',
+                        "--progress-template", 'postprocess:ZED_STAGE %(progress.status)s',
+                        "--print", "after_move:ZED_FILE %(filepath)j", "--restrict-filenames", "--no-overwrites",
+                        "--paths", staging, "--output", "%(title).100s [%(id).50s].%(ext)s", "--format", choice["selector"]]
+                if section:
+                    args += ["--download-sections", f"*{section['start']}-{section['end']}"]
+                    if precise:
+                        args += ["--force-keyframes-at-cuts"]
+                if choice["id"].startswith("mp3:"):
+                    args += ["--extract-audio", "--audio-format", "mp3", "--audio-quality", "0"]
+                process = self.spawn([*args, "--", self.url])
+                raw_error = "yt-dlp did not produce a file"
+                result = None
+                clip_duration = (section["end"] - section["start"]) if section else 0
+                last_clip_pct = -1
+                for line in process.stdout:
+                    line = line.strip()
+                    if line.startswith("ZED_PROGRESS "):
+                        progress = json.loads(line[len("ZED_PROGRESS "):])
+                        total = number(progress.get("total_bytes")) or number(progress.get("total_bytes_estimate"))
+                        downloaded = number(progress.get("downloaded_bytes"))
+                        self.publish(pct=min(100, round(100 * downloaded / total)) if total else None,
+                                     downloaded=downloaded, total=total, speed=number(progress.get("speed")), eta=number(progress.get("eta")),
+                                     stage="Downloading clip…" if section else "Downloading…")
+                    elif line.startswith("ZED_STAGE "):
+                        if choice["id"].startswith("mp3:"):
+                            stage = "Converting to MP3…"
+                        elif section:
+                            stage = "Cutting precisely…" if precise else "Finishing…"
+                        else:
+                            stage = "Merging video and audio…"
+                        self.publish(pct=None, stage=stage)
+                    elif line.startswith("ZED_FILE "):
+                        result = Path(json.loads(line[len("ZED_FILE "):]))
+                    elif section and clip_duration > 0 and (match := FFMPEG_TIME.search(line)):
+                        elapsed = int(match.group(1)) * 3600 + int(match.group(2)) * 60 + float(match.group(3))
+                        pct = min(99, max(0, round(100 * elapsed / clip_duration)))
+                        if pct != last_clip_pct:
+                            last_clip_pct = pct
+                            self.publish(pct=pct, stage="Cutting precisely…" if precise else "Downloading clip…")
+                    elif line and line.strip() != "null":
+                        raw_error = line
+                process.wait()
                 if self.cancelled.is_set():
                     return
-                result.rename(destination)
-                self.completed = destination
-                self.completed_root = directory
-                self.publish(phase="done", pct=100, filename=destination.name, size=destination.stat().st_size,
-                             directory=str(directory), summary=choice["label"] + " · " + choice["meta"])
+                if process.returncode or not result or not result.is_file() or result.resolve().parent != Path(staging).resolve():
+                    if self.should_retry(attempt, attempts, raw_error):
+                        self.publish(pct=None if section else 0, stage="Retrying…")
+                        continue
+                    if self.cancelled.is_set():
+                        return
+                    raise ValueError(format_error(raw_error))
+                # Never replace an earlier download, even when the extractor repeats a title.
+                if custom_name:
+                    base = custom_name
+                    if result.suffix and base.lower().endswith(result.suffix.lower()):
+                        base = base[:-len(result.suffix)].rstrip(" .") or result.stem
+                    destination = directory / (base + result.suffix)
+                    if destination.exists():
+                        destination = directory / (base + "-" + uuid.uuid4().hex[:8] + result.suffix)
+                elif section:
+                    suffix = f" [{format_clock_filename(section['start'])} to {format_clock_filename(section['end'])}]"
+                    title_part = safe_name(self.media.get("title") or "") if self.media else ""
+                    if not title_part:
+                        title_part = result.stem
+                    max_title = max(1, 120 - len(suffix))
+                    base = (title_part[:max_title].rstrip(" .") + suffix).strip(" .")
+                    destination = directory / (base + result.suffix)
+                    if destination.exists():
+                        max_title_uuid = max(1, 120 - len(suffix) - 9)
+                        base = (title_part[:max_title_uuid].rstrip(" .") + suffix + "-" + uuid.uuid4().hex[:8]).strip(" .")
+                        destination = directory / (base + result.suffix)
+                else:
+                    destination = directory / (result.stem + "-" + uuid.uuid4().hex[:8] + result.suffix)
+                with self.lock:
+                    if self.cancelled.is_set():
+                        return
+                    result.rename(destination)
+                    self.completed = destination
+                    self.completed_root = directory
+                    self.publish(phase="done", pct=100, filename=destination.name, size=destination.stat().st_size,
+                                 directory=str(directory), summary=choice["label"] + " · " + choice["meta"])
+                return
 
 
 def main():

@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from zed_downloader import Host, MAX_MESSAGE, media_info, read_message, safe_name, valid_directory, valid_url
+from zed_downloader import Host, MAX_MESSAGE, format_error, media_info, read_message, safe_name, valid_directory, valid_url
 from install import discover_ids, install, setup
 
 
@@ -358,6 +358,61 @@ class DownloaderTests(unittest.TestCase):
             res = host.handle({"id": "5", "command": "reset", "keepMedia": True})
             self.assertEqual(res["state"]["phase"], "results")
             self.assertIn("media", res["state"])
+
+    def test_format_error_preserves_meaningful_prefix(self):
+        long_err = (
+            'ERROR: [Instagram] DgNjs4azner: Unable to download webpage: '
+            'HTTPSConnectionPool(host=\'www.instagram.com\', port=443): Read timed out. (read timeout=20.0) '
+            '(caused by TransportError("HTTPSConnectionPool(host=\'www.instagram.com\', port=443): Read timed out. (read timeout=20.0)"))'
+        )
+        formatted = format_error(long_err)
+        self.assertTrue(formatted.startswith("ERROR: [Instagram] DgNjs4azner:"))
+        self.assertIn("Read timed out", formatted)
+        self.assertNotIn("caused by", formatted)
+        self.assertTrue(format_error("x" * 400).endswith("…"))
+        self.assertEqual(len(format_error("x" * 400)), 300)
+
+    def test_run_text_retries_transient_errors_and_stops_on_permanent_errors(self):
+        with tempfile.TemporaryDirectory() as root:
+            host = self.make_host(root)
+            fail = Mock(returncode=1)
+            fail.communicate.return_value = ("", 'ERROR: [Instagram] id: Unable to download webpage: (caused by TransportError("Read timed out"))')
+            ok = Mock(returncode=0)
+            ok.communicate.return_value = (json.dumps(fixture()), "")
+            with patch.object(host, "spawn", side_effect=[fail, ok]) as launch, patch.object(host.cancelled, "wait", return_value=False) as wait:
+                result = host.run_text(["--dump-single-json"], retries=3, socket_timeout=10)
+            self.assertEqual(launch.call_count, 2)
+            self.assertEqual(launch.call_args_list[0].args[0][:2], ["--socket-timeout", "10"])
+            wait.assert_called_once_with(0.5)
+            self.assertIn("A video", result)
+
+            permanent = Mock(returncode=1)
+            permanent.communicate.return_value = ("", "ERROR: [youtube] Video unavailable")
+            with patch.object(host, "spawn", return_value=permanent) as launch:
+                with self.assertRaisesRegex(ValueError, "Video unavailable"):
+                    host.run_text(["--dump-single-json"], retries=3, socket_timeout=10)
+            self.assertEqual(launch.call_count, 1)
+
+    def test_download_retries_transient_errors_before_producing_file(self):
+        with tempfile.TemporaryDirectory() as root:
+            host = self.make_host(root)
+            calls = []
+            def spawn(args):
+                calls.append(args)
+                if len(calls) == 1:
+                    return Mock(stdout=iter(['ERROR: [Instagram] id: (caused by TransportError("Read timed out"))']), returncode=1)
+                staging = Path(args[args.index("--paths") + 1])
+                result = staging / "A_video.mp4"
+                result.write_bytes(b"video")
+                proc = Mock(stdout=iter(['ZED_FILE ' + json.dumps(str(result))]), returncode=0)
+                host.process = proc
+                return proc
+            with patch.object(host, "spawn", side_effect=spawn), patch.object(host.cancelled, "wait", return_value=False):
+                host.download(host.media["video"][1])
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(calls[0][:2], ["--socket-timeout", "15"])
+            self.assertEqual(host.state["phase"], "done")
+            self.assertEqual(host.completed.read_bytes(), b"video")
 
 
 if __name__ == "__main__":

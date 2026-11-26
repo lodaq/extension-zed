@@ -80,6 +80,18 @@ class DownloaderTests(unittest.TestCase):
         self.assertEqual(media["audio"][0]["id"], "mp3:mp4")
         self.assertEqual(media["audio"][0]["size"], 0)
 
+    def test_prefers_direct_https_formats_over_m3u8_hls(self):
+        media = media_info({
+            "title": "YouTube video",
+            "formats": [
+                {"format_id": "270", "height": 1080, "ext": "mp4", "vcodec": "avc1.640028", "acodec": "none", "tbr": 4684, "protocol": "m3u8_native"},
+                {"format_id": "137", "height": 1080, "ext": "mp4", "vcodec": "avc1.640028", "acodec": "none", "tbr": 1534, "protocol": "https", "filesize": 97000000},
+                {"format_id": "140-0", "ext": "m4a", "vcodec": "none", "acodec": "mp4a.40.2", "abr": 129, "protocol": "https", "filesize": 8000000},
+            ],
+        }, True)
+        self.assertEqual(media["video"][0]["id"], "video:137")
+        self.assertEqual(media["video"][0]["size"], 105000000)
+
     def test_new_link_clears_previous_format_selectors(self):
         with tempfile.TemporaryDirectory() as root:
             host = self.make_host(root)
@@ -220,6 +232,53 @@ class DownloaderTests(unittest.TestCase):
                 host.work("update", {})
             self.assertEqual(host.state["version"], "2026.11.17")
             self.assertEqual(run.call_args_list[0].args[0], ["--update"])
+
+    def test_empty_output_gives_a_clear_error(self):
+        with tempfile.TemporaryDirectory() as root:
+            host = self.make_host(root)
+            with patch.object(host, "run_text", return_value=""):
+                host.work("formats", {})
+            self.assertEqual(host.state["phase"], "error")
+            self.assertIn("unexpected response", host.state["error"])
+
+    def test_malformed_json_gives_a_clear_error(self):
+        with tempfile.TemporaryDirectory() as root:
+            host = self.make_host(root)
+            with patch.object(host, "run_text", return_value="not json at all"):
+                host.work("formats", {})
+            self.assertEqual(host.state["phase"], "error")
+            self.assertIn("unexpected response", host.state["error"])
+
+    def test_run_text_raises_on_empty_output(self):
+        with tempfile.TemporaryDirectory() as root:
+            host = self.make_host(root)
+            process = Mock(returncode=0)
+            process.communicate.return_value = ("", None)
+            with patch.object(host, "spawn", return_value=process):
+                with self.assertRaises(ValueError) as ctx:
+                    host.run_text(["--dump-single-json"])
+                self.assertIn("no output", str(ctx.exception))
+
+    def test_formats_parses_json_with_surrounding_warnings(self):
+        with tempfile.TemporaryDirectory() as root:
+            host = self.make_host(root)
+            json_text = json.dumps(fixture())
+            polluted = f"WARNING: [youtube] Deno provider failed\n{json_text}\n"
+            with patch.object(host, "run_text", return_value=polluted):
+                host.work("formats", {})
+            self.assertEqual(host.state["phase"], "results")
+            self.assertIsNotNone(host.media)
+            self.assertEqual(host.media["title"], "A video")
+
+    def test_run_text_extracts_stderr_error_ignoring_null(self):
+        with tempfile.TemporaryDirectory() as root:
+            host = self.make_host(root)
+            process = Mock(returncode=1)
+            process.communicate.return_value = ("null\n", "ERROR: [youtube] Video unavailable\n")
+            with patch.object(host, "spawn", return_value=process):
+                with self.assertRaises(ValueError) as ctx:
+                    host.run_text(["--dump-single-json"])
+                self.assertEqual(str(ctx.exception), "ERROR: [youtube] Video unavailable")
 
     def test_installer_restricts_origin_and_uses_user_paths(self):
         with tempfile.TemporaryDirectory() as root:

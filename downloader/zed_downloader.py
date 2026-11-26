@@ -66,7 +66,7 @@ def media_info(info, ffmpeg):
                and re.fullmatch(r"[\w.-]{1,100}", str(f.get("format_id", "")))
                and not f.get("has_drm") and f.get("protocol") != "mhtml"]
     audio = [f for f in formats if f.get("vcodec") == "none" and f.get("acodec") not in (None, "none")]
-    best_audio = max(audio, key=lambda f: number(f.get("abr")) or number(f.get("tbr")), default=None)
+    best_audio = max(audio, key=lambda f: (not str(f.get("protocol", "")).startswith("m3u8"), number(f.get("abr")) or number(f.get("tbr"))), default=None)
     conversion_source = best_audio or max((f for f in formats if f.get("acodec") != "none"),
                                          key=lambda f: number(f.get("tbr")), default=None)
 
@@ -92,6 +92,8 @@ def media_info(info, ffmpeg):
             continue
         height = int(number(f.get("height")))
         rank = (f.get("ext") == "mp4" and str(f.get("vcodec", "")).startswith(("avc", "h264")),
+                not str(f.get("protocol", "")).startswith("m3u8"),
+                bool(number(f.get("filesize")) or number(f.get("filesize_approx"))),
                 number(f.get("tbr")), number(f.get("fps")))
         if height not in heights or rank > heights[height][0]:
             heights[height] = (rank, row(f, "video", f"{height}p" if height else "Original", best_audio if separate else None))
@@ -105,7 +107,7 @@ def media_info(info, ffmpeg):
     for extension, label in [("m4a", "M4A · AAC"), ("webm", "WebM · Opus")]:
         candidates = [f for f in audio if f.get("ext") == extension]
         if candidates:
-            f = max(candidates, key=lambda f: number(f.get("abr")) or number(f.get("tbr")))
+            f = max(candidates, key=lambda f: (not str(f.get("protocol", "")).startswith("m3u8"), number(f.get("abr")) or number(f.get("tbr"))))
             rows.append(row(f, "audio", label))
     if not rows and best_audio:
         rows.append(row(best_audio, "audio", str(best_audio.get("ext", "Audio")).upper()))
@@ -174,26 +176,31 @@ class Host:
                                     for f in self.media[mode]] for mode in ("video", "audio")}}
         return state
 
-    def spawn(self, args):
+    def spawn(self, args, merge_stderr=True):
         with self.lock:
             if self.cancelled.is_set():
                 raise ValueError("Cancelled")
             self.process = subprocess.Popen([self.ytdlp, "--ignore-config", "--no-playlist", *args],
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT if merge_stderr else subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
                 start_new_session=os.name != "nt", creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
             return self.process
 
     def run_text(self, args, timeout=120):
-        process = self.spawn(args)
+        process = self.spawn(args, merge_stderr=False)
         try:
-            output, _ = process.communicate(timeout=timeout)
+            stdout, stderr = process.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
             self.stop_process()
             process.communicate()
             raise ValueError("yt-dlp timed out. Try again.") from None
         if process.returncode:
-            raise ValueError((output.strip().splitlines() or ["yt-dlp failed"])[-1][-120:])
-        return output
+            lines = [l.strip() for l in (stderr or "").splitlines() if l.strip() and l.strip() != "null"]
+            if not lines:
+                lines = [l.strip() for l in (stdout or "").splitlines() if l.strip() and l.strip() != "null"]
+            raise ValueError((lines or ["yt-dlp failed"])[-1][-120:])
+        if not stdout or not stdout.strip() or stdout.strip() == "null":
+            raise ValueError("yt-dlp returned no output. The link may be invalid, private, or region-locked.")
+        return stdout
 
     def stop_process(self):
         with self.lock:
@@ -277,7 +284,16 @@ class Host:
                 version = self.run_text(["--version"], timeout=15).strip()[:80]
                 self.publish(phase="results" if self.media else "ready", version=version)
             elif command == "formats":
-                info = json.loads(self.run_text(["--dump-single-json", "--skip-download", "--", self.url]))
+                raw = self.run_text(["--no-warnings", "--dump-single-json", "--skip-download", "--", self.url])
+                try:
+                    start = raw.find("{")
+                    end = raw.rfind("}")
+                    if start != -1 and end != -1 and end > start:
+                        info = json.loads(raw[start:end + 1])
+                    else:
+                        info = json.loads(raw)
+                except (json.JSONDecodeError, ValueError):
+                    raise ValueError("yt-dlp returned an unexpected response. The link may be unsupported, private, or region-locked.")
                 media = media_info(info, self.ffmpeg)
                 if self.cancelled.is_set():
                     return
@@ -324,7 +340,7 @@ class Host:
                     self.publish(pct=None, stage="Converting to MP3…" if choice["id"].startswith("mp3:") else "Merging video and audio…")
                 elif line.startswith("ZED_FILE "):
                     result = Path(json.loads(line[len("ZED_FILE "):]))
-                elif line:
+                elif line and line.strip() != "null":
                     last_error = line[-120:]
             process.wait()
             if self.cancelled.is_set():

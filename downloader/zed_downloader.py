@@ -16,9 +16,11 @@ from urllib.parse import urlsplit
 import uuid
 
 HOST = "com.extension_zed.downloader"
+CAPABILITIES = ["clip"]
 OUTPUT = Path.home() / "Downloads" / "Zed"
 MAX_MESSAGE = 256 * 1024
 INVALID_FILENAME = re.compile(r'[\\/:*?"<>|\x00-\x1f\x7f]')
+FFMPEG_TIME = re.compile(r"time=(\d+):(\d+):(\d+(?:\.\d+)?)")
 WINDOWS_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
 
 
@@ -60,6 +62,36 @@ def number(value):
     return value if isinstance(value, (int, float)) and math.isfinite(value) and value >= 0 else 0
 
 
+def format_clock_filename(seconds):
+    seconds = max(0, int(seconds))
+    hours, rem = divmod(seconds, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f"{hours}-{minutes:02d}-{secs:02d}"
+    return f"{minutes}-{secs:02d}"
+
+
+def valid_section(section, media, has_ffmpeg):
+    if not isinstance(section, dict):
+        raise ValueError("Invalid clip range.")
+    start = section.get("start")
+    end = section.get("end")
+    if isinstance(start, bool) or isinstance(end, bool) or not isinstance(start, int) or not isinstance(end, int):
+        raise ValueError("Clip start and end must be whole seconds.")
+    if start < 0 or end < start + 1:
+        raise ValueError("Clip must be at least 1 second long.")
+    if not media:
+        raise ValueError("Read a video link first.")
+    duration = number(media.get("duration"))
+    if media.get("isLive") or duration < 1:
+        raise ValueError("Live streams and videos with unknown duration can’t be clipped.")
+    if end > math.ceil(duration):
+        raise ValueError("Clip end cannot be past the video duration.")
+    if not has_ffmpeg:
+        raise ValueError("Cutting a clip needs ffmpeg.")
+    return {"start": start, "end": end}
+
+
 def media_info(info, ffmpeg):
     """Reduce extractor data to selectable, safe format IDs; never accept raw selectors."""
     formats = [f for f in info.get("formats", []) if isinstance(f, dict)
@@ -75,12 +107,15 @@ def media_info(info, ffmpeg):
         if merge:
             other = number(merge.get("filesize")) or number(merge.get("filesize_approx"))
             size = size + other if size and other else 0
+        bitrate = round((number(f.get("tbr")) or number(f.get("vbr")) or number(f.get("abr"))) +
+                        ((number(merge.get("abr")) or number(merge.get("tbr"))) if merge else 0))
         return {"id": f'{mode}:{f["format_id"]}', "label": label,
                 "meta": " · ".join(str(x) for x in [str(f.get("ext", "")).upper(),
                     f.get("vcodec") if mode == "video" else f.get("acodec"),
                     f'{f["fps"]} fps' if mode == "video" and f.get("fps") else
                     f'{round(number(f.get("abr")) or number(f.get("tbr")))} kbps' if mode != "video" else ""] if x),
                 "size": size, "approximate": not bool(f.get("filesize")) or bool(merge and not merge.get("filesize")),
+                "bitrate": bitrate,
                 "selector": str(f["format_id"]) + ("+" + str(merge["format_id"]) if merge else ""), "tags": []}
 
     heights = {}
@@ -115,13 +150,15 @@ def media_info(info, ffmpeg):
         rows[0]["tags"].append("Recommended")
     if ffmpeg and conversion_source:
         converted = row(conversion_source, "mp3", "MP3 · Converted")
-        converted.update(size=0, approximate=True, meta="MP3 · Variable bitrate")
+        converted.update(size=0, approximate=True, meta="MP3 · Variable bitrate",
+                         bitrate=round(number(conversion_source.get("abr")) or number(conversion_source.get("tbr")) or 192))
         rows.append(converted)
     if not video and not rows:
         raise ValueError("No supported, unencrypted formats were found.")
+    is_live = bool(info.get("is_live")) or info.get("live_status") in ("is_live", "is_upcoming")
     return {"title": str(info.get("title", "Untitled"))[:500], "uploader": str(info.get("uploader") or "")[:200],
             "host": urlsplit(info.get("webpage_url") or "").hostname or "", "duration": number(info.get("duration")),
-            "video": video, "audio": rows}
+            "isLive": is_live, "video": video, "audio": rows}
 
 
 def read_message(stream):
@@ -157,7 +194,7 @@ class Host:
         self.cancelled = threading.Event()
         self.ytdlp = shutil.which("yt-dlp")
         self.ffmpeg = shutil.which("ffmpeg") is not None
-        self.state = {"phase": "ready", "version": "", "ffmpeg": self.ffmpeg}
+        self.state = {"phase": "ready", "version": "", "ffmpeg": self.ffmpeg, "capabilities": list(CAPABILITIES)}
         self.media = None
         self.url = ""
         self.completed = None
@@ -240,11 +277,14 @@ class Host:
             elif command == "reset":
                 if busy:
                     raise ValueError("Cancel the current task first")
-                self.media = None
                 self.completed = None
                 self.completed_root = None
-                self.url = ""
-                self.state = {"phase": "ready", "version": self.state.get("version", ""), "ffmpeg": self.ffmpeg}
+                if message.get("keepMedia") is True and self.media:
+                    self.state = {"phase": "results", "version": self.state.get("version", ""), "ffmpeg": self.ffmpeg, "capabilities": list(CAPABILITIES), "url": self.url}
+                else:
+                    self.media = None
+                    self.url = ""
+                    self.state = {"phase": "ready", "version": self.state.get("version", ""), "ffmpeg": self.ffmpeg, "capabilities": list(CAPABILITIES)}
                 self.publish()
             elif command in ("ping", "formats", "download", "update"):
                 if busy:
@@ -258,18 +298,29 @@ class Host:
                 if command == "formats":
                     self.url = valid_url(message.get("url"))
                     self.media = None
+                section = None
+                precise = True
                 if command == "download":
                     choices = self.media["video"] + self.media["audio"] if self.media else []
                     choice = next((f for f in choices if f["id"] == message.get("formatId")), None)
                     if not choice:
                         raise ValueError("Choose an available format first")
                     output = valid_directory(message["directory"]) if message.get("directory") is not None else self.output
-                    message = {**message, "choice": choice, "output": output}
+                    if message.get("section") is not None:
+                        section = valid_section(message["section"], self.media, self.ffmpeg)
+                        if message.get("precise") is not None and not isinstance(message.get("precise"), bool):
+                            raise ValueError("Invalid clip precision option.")
+                        precise = message.get("precise", True)
+                    message = {**message, "choice": choice, "output": output, "section": section, "precise": precise}
                 self.cancelled.clear()
+                self.state.pop("section", None)
+                self.state.pop("precise", None)
                 self.publish(phase={"ping": "checking", "formats": "reading", "download": "downloading", "update": "updating"}[command],
-                             error="", pct=0, stage="Downloading…", url=self.url, cancelled=False,
+                             error="", pct=None if section else 0, stage="Downloading clip…" if section else "Downloading…", url=self.url, cancelled=False,
                              summary=message["choice"]["label"] + " · " + message["choice"]["meta"] if command == "download" else "",
-                             **({"directory": str(message["output"])} if command == "download" else {}))
+                             capabilities=list(CAPABILITIES),
+                             **({"directory": str(message["output"])} if command == "download" else {}),
+                             **({"section": section, "precise": precise} if section else {}))
                 self.thread = threading.Thread(target=self.work, args=(command, message), daemon=True)
                 self.thread.start()
             else:
@@ -300,19 +351,21 @@ class Host:
                 self.media = media
                 self.publish(phase="results")
             else:
-                self.download(message["choice"], message.get("filename"), message.get("output"))
+                self.download(message["choice"], message.get("filename"), message.get("output"), message.get("section"), message.get("precise", True))
         except Exception as error:
             if not self.cancelled.is_set():
                 self.publish(phase="error", error=str(error)[-120:])
         finally:
             self.stop_process()
             if self.cancelled.is_set():
+                self.state.pop("section", None)
+                self.state.pop("precise", None)
                 self.publish(phase="results" if self.media else "ready", error="", cancelled=True)
             with self.lock:
                 self.process = None
                 self.thread = None
 
-    def download(self, choice, filename=None, output=None):
+    def download(self, choice, filename=None, output=None, section=None, precise=True):
         custom_name = safe_name(filename) if filename is not None else ""
         directory = Path(output) if output else self.output
         directory.mkdir(parents=True, exist_ok=True)
@@ -322,11 +375,17 @@ class Host:
                     "--progress-template", 'postprocess:ZED_STAGE %(progress.status)s',
                     "--print", "after_move:ZED_FILE %(filepath)j", "--restrict-filenames", "--no-overwrites",
                     "--paths", staging, "--output", "%(title).100s [%(id).50s].%(ext)s", "--format", choice["selector"]]
+            if section:
+                args += ["--download-sections", f"*{section['start']}-{section['end']}"]
+                if precise:
+                    args += ["--force-keyframes-at-cuts"]
             if choice["id"].startswith("mp3:"):
                 args += ["--extract-audio", "--audio-format", "mp3", "--audio-quality", "0"]
             process = self.spawn([*args, "--", self.url])
             last_error = "yt-dlp did not produce a file"
             result = None
+            clip_duration = (section["end"] - section["start"]) if section else 0
+            last_clip_pct = -1
             for line in process.stdout:
                 line = line.strip()
                 if line.startswith("ZED_PROGRESS "):
@@ -335,11 +394,23 @@ class Host:
                     downloaded = number(progress.get("downloaded_bytes"))
                     self.publish(pct=min(100, round(100 * downloaded / total)) if total else None,
                                  downloaded=downloaded, total=total, speed=number(progress.get("speed")), eta=number(progress.get("eta")),
-                                 stage="Downloading…")
+                                 stage="Downloading clip…" if section else "Downloading…")
                 elif line.startswith("ZED_STAGE "):
-                    self.publish(pct=None, stage="Converting to MP3…" if choice["id"].startswith("mp3:") else "Merging video and audio…")
+                    if choice["id"].startswith("mp3:"):
+                        stage = "Converting to MP3…"
+                    elif section:
+                        stage = "Cutting precisely…" if precise else "Finishing…"
+                    else:
+                        stage = "Merging video and audio…"
+                    self.publish(pct=None, stage=stage)
                 elif line.startswith("ZED_FILE "):
                     result = Path(json.loads(line[len("ZED_FILE "):]))
+                elif section and clip_duration > 0 and (match := FFMPEG_TIME.search(line)):
+                    elapsed = int(match.group(1)) * 3600 + int(match.group(2)) * 60 + float(match.group(3))
+                    pct = min(99, max(0, round(100 * elapsed / clip_duration)))
+                    if pct != last_clip_pct:
+                        last_clip_pct = pct
+                        self.publish(pct=pct, stage="Cutting precisely…" if precise else "Downloading clip…")
                 elif line and line.strip() != "null":
                     last_error = line[-120:]
             process.wait()
@@ -355,6 +426,18 @@ class Host:
                 destination = directory / (base + result.suffix)
                 if destination.exists():
                     destination = directory / (base + "-" + uuid.uuid4().hex[:8] + result.suffix)
+            elif section:
+                suffix = f" [{format_clock_filename(section['start'])} to {format_clock_filename(section['end'])}]"
+                title_part = safe_name(self.media.get("title") or "") if self.media else ""
+                if not title_part:
+                    title_part = result.stem
+                max_title = max(1, 120 - len(suffix))
+                base = (title_part[:max_title].rstrip(" .") + suffix).strip(" .")
+                destination = directory / (base + result.suffix)
+                if destination.exists():
+                    max_title_uuid = max(1, 120 - len(suffix) - 9)
+                    base = (title_part[:max_title_uuid].rstrip(" .") + suffix + "-" + uuid.uuid4().hex[:8]).strip(" .")
+                    destination = directory / (base + result.suffix)
             else:
                 destination = directory / (result.stem + "-" + uuid.uuid4().hex[:8] + result.suffix)
             with self.lock:

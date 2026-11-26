@@ -173,7 +173,7 @@ export default function App() {
     return () => window.removeEventListener(PAGE_ACTION_FEEDBACK_EVENT, listener)
   }, [])
   const downloaders = DOWNLOADER_ENABLED ? [
-    { id: "downloader", title: "Video downloader", description: "Choose video quality, audio formats, or MP3 with the local helper", state: download, view: <VideoDownloader state={download} /> },
+    { id: "downloader", title: "Video downloader", description: "Download videos, audio, or trimmed clips with the local helper", state: download, view: <VideoDownloader state={download} /> },
   ] : []
   const selected = tab === "Misc" ? tools.find(tool => tool.id === detail) ?? downloaders.find(tool => tool.id === detail) : undefined
   const Detail = selected && "component" in selected ? selected.component : undefined

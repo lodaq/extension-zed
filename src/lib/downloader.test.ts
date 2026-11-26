@@ -64,20 +64,27 @@ it("rejects content scripts and malformed commands before opening a native conne
   await expect(handleDownloaderCommand({ command: "download", formatId: "hd+evil" }, sender)).rejects.toThrow("format")
   await expect(handleDownloaderCommand({ command: "download", formatId: "video:hd", filename: "bad\nname" }, sender)).rejects.toThrow("file name")
   await expect(handleDownloaderCommand({ command: "download", formatId: "video:hd", directory: "relative" }, sender)).rejects.toThrow("folder")
+  await expect(handleDownloaderCommand({ command: "download", formatId: "video:hd", section: { start: 10, end: 10 } }, sender)).rejects.toThrow("clip range")
+  await expect(handleDownloaderCommand({ command: "download", formatId: "video:hd", section: { start: 10, end: 20 }, precise: "yes" }, sender)).rejects.toThrow("precision")
+  await expect(handleDownloaderCommand({ command: "reset", keepMedia: "yes" }, sender)).rejects.toThrow("reset")
   expect(connectNative).not.toHaveBeenCalled()
 })
 
-it("forwards a trimmed file name and folder with the download command", async () => {
+it("forwards a trimmed file name, folder, and clip options with the download command", async () => {
   vi.resetModules()
   const { events, postMessage } = nativeMock()
   const { handleDownloaderCommand } = await import("./downloaderWorker")
   const ping = handleDownloaderCommand({ command: "ping" }, sender)
   events.message({ id: "1", ok: true, state: { phase: "ready" } })
   await ping
-  const result = handleDownloaderCommand({ command: "download", formatId: "video:hd", filename: " My clip.mp4 ", directory: " ~/Videos " }, sender)
-  expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ command: "download", formatId: "video:hd", filename: "My clip.mp4", directory: "~/Videos" }))
-  events.message({ id: "2", ok: true, state: { phase: "downloading" } })
+  const result = handleDownloaderCommand({ command: "download", formatId: "video:hd", filename: " My clip.mp4 ", directory: " ~/Videos ", section: { start: 5, end: 25 }, precise: true }, sender)
+  expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ command: "download", formatId: "video:hd", filename: "My clip.mp4", directory: "~/Videos", section: { start: 5, end: 25 }, precise: true }))
+  events.message({ id: "2", ok: true, state: { phase: "downloading", section: { start: 5, end: 25 }, precise: true } })
   await expect(result).resolves.toMatchObject({ ok: true })
+  const back = handleDownloaderCommand({ command: "reset", keepMedia: true }, sender)
+  expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ command: "reset", keepMedia: true }))
+  events.message({ id: "3", ok: true, state: { phase: "results" } })
+  await expect(back).resolves.toMatchObject({ ok: true })
 })
 
 it("keeps download progress and completion in worker storage without a popup", async () => {
@@ -88,8 +95,8 @@ it("keeps download progress and completion in worker storage without a popup", a
   expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ command: "ping" }))
   events.message({ id: "1", ok: true, state: { phase: "checking" } })
   await expect(result).resolves.toEqual({ ok: true, state: { phase: "checking" } })
-  events.message({ event: "state", state: { phase: "downloading", pct: 42 } })
-  expect(await readDownloaderState()).toMatchObject({ phase: "downloading", pct: 42 })
+  events.message({ event: "state", state: { phase: "downloading", pct: 42, capabilities: ["clip"] } })
+  expect(await readDownloaderState()).toMatchObject({ phase: "downloading", pct: 42, capabilities: ["clip"] })
   events.message({ event: "state", state: { phase: "done", filename: "video.mp4", size: 123 } })
   expect(await readDownloaderState()).toMatchObject({ phase: "done", filename: "video.mp4" })
   await handleDownloaderCommand({ command: "seen" }, sender)

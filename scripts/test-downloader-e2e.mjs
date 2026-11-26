@@ -63,20 +63,27 @@ try {
   await evaluate(`() => {
     let listeners = [];
     const media = { title: 'A sample video', uploader: 'Example creator', host: 'example.com', duration: 123,
-      video: [ { id: 'video:2160', label: '2160p', meta: 'WebM · VP9 · 30 fps', size: 800000000, approximate: true, tags: ['Best quality'] },
-        { id: 'video:1080', label: '1080p', meta: 'MP4 · H.264 · 30 fps', size: 214000000, approximate: false, tags: ['Most compatible'] } ],
-      audio: [ { id: 'audio:aac', label: 'M4A · AAC', meta: 'M4A · AAC · 128 kbps', size: 5000000, approximate: true, tags: ['Recommended'] },
-        { id: 'mp3:aac', label: 'MP3 · Converted', meta: '128 kbps', size: 0, approximate: true, tags: [] } ] };
-    let state = { phase: 'ready', version: '2026.11.17', ffmpeg: true };
+      video: [ { id: 'video:2160', label: '2160p', meta: 'WebM · VP9 · 30 fps', size: 800000000, approximate: true, bitrate: 8000, tags: ['Best quality'] },
+        { id: 'video:1080', label: '1080p', meta: 'MP4 · H.264 · 30 fps', size: 214000000, approximate: false, bitrate: 4000, tags: ['Most compatible'] } ],
+      audio: [ { id: 'audio:aac', label: 'M4A · AAC', meta: 'M4A · AAC · 128 kbps', size: 5000000, approximate: true, bitrate: 128, tags: ['Recommended'] },
+        { id: 'mp3:aac', label: 'MP3 · Converted', meta: '128 kbps', size: 0, approximate: true, bitrate: 192, tags: [] } ] };
+    let state = { phase: 'ready', version: '2026.11.17', ffmpeg: true, capabilities: ['clip'] };
     globalThis.zedTestEmit = patch => { state = { ...state, ...patch }; listeners.forEach(fn => fn({ event: 'state', state })); };
     chrome.runtime.connectNative = () => ({
       onMessage: { addListener: fn => listeners.push(fn) }, onDisconnect: { addListener: () => {} }, disconnect: () => {},
       postMessage: request => {
-        if (request.command === "download") { globalThis.zedTestFormat = request.formatId; globalThis.zedTestFilename = request.filename; globalThis.zedTestDirectory = request.directory; }
-        const phase = { ping: 'ready', formats: 'reading', download: 'downloading', cancel: 'results', reset: 'ready', update: 'ready' }[request.command];
+        if (request.command === "download") {
+          globalThis.zedTestFormat = request.formatId;
+          globalThis.zedTestFilename = request.filename;
+          globalThis.zedTestDirectory = request.directory;
+          globalThis.zedTestSection = request.section;
+          globalThis.zedTestPrecise = request.precise;
+        }
+        const phase = { ping: 'ready', formats: 'reading', download: 'downloading', cancel: 'results', reset: request.keepMedia ? 'results' : 'ready', update: 'ready' }[request.command];
         if (phase) globalThis.zedTestEmit({ phase, ...(request.command === 'formats' ? { url: request.url } : {}),
-          ...(request.command === 'download' ? { pct: 25, downloaded: 50000000, total: 214000000, speed: 3000000, eta: 55, stage: 'Downloading…' } : {}),
-          ...(request.command === 'reset' ? { media: undefined, url: '' } : {}) });
+          ...(request.command === 'download' ? { pct: 25, downloaded: 50000000, total: 214000000, speed: 3000000, eta: 55, stage: request.section ? 'Downloading clip…' : 'Downloading…', ...(request.section ? { section: request.section, precise: request.precise } : {}) } : {}),
+          ...(request.command === 'reset' && !request.keepMedia ? { media: undefined, url: '', section: undefined, precise: undefined } : {}),
+          ...(request.command === 'reset' && request.keepMedia ? { section: undefined, precise: undefined } : {}) });
         listeners.forEach(fn => fn({ id: request.id, ok: true, state }));
       }
     });
@@ -131,6 +138,32 @@ try {
   await evaluate(`() => globalThis.zedTestEmit({ phase: 'done', filename: 'My custom clip.mp3', size: 5000000, summary: 'MP3 · Converted', directory: '/tmp/zed-e2e-videos' })`, worker)
   await shot("done")
   await check(`() => document.body.textContent.includes('/tmp/zed-e2e-videos') && [...document.querySelectorAll('button')].some(b => b.textContent === 'Show in folder')`)
+  // Test merged Clip workflow in the same Video downloader.
+  await evaluate(`async () => { [...document.querySelectorAll('button')].find(b => b.textContent === 'New download').click(); await new Promise(r => setTimeout(r, 50)); }`)
+  await evaluate(`() => globalThis.zedTestEmit({ phase: 'results', url: 'https://example.com/watch', media: globalThis.zedTestMedia })`, worker)
+  await evaluate(`async () => { [...document.querySelectorAll('button')].find(b => b.textContent === 'Clip').click(); await new Promise(r => setTimeout(r, 50)); }`)
+  await check(`() => !!document.querySelector('input[aria-label="Clip start"]') && !!document.querySelector('input[aria-label="Clip end"]') && document.body.textContent.includes('Precise cut')`)
+  await shot("clip-results")
+  await evaluate(`async () => {
+    const startInput = document.getElementById('zed-clip-start');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(startInput, '0:15');
+    startInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 50));
+    const endInput = document.getElementById('zed-clip-end');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(endInput, '0:45');
+    endInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 50));
+  }`)
+  await check(`() => document.body.textContent.includes('0:30 clip') && document.body.textContent.includes('0:15 – 0:45')`)
+  await evaluate(`async () => { [...document.querySelectorAll('button')].find(b => b.textContent === 'Download clip').click(); await new Promise(r => setTimeout(r, 100)); }`)
+  await shot("clip-downloading")
+  assert.match(await evaluate(`() => JSON.stringify(globalThis.zedTestSection)`, worker), /"start":15,"end":45/)
+  assert.match(await evaluate(`() => String(globalThis.zedTestPrecise)`, worker), /true/)
+  await evaluate(`() => globalThis.zedTestEmit({ phase: 'done', filename: 'A sample video [0-15 to 0-45].mp4', size: 15000000, summary: '1080p · MP4', directory: '/tmp/zed-e2e-videos', section: { start: 15, end: 45 }, precise: true })`, worker)
+  await shot("clip-done")
+  await check(`() => document.body.textContent.includes('Clip saved') && [...document.querySelectorAll('button')].some(b => b.textContent === 'Clip another part')`)
+  await evaluate(`async () => { [...document.querySelectorAll('button')].find(b => b.textContent === 'Clip another part').click(); await new Promise(r => setTimeout(r, 50)); }`)
+  await check(`() => !!document.querySelector('input[aria-label="Clip start"]')`)
   await call("resize_page", { pageId: 1, width: 320, height: 600 })
   await check(`() => document.querySelector('.zed-content').scrollWidth <= document.querySelector('.zed-content').clientWidth`)
   console.log("Downloader browser checks passed.")

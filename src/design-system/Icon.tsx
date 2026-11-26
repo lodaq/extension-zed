@@ -27,6 +27,10 @@ const icons = {
   info: <><path d="M12 11v5M12 8h.01" /><circle cx="12" cy="12" r="9" /></>,
   folder: <path d="M3 7V5h6l2 2h10v13H3z" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  scissors: <><circle cx="6" cy="6" r="2.5" /><circle cx="6" cy="18" r="2.5" /><path d="M8 7.8 20 18M8 16.2 20 6" /></>,
+  play: <path d="M8 5v14l11-7z" />,
+  clipboard: <><rect x="5" y="5" width="14" height="16" rx="2" /><rect x="9" y="3" width="6" height="4" rx="1" /></>,
+  file: <><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5" /></>,
 }
 export type IconName = keyof typeof icons
 export function Icon({ name, size = 20, style }: { name: IconName; size?: number; style?: CSSProperties }) {

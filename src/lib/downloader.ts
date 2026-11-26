@@ -1,13 +1,15 @@
 export const DOWNLOADER_ENABLED = import.meta.env.VITE_VIDEO_DOWNLOADER !== "false"
 export const DOWNLOADER_STATE_KEY = "downloaderState"
 export const DEFAULT_DOWNLOAD_DIRECTORY = "~/Downloads/Zed"
-export type DownloadFormat = { id: string; label: string; meta: string; size: number; approximate: boolean; tags: string[] }
-export type DownloadMedia = { title: string; uploader: string; host: string; duration: number; video: DownloadFormat[]; audio: DownloadFormat[] }
+export type DownloadFormat = { id: string; label: string; meta: string; size: number; approximate: boolean; tags: string[]; bitrate?: number }
+export type DownloadMedia = { title: string; uploader: string; host: string; duration: number; isLive?: boolean; video: DownloadFormat[]; audio: DownloadFormat[] }
+export type DownloadSection = { start: number; end: number }
 export type DownloaderState = {
   phase: "checking" | "setup" | "ready" | "reading" | "updating" | "results" | "downloading" | "done" | "error"
-  version?: string; ffmpeg?: boolean; url?: string; media?: DownloadMedia; error?: string; directory?: string
+  version?: string; ffmpeg?: boolean; capabilities?: string[]; url?: string; media?: DownloadMedia; error?: string; directory?: string
   pct?: number | null; downloaded?: number; total?: number; speed?: number; eta?: number; stage?: string
   filename?: string; size?: number; summary?: string; cancelled?: boolean; seen?: boolean
+  section?: DownloadSection; precise?: boolean
 }
 export const EMPTY_DOWNLOADER: DownloaderState = { phase: "setup" }
 

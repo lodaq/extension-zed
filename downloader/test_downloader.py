@@ -313,6 +313,52 @@ class DownloaderTests(unittest.TestCase):
             with patch("install.discover_ids", return_value=[]), self.assertRaisesRegex(ValueError, "Install/load the extension first"):
                 setup()
 
+    def test_clip_download_flags_naming_and_validation(self):
+        with tempfile.TemporaryDirectory() as root:
+            host = self.make_host(root)
+            host.media["title"] = "How: dark interfaces stay readable?"
+            process = Mock(returncode=0)
+            process.poll.return_value = 0
+            def spawn(args):
+                staging = Path(args[args.index("--paths") + 1])
+                result = staging / "clip.mp4"
+                result.write_bytes(b"clip")
+                process.stdout = iter(['frame=30 fps=0 time=00:00:27.50 bitrate=500kbits/s', 'ZED_STAGE processing', 'ZED_FILE ' + json.dumps(str(result))])
+                host.process = process
+                return process
+            with patch.object(host, "spawn", side_effect=spawn) as launch:
+                host.download(host.media["video"][1], None, root, {"start": 10, "end": 65}, True)
+            args = launch.call_args.args[0]
+            self.assertEqual(args[args.index("--download-sections") + 1], "*10-65")
+            self.assertIn("--force-keyframes-at-cuts", args)
+            self.assertEqual(host.completed.name, "How_ dark interfaces stay readable_ [0-10 to 1-05].mp4")
+            snapshots = [call.args[0]["state"] for call in host.emit.call_args_list]
+            self.assertTrue(any(s.get("pct") == 50 for s in snapshots))
+            self.assertTrue(any(s.get("stage") == "Cutting precisely…" for s in snapshots))
+            self.assertIn("clip", host.public_state()["capabilities"])
+
+    def test_clip_validation_rejects_missing_ffmpeg_live_and_out_of_range(self):
+        with tempfile.TemporaryDirectory() as root:
+            host = self.make_host(root)
+            host.ffmpeg = False
+            with self.assertRaisesRegex(ValueError, "ffmpeg"):
+                host.handle({"id": "1", "command": "download", "formatId": "video:hd", "section": {"start": 0, "end": 10}})
+            host.ffmpeg = True
+            with self.assertRaisesRegex(ValueError, "duration"):
+                host.handle({"id": "2", "command": "download", "formatId": "video:hd", "section": {"start": 0, "end": 120}})
+            host.media["isLive"] = True
+            with self.assertRaisesRegex(ValueError, "Live"):
+                host.handle({"id": "3", "command": "download", "formatId": "video:hd", "section": {"start": 0, "end": 10}})
+            host.media["isLive"] = False
+            with patch("zed_downloader.threading.Thread"):
+                reply = host.handle({"id": "4", "command": "download", "formatId": "video:hd", "section": {"start": 5, "end": 20}, "precise": False})
+            self.assertEqual(reply["state"]["section"], {"start": 5, "end": 20})
+            self.assertEqual(reply["state"]["precise"], False)
+            host.thread = None
+            res = host.handle({"id": "5", "command": "reset", "keepMedia": True})
+            self.assertEqual(res["state"]["phase"], "results")
+            self.assertIn("media", res["state"])
+
 
 if __name__ == "__main__":
     unittest.main()

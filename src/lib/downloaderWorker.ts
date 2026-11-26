@@ -21,11 +21,20 @@ function disconnect(connection: chrome.runtime.Port, error: Error) {
   connection.disconnect()
 }
 
+function validSection(value: unknown): value is { start: number; end: number } {
+  if (!value || typeof value !== "object") return false
+  const { start, end } = value as { start?: unknown; end?: unknown }
+  return typeof start === "number" && typeof end === "number" && Number.isInteger(start) && Number.isInteger(end) && start >= 0 && end >= start + 1
+}
+
 function validState(value: unknown): value is DownloaderState {
   if (!value || typeof value !== "object") return false
   const state = value as DownloaderState
   if (!["checking", "ready", "reading", "updating", "results", "downloading", "done", "error"].includes(state.phase)) return false
   if (state.ffmpeg !== undefined && typeof state.ffmpeg !== "boolean") return false
+  if (state.capabilities !== undefined && (!Array.isArray(state.capabilities) || state.capabilities.length > 50 || !state.capabilities.every(c => typeof c === "string" && c.length <= 64))) return false
+  if (state.precise !== undefined && typeof state.precise !== "boolean") return false
+  if (state.section !== undefined && !validSection(state.section)) return false
   for (const key of ["version", "url", "error", "stage", "filename", "summary", "directory"] as const) {
     if (state[key] !== undefined && (typeof state[key] !== "string" || state[key]!.length > 8192)) return false
   }
@@ -35,11 +44,13 @@ function validState(value: unknown): value is DownloaderState {
   if (state.pct != null && state.pct > 100) return false
   if (state.media) {
     const media = state.media
-    if (![media.title, media.uploader, media.host].every(v => typeof v === "string") || !Number.isFinite(media.duration)) return false
+    if (![media.title, media.uploader, media.host].every(v => typeof v === "string") || !Number.isFinite(media.duration) ||
+      (media.isLive !== undefined && typeof media.isLive !== "boolean")) return false
     for (const formats of [media.video, media.audio]) {
       if (!Array.isArray(formats) || formats.length > 500 || !formats.every(f => f &&
         [f.id, f.label, f.meta].every(v => typeof v === "string") && Number.isFinite(f.size) && f.size >= 0 &&
-        typeof f.approximate === "boolean" && Array.isArray(f.tags) && f.tags.every(t => typeof t === "string"))) return false
+        typeof f.approximate === "boolean" && Array.isArray(f.tags) && f.tags.every(t => typeof t === "string") &&
+        (f.bitrate === undefined || (typeof f.bitrate === "number" && Number.isFinite(f.bitrate) && f.bitrate >= 0)))) return false
     }
   }
   return true
@@ -77,6 +88,11 @@ export async function handleDownloaderCommand(data: Record<string, unknown>, sen
     if (typeof data.formatId !== "string" || !/^(video|audio|mp3):[\w.-]{1,100}$/.test(data.formatId)) throw new Error("Invalid format")
     if (data.filename !== undefined && (typeof data.filename !== "string" || !validDownloadName(data.filename.trim()))) throw new Error("Invalid file name")
     if (data.directory !== undefined && (typeof data.directory !== "string" || !validDownloadDirectory(data.directory))) throw new Error("Invalid download folder")
+    if (data.section !== undefined && !validSection(data.section)) throw new Error("Invalid clip range")
+    if (data.precise !== undefined && typeof data.precise !== "boolean") throw new Error("Invalid clip precision option")
+  }
+  if (command === "reset" && data.keepMedia !== undefined && typeof data.keepMedia !== "boolean") {
+    throw new Error("Invalid reset option")
   }
   if (!port) {
     if (["download", "cancel", "open", "reveal"].includes(command)) throw new Error("The helper disconnected. Start a new download.")
@@ -107,7 +123,19 @@ export async function handleDownloaderCommand(data: Record<string, unknown>, sen
       disconnect(connection, new Error("The downloader helper did not respond. Check the setup guide."))
     }, 15000)
     pending.set(id, { resolve, reject, timer })
-    try { connection.postMessage({ id, command, url: data.url, formatId: data.formatId, filename: typeof data.filename === "string" ? data.filename.trim() : undefined, directory: typeof data.directory === "string" ? data.directory.trim() : undefined }) }
+    try {
+      connection.postMessage({
+        id,
+        command,
+        url: data.url,
+        formatId: data.formatId,
+        filename: typeof data.filename === "string" ? data.filename.trim() : undefined,
+        directory: typeof data.directory === "string" ? data.directory.trim() : undefined,
+        section: data.section,
+        precise: data.precise,
+        keepMedia: data.keepMedia,
+      })
+    }
     catch (error) { disconnect(connection, error instanceof Error ? error : new Error(String(error))) }
   })
 }

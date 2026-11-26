@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from "react"
 import { Icon, type IconName } from "./Icon"
+import { clampClipRange, formatTime, trimmerPosition } from "@/lib/clip"
 
 export function Tile({ id, title, description, icon, badge, disabled, onClick }: { id?: string; title: string; description: string; icon: IconName; badge?: string; disabled?: boolean; onClick: () => void }) {
   const nameId = useId()
@@ -55,4 +56,65 @@ export function ChoiceGroup<T extends string>({ label, value, options, onChange 
       <span className="zed-choice-radio" aria-hidden="true" /><span><strong>{option.label}</strong>{option.description && <span className="zed-helper block">{option.description}</span>}</span>
     </button>)}
   </div>
+}
+
+export function TimelineTrimmer({ duration, start, end, onChange, disabled = false }: {
+  duration: number
+  start: number
+  end: number
+  onChange: (range: { start: number; end: number }) => void
+  disabled?: boolean
+}) {
+  const max = Math.max(1, Math.floor(duration))
+  const safe = clampClipRange(start, end, max)
+  const startPos = trimmerPosition(safe.start, max)
+  const endPos = trimmerPosition(safe.end, max)
+  const raiseStart = safe.end - safe.start <= Math.max(2, Math.ceil(max * 0.08)) || safe.start >= max * 0.5
+
+  return (
+    <div className="zed-stack">
+      <div className="zed-trim" role="group" aria-label="Clip range">
+        <div className="zed-trim-film" aria-hidden="true">
+          {Array.from({ length: 8 }, (_, index) => <span key={index} />)}
+        </div>
+        <div className="zed-trim-dim" style={{ left: 0, width: startPos }} aria-hidden="true" />
+        <div className="zed-trim-dim" style={{ left: endPos, right: 0 }} aria-hidden="true" />
+        <div className="zed-trim-sel" style={{ left: startPos, right: `calc(100% - (${endPos}))` }} aria-hidden="true" />
+        <input
+          type="range"
+          className={`zed-trim-range${raiseStart ? " zed-trim-range--raised" : ""}`}
+          min={0}
+          max={max}
+          step={1}
+          value={safe.start}
+          disabled={disabled}
+          aria-label="Clip start"
+          aria-valuetext={formatTime(safe.start)}
+          onChange={(event) => {
+            const nextStart = Math.min(Number(event.target.value), safe.end - 1)
+            onChange({ start: Math.max(0, nextStart), end: safe.end })
+          }}
+        />
+        <input
+          type="range"
+          className="zed-trim-range"
+          min={0}
+          max={max}
+          step={1}
+          value={safe.end}
+          disabled={disabled}
+          aria-label="Clip end"
+          aria-valuetext={formatTime(safe.end)}
+          onChange={(event) => {
+            const nextEnd = Math.max(Number(event.target.value), safe.start + 1)
+            onChange({ start: safe.start, end: Math.min(max, nextEnd) })
+          }}
+        />
+      </div>
+      <div className="zed-trim-scale" aria-hidden="true">
+        <span>0:00</span>
+        <span>{formatTime(max)}</span>
+      </div>
+    </div>
+  )
 }

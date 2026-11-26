@@ -99,6 +99,14 @@
   --zed-shadow-dialog: 0 16px 40px rgba(0, 0, 0, .5);
   --zed-dur: 140ms;
   --zed-ease: ease;
+
+  /* ── Media & timeline trimmer ── */
+  --zed-media-badge-bg: #0A0D12CC;
+  --zed-trim-dim: #0A0D12B8;
+  --zed-film-a: #1C2634;
+  --zed-film-b: #222E3F;
+  --zed-film-c: #28364A;
+  --zed-film-d: #1F2A3A;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -135,6 +143,12 @@ html:not(.dark), :host(:not(.dark)) {
   --zed-knob-off: #53657B;
   --zed-shadow-pop: 0 8px 20px #14203324;
   --zed-shadow-dialog: 0 16px 40px #14203333;
+  --zed-media-badge-bg: #182434CC;
+  --zed-trim-dim: #18243480;
+  --zed-film-a: #D7E0EB;
+  --zed-film-b: #CBD6E4;
+  --zed-film-c: #C0CDDD;
+  --zed-film-d: #CFD9E6;
 }
 
 @media (forced-colors: active) {

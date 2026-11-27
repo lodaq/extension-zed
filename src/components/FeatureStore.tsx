@@ -45,24 +45,27 @@ export default function FeatureStore() {
         ))}
       </div>
       {filtered.length === 0 ? <p className="zed-empty">No features match your search.</p> : (
-        <div className="zed-stack">
+        <div className="zed-store-grid">
           {filtered.map((feature) => {
             const active = installedSet.has(feature.id)
             return (
               <Card key={feature.id} active={active}>
-                <div className="flex items-start gap-3">
-                  <span className="zed-well" style={{ flexShrink: 0 }}><Icon name={feature.icon} /></span>
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-2"><strong className="truncate">{feature.title}</strong><StatusPill active={active} /></div>
-                      <Button type="button" variant={active ? "outline" : "default"} size="sm"
-                        aria-label={`${active ? "Uninstall" : "Install"} ${feature.title}`}
-                        onClick={() => toggleFeature(feature.id, feature.title, active)}>
-                        {active ? "Uninstall" : "Install"}
-                      </Button>
-                    </div>
-                    <span className="zed-helper">{feature.category}</span>
-                    <p className="zed-helper">{feature.storeDescription}</p>
+                <div className="zed-store-card">
+                  <div className="zed-store-head">
+                    <span className="zed-well"><Icon name={feature.icon} /></span>
+                    <StatusPill active={active} />
+                  </div>
+                  <div className="zed-store-title">
+                    <strong>{feature.title}</strong>
+                    <span className="zed-store-meta">{feature.category}</span>
+                  </div>
+                  <p className="zed-helper">{feature.storeDescription}</p>
+                  <div className="zed-actions">
+                    <Button type="button" variant={active ? "outline" : "default"} size="sm"
+                      aria-label={`${active ? "Uninstall" : "Install"} ${feature.title}`}
+                      onClick={() => toggleFeature(feature.id, feature.title, active)}>
+                      {active ? "Uninstall" : "Install"}
+                    </Button>
                   </div>
                 </div>
               </Card>

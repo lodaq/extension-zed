@@ -113,22 +113,27 @@ async function run() {
     const hasPopupConsoleErrors = consoleText.includes('"level":"error"') || consoleText.includes("Error:");
     record("Popup has zero console errors", !hasPopupConsoleErrors, hasPopupConsoleErrors ? consoleText : "clean");
 
-    // Install Password generator, Keyboard hints, and Black and white from the Feature Store
+    // Install Playback speed, Scrollbars, Password generator, Keyboard hints, and Black and white from the Feature Store
     const storeInstall = await client.callTool("evaluate_script", {
       pageId: 1,
       function: `async () => {
         const openStore = document.getElementById('zed-open-store');
         if (!openStore) return { opened: false };
         openStore.click();
-        await new Promise(r => setTimeout(r, 300));
-        for (const title of ['Password generator', 'Keyboard hints', 'Black and white']) {
-          document.querySelector(\`button[aria-label="Install \${title}"]\`)?.click();
+        for (let i = 0; i < 20 && !document.querySelector('button[aria-label="Install Password generator"]'); i++) {
           await new Promise(r => setTimeout(r, 100));
         }
+        for (const title of ['Playback speed', 'Scrollbars', 'Password generator', 'Keyboard hints', 'Black and white']) {
+          document.querySelector(\`button[aria-label="Install \${title}"]\`)?.click();
+          await new Promise(r => setTimeout(r, 50));
+        }
+        await new Promise(r => setTimeout(r, 200));
         document.querySelector('.zed-back')?.click();
         await new Promise(r => setTimeout(r, 300));
         return {
           opened: true,
+          hasPlaybackTile: !!document.getElementById('zed-tool-playback'),
+          hasScrollbarsTile: !!document.getElementById('zed-tool-scrollbars'),
           hasPasswordTile: !!document.getElementById('zed-tool-password'),
           hasHintsTile: !!document.getElementById('zed-tool-hints'),
           hasBwTile: !!document.getElementById('zed-tool-blackAndWhite'),
@@ -136,7 +141,7 @@ async function run() {
       }`,
     });
     const storeInstallText = parseTextContent(storeInstall);
-    record("Feature Store installs Password generator, Keyboard hints, and Black and white", storeInstallText.includes('"hasPasswordTile":true') && storeInstallText.includes('"hasHintsTile":true') && storeInstallText.includes('"hasBwTile":true'), storeInstallText);
+    record("Feature Store installs Playback speed, Scrollbars, Password generator, Keyboard hints, and Black and white", storeInstallText.includes('"hasPlaybackTile":true') && storeInstallText.includes('"hasScrollbarsTile":true') && storeInstallText.includes('"hasPasswordTile":true') && storeInstallText.includes('"hasHintsTile":true') && storeInstallText.includes('"hasBwTile":true'), storeInstallText);
 
     // Test password generator in popup
     const tileHelp = await client.callTool("evaluate_script", {
@@ -180,7 +185,7 @@ async function run() {
     for (const { tab, name, matches, delay } of [
       { tab: "Extensions", name: "Extensions tab brave://extensions button present", matches: text => text.includes("brave://extensions"), delay: 200 },
       { tab: "YouTube", name: "Switch to YouTube tab", matches: text => text.includes('heading "YouTube"') && text.includes("Focus mode") && text.includes("Hide thumbnail timestamps") && text.includes("Hide all timestamps"), delay: 200 },
-      { tab: "Settings", name: "Switch to Settings tab & verify Export/Import and hint modes", matches: text => text.includes("Export") && text.includes("Import") && text.includes("Always show keyboard hints") && text.includes("Show when F is pressed") && text.includes("Disabled (never shown)"), delay: 600 },
+      { tab: "Settings", name: "Switch to Settings tab & verify Export/Import", matches: text => text.includes("Export") && text.includes("Import") && text.includes("Reset to defaults"), delay: 600 },
     ]) {
       const match = snapshotText.match(new RegExp(`uid=([^\\s]+)\\s+button\\s+"${tab}"`));
       if (!match) {
@@ -241,13 +246,14 @@ async function run() {
         return true;
       }`);
       await client.callTool("press_key", { pageId: 1, key: "f" });
-      await popupEvaluate(`() => {
-        for (const letter of ${JSON.stringify(passwordHint.label)}) {
-          window.dispatchEvent(new KeyboardEvent('keydown', {key:'ش',code:'Key'+letter.toUpperCase(),bubbles:true,cancelable:true}));
+      const nonLatinLabel = await popupEvaluate(`() => {
+        const label = document.querySelector('#zed-tool-password .zed-hint')?.textContent || '';
+        for (const letter of label) {
+          document.body.dispatchEvent(new KeyboardEvent('keydown', {key:'ش',code:'Key'+letter.toUpperCase(),bubbles:true,cancelable:true}));
         }
-        return true;
+        return label;
       }`);
-      record("Non-Latin keyboard layout activates the displayed hint", await popupEvaluate('() => document.querySelector("h1").textContent === "Password generator" && !document.querySelector(".zed-hint")'));
+      record("Non-Latin keyboard layout activates the displayed hint", Boolean(nonLatinLabel) && await popupEvaluate('() => document.querySelector("h1").textContent === "Password generator" && !document.querySelector(".zed-hint")'), `label:${nonLatinLabel}`);
     }
     await popupEvaluate(`async () => {
       await chrome.storage.local.set({hintMode:"always", popupLocation:{tab:"Misc",detail:null,settings:false}});

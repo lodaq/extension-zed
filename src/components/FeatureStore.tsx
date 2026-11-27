@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, StatusPill } from "@/design-system/components"
 import { Icon } from "@/design-system/Icon"
@@ -19,11 +19,17 @@ export default function FeatureStore() {
     (!q || f.title.toLowerCase().includes(q) || f.storeDescription.toLowerCase().includes(q) || f.category.toLowerCase().includes(q))
   )
 
+  const pendingRef = useRef<Promise<void>>(Promise.resolve())
   const toggleFeature = (id: FeatureId, title: string, active: boolean) => {
-    const next = active ? installed.filter((item) => item !== id) : [...installed, id]
-    void setStoredInstalled(next)
-      .then(() => toast({ title: active ? `${title} uninstalled` : `${title} installed` }))
-      .catch((error) => toast({ title: "Could not update installed features", description: String(error), variant: "destructive" }))
+    const task = pendingRef.current.then(async () => {
+      const latest = typeof chrome !== "undefined" && chrome.storage?.local
+        ? readInstalledFeatures((await chrome.storage.local.get(INSTALLED_FEATURES_KEY))[INSTALLED_FEATURES_KEY])
+        : installed
+      const next = active ? latest.filter((item) => item !== id) : latest.includes(id) ? latest : [...latest, id]
+      await setStoredInstalled(next)
+      toast({ title: active ? `${title} uninstalled` : `${title} installed` })
+    }).catch((error) => { toast({ title: "Could not update installed features", description: String(error), variant: "destructive" }) })
+    pendingRef.current = task
   }
 
   return (

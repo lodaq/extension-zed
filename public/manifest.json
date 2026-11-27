@@ -35,16 +35,6 @@
   "content_scripts": [
     {
       "matches": [
-        "https://*/*",
-        "http://*/*"
-      ],
-      "js": [
-        "scripts/blackAndWhite.js"
-      ],
-      "run_at": "document_start"
-    },
-    {
-      "matches": [
         "https://*.youtube.com/*"
       ],
       "js": [

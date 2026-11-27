@@ -7,12 +7,10 @@ import { Card, Notice, Tile } from "@/design-system/components"
 import { Toaster } from "@/components/ui/toast"
 import { toast } from "@/components/ui/use-toast"
 import { isRestrictedPage, PAGE_ACTION_FEEDBACK_EVENT } from "@/lib/withActiveTab"
-import { DEFAULT_TOOL_ORDER } from "@/lib/popupLayout"
 import { useStoredValue } from "@/lib/useStoredValue"
 import { saveCurrentTab } from "@/lib/links"
 import { getStoredScrollPosition, saveStoredScrollPosition } from "@/lib/bootCache"
 import { DEFAULT_SHORTCUTS, readShortcuts, recordCombo } from "@/lib/shortcuts"
-import { DEFAULT_HINT_MODE, showClickHints } from "@/lib/clickHints"
 import { DOWNLOADER_ENABLED } from "@/lib/downloader"
 import { useDownloader } from "@/lib/useDownloader"
 import {
@@ -31,6 +29,7 @@ const SavedTab = lazy(() => import("@/components/SavedTab"))
 const LinksTab = lazy(() => import("@/components/LinksTab").then((m) => ({ default: m.LinksTab })))
 const ShortcutsTab = lazy(() => import("@/components/ShortcutsTab"))
 const FeatureStore = lazy(() => import("@/components/FeatureStore"))
+const HintsBridge = lazy(() => import("@/components/HintsBridge"))
 
 const TOOL_COMPONENTS: Partial<Record<FeatureId, LazyExoticComponent<ComponentType>>> = {
   limiter: lazy(() => import("@/components/SiteLimiter")),
@@ -39,7 +38,9 @@ const TOOL_COMPONENTS: Partial<Record<FeatureId, LazyExoticComponent<ComponentTy
   volume: lazy(() => import("@/components/VolumeBooster")),
   scrollbars: lazy(() => import("@/components/ScrollbarsSection")),
   modes: lazy(() => import("@/components/ModesSection")),
+  blackAndWhite: lazy(() => import("@/components/BlackAndWhiteSection")),
   capture: lazy(() => import("@/components/ScreenshotSection")),
+  hints: lazy(() => import("@/components/KeyboardHintsSection")),
 }
 const PasswordGenerator = lazy(() => import("@/components/PasswordGenerator"))
 const VideoDownloader = lazy(() => import("@/components/VideoDownloader"))
@@ -69,6 +70,17 @@ function ModesTile({ feature, restricted, onOpen }: { feature: FeatureDefinition
   const [rtl] = useStoredValue("arabicRtlMode", "off")
   const modesOn = [inspect, design, rtl].filter((value) => value === "on").length
   return <Tile id={`zed-tool-${feature.id}`} title={feature.title} description={feature.description} icon={feature.icon} badge={modesOn ? `${modesOn} on` : undefined} disabled={restricted} onClick={onOpen} />
+}
+
+function BlackAndWhiteTile({ feature, onOpen }: { feature: FeatureDefinition; onOpen: () => void }) {
+  const [blackAndWhite] = useStoredValue<boolean>("blackAndWhite", false)
+  return <Tile id={`zed-tool-${feature.id}`} title={feature.title} description={feature.description} icon={feature.icon} badge={blackAndWhite ? "On" : "Off"} onClick={onOpen} />
+}
+
+function HintsTile({ feature, onOpen }: { feature: FeatureDefinition; onOpen: () => void }) {
+  const [hintMode] = useStoredValue<"always" | "shortcut" | "off">("hintMode", "shortcut")
+  const badge = hintMode === "always" ? "Always" : hintMode === "shortcut" ? "F key" : "Off"
+  return <Tile id={`zed-tool-${feature.id}`} title={feature.title} description={feature.description} icon={feature.icon} badge={badge} onClick={onOpen} />
 }
 
 function DownloaderTile({ feature, onOpen }: { feature: FeatureDefinition; onOpen: () => void }) {
@@ -118,10 +130,16 @@ export default function App() {
   const [storedInstalled] = useStoredValue<readonly FeatureId[]>(INSTALLED_FEATURES_KEY, DEFAULT_INSTALLED_FEATURES)
   const installed = readInstalledFeatures(storedInstalled)
   const downloaderInstalled = DOWNLOADER_ENABLED && installed.includes("downloader")
+  const hintsInstalled = installed.includes("hints")
 
   const openDownloader = useCallback(() => {
     void setLocation({ tab: "Misc", detail: "downloader", settings: false })
   }, [setLocation])
+
+  const triggerHintsRef = useRef<(() => boolean) | null>(null)
+  const registerHintTrigger = useCallback((trigger: (() => boolean) | null) => {
+    triggerHintsRef.current = trigger
+  }, [])
 
   const viewTitle = useRef<HTMLHeadingElement>(null)
   const previousView = useRef({ tab, detail, settings })
@@ -142,7 +160,6 @@ export default function App() {
   }, [tab, detail, settings])
   const setDetail = (nextDetail: string | null) => void setLocation({ ...location, detail: nextDetail })
   const [shortcuts] = useStoredValue("keyboardShortcuts", DEFAULT_SHORTCUTS)
-  const [hintMode] = useStoredValue("hintMode", DEFAULT_HINT_MODE)
   const bindings = readShortcuts(shortcuts)
   useEffect(() => {
     void (async () => {
@@ -154,24 +171,6 @@ export default function App() {
       await chrome.storage.local.set({ keyboardShortcuts: next, popupShortcutKeysV2: true })
     })().catch(error => toast({ title: String(error), variant: "destructive" }))
   }, [])
-  const clearHints = useRef<(() => void) | undefined>(undefined)
-  useEffect(() => {
-    if (hintMode !== "always") return
-    const timer = window.setTimeout(() => {
-      if (clearHints.current) return
-      clearHints.current = showClickHints(true)
-    }, 150)
-    return () => {
-      window.clearTimeout(timer)
-      clearHints.current?.()
-      clearHints.current = undefined
-    }
-  }, [hintMode])
-  useEffect(() => {
-    if (hintMode === "always") return
-    clearHints.current?.()
-    clearHints.current = undefined
-  }, [hintMode, location, shortcuts])
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat) return
@@ -182,11 +181,8 @@ export default function App() {
       const id = Object.entries(readShortcuts(shortcuts)).find(([, value]) => value && value === combo)?.[0]
       if (!id) return
       if (id === "hints") {
-        if (hintMode === "off") return
-        event.preventDefault()
-        if (hintMode === "always" && clearHints.current) return
-        clearHints.current?.()
-        clearHints.current = showClickHints(hintMode === "always")
+        if (!hintsInstalled) return
+        if (triggerHintsRef.current?.()) event.preventDefault()
         return
       }
       event.preventDefault()
@@ -207,8 +203,7 @@ export default function App() {
     }
     window.addEventListener("keydown", listener)
     return () => { window.removeEventListener("keydown", listener) }
-  }, [location, settings, detail, tab, shortcuts, hintMode, setLocation])
-  const [order] = useStoredValue("miscSectionOrder", DEFAULT_TOOL_ORDER)
+  }, [location, settings, detail, tab, shortcuts, hintsInstalled, setLocation])
   const [passwordOptions, setPasswordOptions] = useState(DEFAULT_PASSWORD_OPTIONS)
   const [restricted, setRestricted] = useState(false)
   useEffect(() => {
@@ -232,10 +227,6 @@ export default function App() {
   useEffect(() => { document.title = `${pageTitle} · Extension Zed` }, [pageTitle])
 
   const installedTools = AVAILABLE_FEATURES.filter((feature) => installed.includes(feature.id) && feature.id !== "downloader" && feature.id !== "saveTab")
-  const orderedTools = [...installedTools].sort((a, b) => {
-    const rank = (id: FeatureId) => (id === "limiter" ? order.length : order.indexOf(id === "capture" ? "screenshot" : (id as (typeof order)[number])))
-    return rank(a.id) - rank(b.id)
-  })
   const saveTab = () => void saveCurrentTab()
     .then(added => toast({ title: added ? "Saved to Links · tab closed" : "Already in Links · tab closed" }))
     .catch(error => toast({ title: String(error), variant: "destructive" }))
@@ -245,6 +236,8 @@ export default function App() {
     if (feature.id === "volume") return <VolumeTile key={feature.id} feature={feature} restricted={restricted} onOpen={() => setDetail(feature.id)} />
     if (feature.id === "quality") return <QualityTile key={feature.id} feature={feature} restricted={restricted} onOpen={() => setDetail(feature.id)} />
     if (feature.id === "modes") return <ModesTile key={feature.id} feature={feature} restricted={restricted} onOpen={() => setDetail(feature.id)} />
+    if (feature.id === "blackAndWhite") return <BlackAndWhiteTile key={feature.id} feature={feature} onOpen={() => setDetail(feature.id)} />
+    if (feature.id === "hints") return <HintsTile key={feature.id} feature={feature} onOpen={() => setDetail(feature.id)} />
     if (feature.id === "password") return <Tile key={feature.id} id={`zed-tool-${feature.id}`} title={feature.title} description={feature.description} icon={feature.icon} badge={`${passwordOptions.length} chars`} onClick={() => setDetail(feature.id)} />
     return <Tile key={feature.id} id={`zed-tool-${feature.id}`} title={feature.title} description={feature.description} icon={feature.icon} disabled={restricted && feature.id !== "limiter"} onClick={() => setDetail(feature.id)} />
   }
@@ -298,7 +291,7 @@ export default function App() {
               </Notice>
             )}
             <div className="zed-tiles">
-              {orderedTools.map(renderTile)}
+              {installedTools.map(renderTile)}
               {downloaderFeature && <DownloaderTile feature={downloaderFeature} onOpen={() => setDetail("downloader")} />}
               {saveTabFeature && (
                 <Tile
@@ -319,6 +312,15 @@ export default function App() {
   return (
     <main className="zed-shell">
       {downloaderInstalled && <DownloaderAutoOpen detail={detail} onOpenDownloader={openDownloader} />}
+      {hintsInstalled && (
+        <Suspense fallback={null}>
+          <HintsBridge
+            locationKey={`${tab}-${detail}-${settings}`}
+            shortcuts={shortcuts}
+            registerTrigger={registerHintTrigger}
+          />
+        </Suspense>
+      )}
       <nav className="zed-navigation" aria-label="Extension navigation">
         <div ref={tabbar} className="zed-tabbar">
           {tabs.map((name, index) => (

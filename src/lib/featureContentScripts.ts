@@ -48,6 +48,13 @@ export const FEATURE_CONTENT_SCRIPTS: readonly DynamicScriptDefinition[] = [
     allFrames: true,
     matchOriginAsFallback: true,
   },
+  {
+    id: "zed-feature-black-and-white",
+    feature: "blackAndWhite",
+    matches: ["https://*/*", "http://*/*"],
+    js: ["scripts/blackAndWhite.js"],
+    runAt: "document_start",
+  },
 ]
 
 const ALL_DYNAMIC_SCRIPT_IDS = FEATURE_CONTENT_SCRIPTS.map((script) => script.id)

@@ -22,6 +22,12 @@ async function requireFeature(id: FeatureId) {
 
 async function syncInstalledFeatures(raw?: unknown) {
   const installed = raw === undefined ? await getInstalledFeatures() : readInstalledFeatures(raw)
+  if (!installed.includes("blackAndWhite") && chrome.storage?.local?.get && chrome.storage?.local?.set) {
+    const current = await chrome.storage.local.get("blackAndWhite")
+    if (current.blackAndWhite === true) {
+      await chrome.storage.local.set({ blackAndWhite: false })
+    }
+  }
   await syncFeatureContentScripts(installed)
   if (chrome.alarms && chrome.declarativeNetRequest) {
     if (installed.includes("limiter")) {
@@ -108,13 +114,17 @@ chrome.runtime.onMessage.addListener((data, sender, reply) => {
 
 // Existing documents do not receive newly installed content scripts until navigation.
 async function installShortcutsInOpenTabs(tabId?: number) {
+  const installed = await getInstalledFeatures()
+  const files = installed.includes("blackAndWhite")
+    ? ["scripts/shortcuts.js", "scripts/blackAndWhite.js"]
+    : ["scripts/shortcuts.js"]
   const tabs = tabId === undefined ? await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] }) : [{ id: tabId }]
   await Promise.all(tabs.map(async tab => {
     if (tab.id === undefined) return
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
-        files: ["scripts/shortcuts.js", "scripts/blackAndWhite.js"],
+        files,
       })
     } catch {
       // Browser-protected pages and tabs closed during installation cannot be scripted.
@@ -130,9 +140,21 @@ chrome.runtime.onStartup.addListener(() => {
   void syncInstalledFeatures().catch(console.error)
 })
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.blackAndWhite) void installShortcutsInOpenTabs().catch(console.error)
+  if (area === "local" && changes.blackAndWhite) {
+    void getInstalledFeatures().then(installed => {
+      if (installed.includes("blackAndWhite")) return installShortcutsInOpenTabs()
+    }).catch(console.error)
+  }
   if (area === "local" && changes[INSTALLED_FEATURES_KEY]) {
-    void syncInstalledFeatures(changes[INSTALLED_FEATURES_KEY].newValue).catch(console.error)
+    const nextInstalled = readInstalledFeatures(changes[INSTALLED_FEATURES_KEY].newValue)
+    const prevInstalled = readInstalledFeatures(changes[INSTALLED_FEATURES_KEY].oldValue)
+    void syncInstalledFeatures(nextInstalled)
+      .then(() => {
+        if (!prevInstalled.includes("blackAndWhite") && nextInstalled.includes("blackAndWhite")) {
+          return installShortcutsInOpenTabs()
+        }
+      })
+      .catch(console.error)
   }
 })
 

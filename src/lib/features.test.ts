@@ -44,6 +44,8 @@ describe("feature store registry", () => {
     await expect(importSettings({ version: 1, settings: { installedFeatures: ["playback", "playback"] } })).rejects.toThrow("Invalid setting")
     const storeLocation = { tab: "Misc", detail: "store", settings: false }
     expect(readSetting<typeof storeLocation | null>("popupLocation", storeLocation, null)).toEqual(storeLocation)
+    expect(readSetting<typeof storeLocation | null>("popupLocation", { tab: "Misc", detail: "hints", settings: false }, null)).toEqual({ tab: "Misc", detail: "hints", settings: false })
+    expect(readSetting<typeof storeLocation | null>("popupLocation", { tab: "Misc", detail: "blackAndWhite", settings: false }, null)).toEqual({ tab: "Misc", detail: "blackAndWhite", settings: false })
   })
 })
 
@@ -127,6 +129,8 @@ describe("dynamic content scripts & feature isolation", () => {
 
     await import("../background")
     expect(alarmAddListener).not.toHaveBeenCalled()
+
+    await expect(executeShortcut("action27", 7)).rejects.toThrow("Black and white is not installed")
 
     const dlReply = vi.fn()
     expect(message({ type: "downloader:command", command: "status" }, { id: "zed" }, dlReply)).toBe(true)

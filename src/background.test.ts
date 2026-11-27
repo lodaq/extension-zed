@@ -80,7 +80,10 @@ it("backfills shortcut listeners on worker load, install and startup without a p
     },
     tabs: { onActivated: { addListener: vi.fn() }, onUpdated: { addListener: vi.fn() }, query: vi.fn(async () => [{ id: 7 }, { id: 8 }]) },
     scripting: { executeScript: inject },
-    storage: { onChanged: { addListener: (listener: typeof change) => { change = listener } } },
+    storage: {
+      onChanged: { addListener: (listener: typeof change) => { change = listener } },
+      local: { get: async () => ({ installedFeatures: ["blackAndWhite"] }) },
+    },
   })
   await import("./background")
   expect(chrome.contextMenus.create).toHaveBeenCalledWith({ id: "zed-save-text", title: "Save text to Zed", contexts: ["selection"] })
@@ -114,7 +117,10 @@ it("reconnects activated and newly loaded tabs without opening the popup", async
       onUpdated: { addListener: (listener: typeof update) => { update = listener } },
     },
     scripting: { executeScript: inject },
-    storage: { onChanged: { addListener: vi.fn() } },
+    storage: {
+      onChanged: { addListener: vi.fn() },
+      local: { get: async () => ({ installedFeatures: ["blackAndWhite"] }) },
+    },
   })
   await import("./background")
   activate({ tabId: 7 })

@@ -12,9 +12,11 @@ export type FeatureId =
   | "downloader"
   | "modes"
   | "scrollbars"
+  | "blackAndWhite"
   | "capture"
   | "password"
   | "limiter"
+  | "hints"
   | "saveTab"
 
 export interface FeatureDefinition {
@@ -78,6 +80,14 @@ export const FEATURES: readonly FeatureDefinition[] = [
     icon: "scrollbars",
   },
   {
+    id: "blackAndWhite",
+    title: "Black and white",
+    description: "Show all websites in grayscale",
+    storeDescription: "Display all websites in grayscale across open and newly loaded pages.",
+    category: "Page tools",
+    icon: "contrast",
+  },
+  {
     id: "capture",
     title: "Capture screenshot",
     description: "Selected area, visible area, full page or element",
@@ -100,6 +110,14 @@ export const FEATURES: readonly FeatureDefinition[] = [
     storeDescription: "Set timed website blocks and daily foreground usage limits, with optional system-level protection.",
     category: "Productivity",
     icon: "modes",
+  },
+  {
+    id: "hints",
+    title: "Keyboard hints",
+    description: "Click hints for popup controls",
+    storeDescription: "Display keyboard hint labels on popup controls (always, on F press, or disabled).",
+    category: "Productivity",
+    icon: "keyboard",
   },
   {
     id: "saveTab",
@@ -188,4 +206,6 @@ export const SHORTCUT_FEATURE: Partial<Record<string, FeatureId>> = {
   action18: "capture",
   action19: "capture",
   action20: "saveTab",
+  action27: "blackAndWhite",
+  hints: "hints",
 }

@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "skills": {
+    "ce-simplify-code": {
+      "source": "EveryInc/compound-engineering-plugin",
+      "commit": "ee3695a24ae1ccb205e4334b79799cb25c060247",
+      "sourceType": "github",
+      "skillPath": "skills/ce-simplify-code/SKILL.md",
+      "computedHash": "6413ae2f594027094b92fcd90f37b83b3665afd00b5d6b2dd4b3a1b8c73c4bd0"
+    },
+    "react-performance": {
+      "source": "affaan-m/ECC",
+      "commit": "4adeee6732a12d1540f49a4d50a38ce8c97f9a53",
+      "sourceType": "github",
+      "skillPath": "skills/react-performance/SKILL.md",
+      "computedHash": "ab40a9681c0f0623810ddc983c78235c213d366537559ae39fbe42048b03805b"
+    },
+    "remove-technical-debt": {
+      "source": "wondelai/skills",
+      "commit": "c37678106e63ef1c5472d848fb3d8b8c5b33fafe",
+      "sourceType": "github",
+      "skillPath": "remove-technical-debt/SKILL.md",
+      "computedHash": "ebb06927312413f369214b75b342e7b806d144ee109b618068d764329216fa71"
+    },
+    "typescript-advanced-types": {
+      "source": "wshobson/agents",
+      "commit": "c96b5f6552dba32e4492307493ee613581430715",
+      "sourceType": "github",
+      "skillPath": "plugins/javascript-typescript/skills/typescript-advanced-types/SKILL.md",
+      "computedHash": "34c5b3863fde1fc85981ac583ecaf0140471b374d0b7002ac5bc0bea2cf38b24"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "commit": "5a37a6329fbad3666c3207392a6a7c0110e92efb",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "7991ed4fbecdac23f47c1a40c243e00a212a9e7f3604db93959b3ae11dffe299"
+    }
+  }
+}

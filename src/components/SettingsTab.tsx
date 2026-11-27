@@ -4,27 +4,35 @@ import { popupPanel, popupSectionInner, popupSectionTitle } from "@/lib/popupLay
 import { cn } from "@/lib/utils"
 import { toast } from "@/components/ui/use-toast"
 import { ChangeEvent, useRef, useState } from "react"
-import {
-  exportSettings,
-  importSettings,
-  resetSettings,
-  MAX_SETTINGS_FILE_SIZE,
-} from "@/lib/settings"
+import { exportSettings, importSettings, resetSettings, MAX_SETTINGS_FILE_SIZE } from "@/lib/settings"
 import { Icon } from "@/design-system/Icon"
 import { currentExtensionId, openTab, reloadExtension } from "@/lib/extensionManager"
 import { useStoredValue } from "@/lib/useStoredValue"
 
 function downloadSettings(backup: Awaited<ReturnType<typeof exportSettings>>) {
-  const blob = new Blob([JSON.stringify(backup, null, 2)], {
-    type: "application/json",
-  })
-  const url = URL.createObjectURL(blob)
+  const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" }))
   const link = document.createElement("a")
   link.href = url
   link.download = `extension-zed-settings-${new Date().toISOString().slice(0, 10)}.json`
   link.click()
   URL.revokeObjectURL(url)
 }
+
+const REPLACED_TOOLS = [
+  ["GoFullPage:", "full-page screenshots."],
+  ["Video Speed Controller:", "adjusting video playback speed."],
+  ["Volume Master:", "boosting tab media volume."],
+  ["Enhancer for YouTube:", "video speed, volume, quality, and larger-player controls."],
+  ["Extensity:", "enabling and disabling extensions."],
+] as const
+
+const PRIVACY_ITEMS = [
+  ["storage:", "stores your theme and playback preferences locally on this device."],
+  ["activeTab & scripting:", "runs requested page tools. Automatic playback, quality, and Arabic text helpers also run on HTTP(S) pages."],
+  ["clipboardWrite:", "copies a screenshot when you press Copy."],
+  ["debugger:", "captures the full rendered page without scrolling, then disconnects."],
+  ["management (optional):", "lists and manages extensions after you allow access."],
+] as const
 
 export default function SettingsTab() {
   const [dark, setDark] = useStoredValue("darkTheme", true)
@@ -34,45 +42,30 @@ export default function SettingsTab() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const appAction = async (action: () => Promise<void>) => {
-    try {
-      await action()
-    } catch (error) {
-      toast({ title: "Could not complete action", description: String(error), variant: "destructive" })
-    }
+    try { await action() }
+    catch (error) { toast({ title: "Could not complete action", description: String(error), variant: "destructive" }) }
   }
 
   const toggle = (enabled: boolean) => {
     document.documentElement.classList.toggle("dark", enabled)
-    void setDark(enabled).catch((error) =>
-      toast({ title: "Theme could not be saved", description: String(error), variant: "destructive" })
-    )
+    void setDark(enabled).catch((error) => toast({ title: "Theme could not be saved", description: String(error), variant: "destructive" }))
   }
 
   const transfer = async (action: () => Promise<void>, success: string, description: string, failure: string, fallback?: string) => {
     setBusy(true)
-    try {
-      await action()
-      toast({ title: success, description })
-    } catch (error) {
-      toast({ title: failure, description: fallback ? error instanceof Error ? error.message : fallback : String(error), variant: "destructive" })
-    } finally {
-      setBusy(false)
-    }
+    try { await action(); toast({ title: success, description }) }
+    catch (error) { toast({ title: failure, description: fallback ? (error instanceof Error ? error.message : fallback) : String(error), variant: "destructive" }) }
+    finally { setBusy(false) }
   }
 
-  const onExport = () => transfer(async () => downloadSettings(await exportSettings()),
-    "Settings exported", "Your Zed settings were downloaded.", "Export failed")
+  const onExport = () => transfer(async () => downloadSettings(await exportSettings()), "Settings exported", "Your Zed settings were downloaded.", "Export failed")
 
   const onImport = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ""
     if (!file) return
     if (file.size > MAX_SETTINGS_FILE_SIZE) {
-      toast({
-        title: "Couldn’t import that file",
-        description: `File is too large (${Math.round(file.size / 1024)} KB). Maximum allowed size is 512 KB.`,
-        variant: "destructive",
-      })
+      toast({ title: "Couldn’t import that file", description: `File is too large (${Math.round(file.size / 1024)} KB). Maximum allowed size is 512 KB.`, variant: "destructive" })
       return
     }
     await transfer(async () => {
@@ -80,8 +73,7 @@ export default function SettingsTab() {
       try { parsed = JSON.parse(await file.text()) }
       catch { throw new Error("Invalid JSON: The selected file could not be parsed as valid JSON.") }
       await importSettings(parsed)
-    }, "Settings imported", "Preferences merged. Page toggles apply when used; playback updates open pages.",
-    "Couldn’t import that file", "The settings file could not be read.")
+    }, "Settings imported", "Preferences merged. Page toggles apply when used; playback updates open pages.", "Couldn’t import that file", "The settings file could not be read.")
   }
 
   const handleResetClick = () => {
@@ -92,99 +84,48 @@ export default function SettingsTab() {
   return (
     <section className={cn(popupPanel, popupSectionInner)}>
       <div className="zed-settings-header"><span className="zed-avatar zed-brand">Z</span><div className="zed-settings-identity"><h2 className={popupSectionTitle}>Extension Zed</h2><p className="zed-helper">v{chrome.runtime.getManifest().version}</p></div>
-      <div className="zed-actions">
-        <Button type="button" variant="outline" onClick={() => void appAction(() => reloadExtension(currentExtensionId()))}>
-          <Icon name="reload" size={16} />Refresh
-        </Button>
-        <Button type="button" variant="outline" onClick={() => void appAction(() => openTab(`chrome://extensions/?id=${currentExtensionId()}`))}>
-          <Icon name="settings" size={16} />Settings
-        </Button>
-        <Button type="button" variant="outline" size="icon" aria-label="Open Extension Zed errors" title="Errors"
-          onClick={() => void appAction(() => openTab(`brave://extensions/?errors=${currentExtensionId()}`))}>
-          <Icon name="error" size={16} />
-        </Button>
-      </div>
+        <div className="zed-actions">
+          <Button type="button" variant="outline" onClick={() => void appAction(() => reloadExtension(currentExtensionId()))}><Icon name="reload" size={16} />Refresh</Button>
+          <Button type="button" variant="outline" onClick={() => void appAction(() => openTab(`chrome://extensions/?id=${currentExtensionId()}`))}><Icon name="settings" size={16} />Settings</Button>
+          <Button type="button" variant="outline" size="icon" aria-label="Open Extension Zed errors" title="Errors"
+            onClick={() => void appAction(() => openTab(`brave://extensions/?errors=${currentExtensionId()}`))}><Icon name="error" size={16} /></Button>
+        </div>
       </div>
       <h2 className={popupSectionTitle}>Appearance</h2>
-      <SwitchRow label="Dark theme" checked={dark} onChange={toggle}/>
-
+      <SwitchRow label="Dark theme" checked={dark} onChange={toggle} />
       <h2 className={popupSectionTitle}>Backup and reset</h2>
       <div className="zed-backup-actions">
-        <Button type="button" disabled={busy} variant="outline" className="flex-1" onClick={() => void onExport()}>
-          Export
-        </Button>
-        <Button type="button" disabled={busy} variant="outline" className="flex-1" onClick={() => fileInputRef.current?.click()}>
-          Import
-        </Button>
-        <Button
-          type="button"
-          disabled={busy}
-          variant="outline"
-          className="w-full zed-btn--warn-outline"
-          onClick={() => setConfirmReset(true)}
-        >
-          Reset to defaults
-        </Button>
+        <Button type="button" disabled={busy} variant="outline" className="flex-1" onClick={() => void onExport()}>Export</Button>
+        <Button type="button" disabled={busy} variant="outline" className="flex-1" onClick={() => fileInputRef.current?.click()}>Import</Button>
+        <Button type="button" disabled={busy} variant="outline" className="w-full zed-btn--warn-outline" onClick={() => setConfirmReset(true)}>Reset to defaults</Button>
       </div>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="application/json,.json"
-        className="hidden"
-        onChange={(event) => void onImport(event)}
-      />
-
+      <input ref={fileInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => void onImport(event)} />
       <section aria-labelledby="zed-about-heading" className="flex flex-col gap-2 border-t border-border pt-3">
         <h2 id="zed-about-heading" className={popupSectionTitle}>About Extension Zed</h2>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          A local browser toolbox for screenshots, video speed and quality, volume boost,
-          YouTube layout, password generation, page inspection and editing, scrollbars, Arabic text,
-          and extension management. Your settings and captures stay on your device.
+          A local browser toolbox for screenshots, video speed and quality, volume boost, YouTube layout, password generation, page inspection and editing, scrollbars, Arabic text, and extension management. Your settings and captures stay on your device.
         </p>
         <h3 className="text-sm font-medium">Tools it can replace</h3>
         <ul className="flex list-disc flex-col gap-1 pl-4 text-xs leading-relaxed text-muted-foreground">
-          <li><strong className="text-foreground">GoFullPage:</strong> full-page screenshots.</li>
-          <li><strong className="text-foreground">Video Speed Controller:</strong> adjusting video playback speed.</li>
-          <li><strong className="text-foreground">Volume Master:</strong> boosting tab media volume.</li>
-          <li><strong className="text-foreground">Enhancer for YouTube:</strong> video speed, volume, quality, and larger-player controls.</li>
-          <li><strong className="text-foreground">Extensity:</strong> enabling and disabling extensions.</li>
+          {REPLACED_TOOLS.map(([name, desc]) => <li key={name}><strong className="text-foreground">{name}</strong> {desc}</li>)}
         </ul>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          These are overlapping tasks, not every feature of those extensions. Website and player support varies.
-        </p>
+        <p className="text-xs leading-relaxed text-muted-foreground">These are overlapping tasks, not every feature of those extensions. Website and player support varies.</p>
       </section>
-
       <div className="border-t border-border/70 pt-3">
-        <Button
-          type="button"
-          variant="ghost"
-          className="w-full justify-between"
-          aria-expanded={showPrivacy}
-          onClick={() => setShowPrivacy(!showPrivacy)}
-        >
-          <span>Privacy & Permissions</span>
-          <span>{showPrivacy ? "−" : "+"}</span>
+        <Button type="button" variant="ghost" className="w-full justify-between" aria-expanded={showPrivacy} onClick={() => setShowPrivacy(!showPrivacy)}>
+          <span>Privacy & Permissions</span><span>{showPrivacy ? "−" : "+"}</span>
         </Button>
         {showPrivacy && (
           <div className="mt-2 space-y-1.5 rounded-[var(--zed-radius-lg)] bg-muted/40 p-2.5 text-xs text-muted-foreground leading-relaxed">
             <p className="font-semibold text-foreground">Local & Private by Design</p>
-            <p>
-              Extension Zed executes exclusively in your browser. No telemetry, browsing history, or personal data is collected or sent to external servers.
-            </p>
+            <p>Extension Zed executes exclusively in your browser. No telemetry, browsing history, or personal data is collected or sent to external servers.</p>
             <ul className="list-disc pl-3.5 space-y-1 pt-1">
-              <li>
-                <strong className="text-foreground">storage:</strong> stores your theme and playback preferences locally on this device.
-              </li>
-              <li><strong className="text-foreground">activeTab & scripting:</strong> runs requested page tools. Automatic playback, quality, and Arabic text helpers also run on HTTP(S) pages.</li>
-              <li><strong className="text-foreground">clipboardWrite:</strong> copies a screenshot when you press Copy.</li>
-              <li><strong className="text-foreground">debugger:</strong> captures the full rendered page without scrolling, then disconnects.</li>
-              <li><strong className="text-foreground">management (optional):</strong> lists and manages extensions after you allow access.</li>
+              {PRIVACY_ITEMS.map(([name, desc]) => <li key={name}><strong className="text-foreground">{name}</strong> {desc}</li>)}
             </ul>
           </div>
         )}
       </div>
-      {confirmReset&&<Dialog title="Reset settings to defaults?" onClose={()=>setConfirmReset(false)}><p>Every option and keyboard shortcut goes back to its default. This can’t be undone.</p><div className="zed-grid"><Button size="sm" onClick={()=>setConfirmReset(false)}>Cancel</Button><Button size="sm" variant="destructive" disabled={busy} onClick={()=>void handleResetClick()}>Reset settings</Button></div></Dialog>}
+      {confirmReset && <Dialog title="Reset settings to defaults?" onClose={() => setConfirmReset(false)}><p>Every option and keyboard shortcut goes back to its default. This can’t be undone.</p><div className="zed-grid"><Button size="sm" onClick={() => setConfirmReset(false)}>Cancel</Button><Button size="sm" variant="destructive" disabled={busy} onClick={() => void handleResetClick()}>Reset settings</Button></div></Dialog>}
     </section>
   )
 }

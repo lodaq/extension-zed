@@ -8,7 +8,7 @@
 
 ## Project skills
 
-- Use [code-simplification](.agents/skills/code-simplification/SKILL.md) when existing code needs clarity improvements without behavior changes.
+- Use [ce-simplify-code](.agents/skills/ce-simplify-code/SKILL.md) when existing code needs clarity improvements without behavior changes.
 - Use [refactor](.agents/skills/refactor/SKILL.md) for surgical structural improvements: extract, rename, or break down code while preserving behavior.
 - Use [code-review-and-quality](.agents/skills/code-review-and-quality/SKILL.md) before every merge; review correctness, readability, architecture, security, and performance.
 - Use [vitest](.agents/skills/vitest/SKILL.md) when writing or reviewing tests, mocks, timers, fixtures, or coverage; verify CLI options against the installed version.

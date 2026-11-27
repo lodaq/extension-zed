@@ -33,6 +33,7 @@ const icons = {
   file: <><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5" /></>,
   contrast: <><circle cx="12" cy="12" r="9" /><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor" stroke="none" /></>,
   keyboard: <><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M7 10h.01M11 10h.01M15 10h.01M17 10h.01M7 14h10" /></>,
+  close: <><path d="M6 6l12 12M18 6 6 18" /></>,
 }
 export type IconName = keyof typeof icons
 export function Icon({ name, size = 20, style }: { name: IconName; size?: number; style?: CSSProperties }) {

@@ -18,6 +18,10 @@ export default function SavedTab() {
   const [creating, setCreating] = useState(false)
   const allItems = readSaved(stored)
   const items = allItems.filter(item => !collection || item.collection === collection)
+  const collectionCounts = new Map<string, number>()
+  for (const item of allItems) {
+    if (item.collection) collectionCounts.set(item.collection, (collectionCounts.get(item.collection) ?? 0) + 1)
+  }
   async function request(data: object) {
     try {
       const result = await chrome.runtime.sendMessage(data)
@@ -36,7 +40,7 @@ export default function SavedTab() {
     }} />
     <div className="zed-collection-bar" role="group" aria-label="Collections">
       {["", ...collections].map(value => <Button key={value} variant={collection === value ? "default" : "outline"} aria-pressed={collection === value} onClick={() => { setCollection(value); setRename(value) }}>
-        {value || "All saved"}<span>{allItems.filter(item => !value || item.collection === value).length}</span>
+        {value || "All saved"}<span>{value ? (collectionCounts.get(value) ?? 0) : allItems.length}</span>
       </Button>)}
       <Button variant="ghost" className="zed-new-collection" aria-expanded={creating} onClick={() => setCreating(!creating)}><Icon name="plus" size={16} />New</Button>
     </div>

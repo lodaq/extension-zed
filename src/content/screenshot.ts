@@ -8,12 +8,17 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
   const controller = new AbortController()
   const { signal } = controller
   const previousFocus = document.activeElement
-  const host = document.createElement("div")
+  const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = "") => {
+    const node = document.createElement(tag)
+    if (className) node.className = className
+    if (text) node.textContent = text
+    return node
+  }
+  const host = el("div")
   host.style.cssText = "all:initial!important;position:fixed!important;inset:0!important;z-index:2147483647!important;pointer-events:none!important;"
   host.classList.toggle("dark", dark)
   const shadow = host.attachShadow({ mode: "closed" })
-  const style = document.createElement("style")
-  style.textContent = scrollbarCss + `
+  const style = el("style", "", scrollbarCss + `
     *{box-sizing:border-box;animation:none!important;transition:none!important}
     :host{font-family:var(--zed-font)}
     dialog{border-radius:var(--zed-radius-dialog);pointer-events:auto;color:var(--card-foreground);background:var(--card);border:1px solid var(--border);font:var(--zed-fs-base)/1.5 var(--font-sans);padding:20px;box-shadow:0 2px 6px var(--zed-scrim)}
@@ -38,7 +43,7 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     .picker::backdrop{background:transparent}
     .hint{position:absolute;top:12px;left:50%;transform:translateX(-50%);max-width:90vw;padding:8px 14px;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);font-size: var(--zed-fs-base);pointer-events:none}
     .box{position:fixed;border:2px solid var(--ring);background:transparent;pointer-events:none}
-  `
+  `)
   shadow.append(style)
   document.documentElement.append(host)
   let capturing = false
@@ -61,11 +66,7 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
   state.__zedScreenshotClose = close
   window.addEventListener("pagehide", close, { once: true, signal })
   window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      close()
-    }
+    if (event.key === "Escape") { event.preventDefault(); event.stopImmediatePropagation(); close() }
     if (capturing && [" ", "ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End"].includes(event.key)) event.preventDefault()
   }, { capture: true, signal })
   for (const name of ["wheel", "touchmove"] as const) {
@@ -77,24 +78,18 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
   }
   const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
   function button(label: string, className = "") {
-    const result = document.createElement("button")
+    const result = el("button", className, label)
     result.type = "button"
-    result.textContent = label
-    result.className = className
     return result
   }
   function dialog(title: string) {
-    const result = document.createElement("dialog")
-    result.className = "preview"
+    const result = el("dialog", "preview")
     result.setAttribute("aria-label", title)
-    const header = document.createElement("div")
-    header.className = "header"
-    const heading = document.createElement("h2")
-    heading.textContent = title
+    const header = el("div", "header")
     const dismiss = button("×", "close")
     dismiss.setAttribute("aria-label", "Close screenshot preview")
     dismiss.onclick = close
-    header.append(heading, dismiss)
+    header.append(el("h2", "", title), dismiss)
     result.append(header)
     result.addEventListener("cancel", (event) => { event.preventDefault(); close() })
     shadow.append(result)
@@ -104,15 +99,9 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
   function showError(error: unknown) {
     if (signal.aborted) return
     shadow.querySelectorAll("dialog").forEach((node) => node.remove())
-    const panel = dialog("Screenshot failed")
-    const text = document.createElement("p")
+    const text = el("p", "", error instanceof Error ? error.message : String(error))
     text.setAttribute("role", "alert")
-    text.textContent = error instanceof Error ? error.message : String(error)
-    panel.append(text)
-  }
-  function documentRect(element: Element): Rect {
-    const box = element.getBoundingClientRect()
-    return { x: box.left + scrollX, y: box.top + scrollY, width: box.width, height: box.height }
+    dialog("Screenshot failed").append(text)
   }
 
   async function select(): Promise<Rect> {
@@ -120,44 +109,37 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     check()
     selecting = true
     return new Promise((resolve, reject) => {
-      const picker = document.createElement("div")
+      const picker = el("div", "picker")
       picker.popover = "manual"
       picker.setAttribute("role", "dialog")
-      picker.className = "picker"
       picker.tabIndex = 0
-      const hint = document.createElement("div")
-      hint.className = "hint"
-      hint.id = "instructions"
-      hint.textContent = mode === "area"
+      const hint = el("div", "hint", mode === "area"
         ? "Drag an area. Keyboard: arrows move, Shift+arrows resize, Enter captures. Escape cancels."
-        : "Click an element. Keyboard: ↑ parent, ↓ child, ←/→ siblings, Enter captures. Escape cancels."
+        : "Click an element. Keyboard: ↑ parent, ↓ child, ←/→ siblings, Enter captures. Escape cancels.")
+      hint.id = "instructions"
       picker.setAttribute("aria-label", mode === "area" ? "Select screenshot area" : "Select screenshot element")
       picker.setAttribute("aria-describedby", hint.id)
-      const box = document.createElement("div")
-      box.className = "box"
+      const box = el("div", "box")
       let rect: Rect = { x: Math.round(innerWidth / 4), y: Math.round(innerHeight / 4), width: Math.round(innerWidth / 2), height: Math.round(innerHeight / 2) }
       if (screenshotArea && (["x", "y", "width", "height"] as const).every((key) => typeof screenshotArea[key] === "number" && Number.isFinite(screenshotArea[key])) && screenshotArea.width > 0 && screenshotArea.height > 0) {
-        rect.width = Math.min(innerWidth, screenshotArea.width)
-        rect.height = Math.min(innerHeight, screenshotArea.height)
-        rect.x = Math.max(0, Math.min(innerWidth - rect.width, screenshotArea.x))
-        rect.y = Math.max(0, Math.min(innerHeight - rect.height, screenshotArea.y))
+        const width = Math.min(innerWidth, screenshotArea.width), height = Math.min(innerHeight, screenshotArea.height)
+        rect = { width, height, x: Math.max(0, Math.min(innerWidth - width, screenshotArea.x)), y: Math.max(0, Math.min(innerHeight - height, screenshotArea.y)) }
       }
       let element: Element = document.body
       let start: { x: number; y: number } | undefined
-      function draw() {
-        Object.assign(box.style, { left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.width}px`, height: `${rect.height}px` })
-      }
-      function point(event: PointerEvent) {
-        return { x: Math.max(0, Math.min(innerWidth, event.clientX)), y: Math.max(0, Math.min(innerHeight, event.clientY)) }
+      const draw = () => Object.assign(box.style, { left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.width}px`, height: `${rect.height}px` })
+      const clampPoint = (event: PointerEvent) => ({ x: Math.max(0, Math.min(innerWidth, event.clientX)), y: Math.max(0, Math.min(innerHeight, event.clientY)) })
+      const selectElement = (next: Element) => {
+        element = next
+        const bounds = element.getBoundingClientRect()
+        rect = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
+        draw()
       }
       function pick(x: number, y: number) {
         picker.style.visibility = "hidden"
         const target = document.elementFromPoint(x, y)
         picker.style.visibility = "visible"
-        if (target && target !== host) element = target
-        const bounds = element.getBoundingClientRect()
-        rect = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
-        draw()
+        selectElement(target && target !== host ? target : element)
       }
       async function finish() {
         if (rect.width < 1 || rect.height < 1) return
@@ -169,16 +151,16 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
         selecting = false
         picker.hidePopover()
         picker.remove()
-        resolve(mode === "element" ? documentRect(element) : { ...rect, x: rect.x + scrollX, y: rect.y + scrollY })
+        const b = mode === "element" ? element.getBoundingClientRect() : null
+        resolve(b ? { x: b.left + scrollX, y: b.top + scrollY, width: b.width, height: b.height } : { ...rect, x: rect.x + scrollX, y: rect.y + scrollY })
       }
       signal.addEventListener("abort", () => reject(new Error("Capture cancelled")), { once: true })
       picker.addEventListener("cancel", (event) => { event.preventDefault(); close() })
       picker.addEventListener("pointerdown", (event) => {
-        event.preventDefault()
-        event.stopPropagation()
+        event.preventDefault(); event.stopPropagation()
         if (event.button !== 0) return
         if (mode === "element") { pick(event.clientX, event.clientY); return }
-        start = point(event)
+        start = clampPoint(event)
         picker.setPointerCapture(event.pointerId)
         rect = { ...start, width: 0, height: 0 }
         draw()
@@ -186,33 +168,29 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
       picker.addEventListener("pointermove", (event) => {
         if (mode === "element") { pick(event.clientX, event.clientY); return }
         if (!start) return
-        const end = point(event)
+        const end = clampPoint(event)
         rect = { x: Math.min(start.x, end.x), y: Math.min(start.y, end.y), width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) }
         draw()
       })
-      picker.addEventListener("pointerup", (event) => {
-        if (event.button !== 0) return
-        if (mode === "element" || start) finish()
-      })
+      picker.addEventListener("pointerup", (event) => { if (event.button === 0 && (mode === "element" || start)) void finish() })
       picker.addEventListener("keydown", (event) => {
         if (event.key === "Tab") { event.preventDefault(); return }
-        if (event.key === "Enter") { event.preventDefault(); finish(); return }
+        if (event.key === "Enter") { event.preventDefault(); void finish(); return }
         if (!event.key.startsWith("Arrow")) return
         event.preventDefault()
         if (mode === "element") {
-          element = (event.key === "ArrowUp" ? element.parentElement : event.key === "ArrowDown" ? element.firstElementChild : event.key === "ArrowLeft" ? element.previousElementSibling : element.nextElementSibling) || element
-          const bounds = element.getBoundingClientRect()
-          rect = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
+          const next = event.key === "ArrowUp" ? element.parentElement : event.key === "ArrowDown" ? element.firstElementChild : event.key === "ArrowLeft" ? element.previousElementSibling : element.nextElementSibling
+          selectElement(next || element)
+          return
+        }
+        const dx = event.key === "ArrowRight" ? 10 : event.key === "ArrowLeft" ? -10 : 0
+        const dy = event.key === "ArrowDown" ? 10 : event.key === "ArrowUp" ? -10 : 0
+        if (event.shiftKey) {
+          rect.width = Math.max(1, Math.min(innerWidth - rect.x, rect.width + dx))
+          rect.height = Math.max(1, Math.min(innerHeight - rect.y, rect.height + dy))
         } else {
-          const dx = event.key === "ArrowRight" ? 10 : event.key === "ArrowLeft" ? -10 : 0
-          const dy = event.key === "ArrowDown" ? 10 : event.key === "ArrowUp" ? -10 : 0
-          if (event.shiftKey) {
-            rect.width = Math.max(1, Math.min(innerWidth - rect.x, rect.width + dx))
-            rect.height = Math.max(1, Math.min(innerHeight - rect.y, rect.height + dy))
-          } else {
-            rect.x = Math.max(0, Math.min(innerWidth - rect.width, rect.x + dx))
-            rect.y = Math.max(0, Math.min(innerHeight - rect.height, rect.y + dy))
-          }
+          rect.x = Math.max(0, Math.min(innerWidth - rect.width, rect.x + dx))
+          rect.y = Math.max(0, Math.min(innerHeight - rect.height, rect.y + dy))
         }
         draw()
       })
@@ -242,18 +220,17 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     const context = canvas.getContext("2d")
     if (!context) { capturing = false; throw new Error("The browser could not allocate the screenshot image") }
     const restore: (() => void)[] = []
-    function change(element: HTMLElement | SVGElement, property: string, value: string) {
-      const old = element.style.getPropertyValue(property)
-      const priority = element.style.getPropertyPriority(property)
+    const overrideStyle = (element: HTMLElement | SVGElement, property: string, value: string) => {
+      const old = element.style.getPropertyValue(property), priority = element.style.getPropertyPriority(property)
       element.style.setProperty(property, value, "important")
       restore.push(() => old ? element.style.setProperty(property, old, priority) : element.style.removeProperty(property))
     }
     try {
       if (mode === "element") {
         for (const element of [document.documentElement, document.body]) {
-          change(element, "scroll-behavior", "auto")
-          change(element, "scroll-snap-type", "none")
-          change(element, "overflow-anchor", "none")
+          for (const [prop, val] of [["scroll-behavior", "auto"], ["scroll-snap-type", "none"], ["overflow-anchor", "none"]] as const) {
+            overrideStyle(element, prop, val)
+          }
         }
       }
       for (let y = rect.y; y < rect.y + rect.height; y += viewport.height) {
@@ -275,15 +252,10 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
             if (x < current.x - 1 || y < current.y - 1 || x + width > current.x + viewport.width + 1 || y + height > current.y + viewport.height + 1) {
               throw new Error("The page cannot scroll to the selected content. Capture its visible area instead.")
             }
-            const sx = bitmap.width / innerWidth
-            const sy = bitmap.height / innerHeight
-            const sourceX = x - current.x
-            const sourceY = y - current.y
-            const left = Math.round((x - rect.x) * viewport.scale)
-            const top = Math.round((y - rect.y) * viewport.scale)
-            const right = Math.round((x - rect.x + width) * viewport.scale)
-            const bottom = Math.round((y - rect.y + height) * viewport.scale)
-            context.drawImage(bitmap, sourceX * sx, sourceY * sy, width * sx, height * sy, left, top, right - left, bottom - top)
+            const sx = bitmap.width / innerWidth, sy = bitmap.height / innerHeight
+            const left = Math.round((x - rect.x) * viewport.scale), top = Math.round((y - rect.y) * viewport.scale)
+            const right = Math.round((x - rect.x + width) * viewport.scale), bottom = Math.round((y - rect.y + height) * viewport.scale)
+            context.drawImage(bitmap, (x - current.x) * sx, (y - current.y) * sy, width * sx, height * sy, left, top, right - left, bottom - top)
           } finally { bitmap.close() }
         }
       }
@@ -302,22 +274,19 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     const blob = new Blob([bytes], { type: "image/png" })
     previewUrl = URL.createObjectURL(blob)
     const panel = dialog("Screenshot preview")
-    const image = document.createElement("div")
-    image.className = "image"
+    const image = el("div", "image")
     image.tabIndex = 0
     image.setAttribute("aria-label", "Screenshot image. Scroll to inspect the full capture.")
-    const screenshot = document.createElement("img")
+    const screenshot = el("img")
     screenshot.onerror = () => showError(new Error("Could not load screenshot preview"))
     screenshot.src = previewUrl
     screenshot.alt = "Captured screenshot"
     image.append(screenshot)
-    const footer = document.createElement("div")
-    footer.className = "footer"
-    const status = document.createElement("p")
-    status.className = "status"
+    const footer = el("div", "footer")
+    const status = el("p", "status")
     status.setAttribute("role", "status")
     // An extension-origin button can write PNGs on HTTP pages as well as HTTPS.
-    const copy = document.createElement("iframe")
+    const copy = el("iframe")
     copy.src = chrome.runtime.getURL("screenshot-clipboard.html")
     copy.title = "Copy screenshot to clipboard"
     copy.style.cssText = "width:180px;height:44px;border:0;max-width:100%;margin:-4px 0"
@@ -325,20 +294,12 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
     window.addEventListener("message", (event) => {
       if (event.source !== copy.contentWindow || event.origin !== copyOrigin) return
       if (event.data?.type === "zed-screenshot-copy-ready") {
-        if (blob.size > 24 * 1024 * 1024) {
-          status.textContent = "Image is too large to copy. Use Download instead."
-          return
-        }
+        if (blob.size > 24 * 1024 * 1024) { status.textContent = "Image is too large to copy. Use Download instead."; return }
         copy.contentWindow?.postMessage({ type: "zed-screenshot-image", token, dark, image: dataUrl }, copyOrigin)
-      } else if (event.data?.type === "zed-screenshot-close") {
-        close()
-      } else if (event.data?.type === "zed-screenshot-copy" && typeof event.data.message === "string") {
-        status.textContent = event.data.message
-      }
+      } else if (event.data?.type === "zed-screenshot-close") close()
+      else if (event.data?.type === "zed-screenshot-copy" && typeof event.data.message === "string") status.textContent = event.data.message
     }, { signal })
-    const download = document.createElement("a")
-    download.className = "download"
-    download.textContent = "Download"
+    const download = el("a", "download", "Download")
     download.href = previewUrl
     download.download = `zed-screenshot-${new Date().toISOString().replace(/[:.]/g, "-")}.png`
     const edit = button("Edit")
@@ -361,13 +322,8 @@ export function runScreenshot(mode: ScreenshotMode, token: string, scrollbarCss:
   // The popup must close before selection or the first visible-area capture.
   void wait(250).then(async () => {
     check()
-    let rect: Rect
-    if (mode === "area" || mode === "element") rect = await select()
-    else if (mode === "full") {
-      const result = await message("full")
-      preview(result.image)
-      return
-    } else rect = { x: scrollX, y: scrollY, width: innerWidth, height: innerHeight }
+    if (mode === "full") { preview((await message("full")).image); return }
+    const rect = mode === "area" || mode === "element" ? await select() : { x: scrollX, y: scrollY, width: innerWidth, height: innerHeight }
     preview((await capture(rect)).toDataURL("image/png"))
   }).catch(showError)
 }

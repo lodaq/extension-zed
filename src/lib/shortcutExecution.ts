@@ -4,23 +4,45 @@ import { handleScreenshotMessage } from "./screenshots"
 import { generatePassword } from "./passwordGenerator"
 import { SHORTCUT_ACTIONS, readShortcuts } from "./shortcuts"
 import { getFeatureTitle, INSTALLED_FEATURES_KEY, isFeatureInstalled, SHORTCUT_FEATURE } from "./features"
-import { MODE_KEYS, BOOLEAN_KEYS, type PageActionRequest } from "./actionRegistry"
+import { MODE_KEYS, BOOLEAN_KEYS, type ModeAction, type PageActionRequest } from "./actionRegistry"
+
+const TOGGLE_ACTIONS: Record<string, ModeAction> = {
+  action13: "inspectModeApply",
+  action14: "designMode",
+  action15: "arabicRtlMode",
+  action21: "youtubeFocus",
+  action22: "hideYoutubeProgressBar",
+  action23: "hideYoutubeDuration",
+  action24: "hideYoutubeControls",
+  action25: "youtubeHalfScreen",
+}
+
+function getToggleSetting(event: ModeAction): { key: string; isMode: boolean } {
+  if (event in MODE_KEYS) return { key: MODE_KEYS[event as keyof typeof MODE_KEYS], isMode: true }
+  return { key: BOOLEAN_KEYS[event as keyof typeof BOOLEAN_KEYS], isMode: false }
+}
 
 export async function executeShortcut(id: string, tabId: number) {
   const action = SHORTCUT_ACTIONS.find(a => a.id === id)
   if (!action) throw new Error("Unknown shortcut")
-  const stored = await chrome.storage.local.get(null)
+  const stored = await chrome.storage.local.get([
+    INSTALLED_FEATURES_KEY, "keyboardShortcuts", "volumeBoost", "darkTheme", "blackAndWhite",
+    ...Object.values(MODE_KEYS), ...Object.values(BOOLEAN_KEYS),
+  ])
   const requiredFeature = SHORTCUT_FEATURE[id]
   if (requiredFeature && !isFeatureInstalled(stored[INSTALLED_FEATURES_KEY], requiredFeature)) {
     throw new Error(`${getFeatureTitle(requiredFeature)} is not installed`)
   }
   if (!readShortcuts(stored.keyboardShortcuts)[id]) throw new Error("Shortcut is not assigned")
-  const page = async (event: PageActionRequest['event'], value?: number | boolean) => {
+  const page = async (event: PageActionRequest["event"], value?: number | boolean) => {
     const result = await handlePageAction({ event, value, tabId })
     if (!result.ok) throw new Error(result.error || "Page action failed")
   }
-  const toggles: Record<string, PageActionRequest['event']> = { action13: "inspectModeApply", action14: "designMode", action15: "arabicRtlMode", action21: "youtubeFocus", action22: "hideYoutubeProgressBar", action23: "hideYoutubeDuration", action24: "hideYoutubeControls", action25: "youtubeHalfScreen" }
-  if (toggles[id]) { const event = toggles[id]; const modeKey = (MODE_KEYS as Record<string, string>)[event]; const key = modeKey ?? (BOOLEAN_KEYS as Record<string, string>)[event]; return page(event, modeKey ? stored[key] !== "on" : !stored[key]) }
+  const toggleEvent = TOGGLE_ACTIONS[id]
+  if (toggleEvent) {
+    const { key, isMode } = getToggleSetting(toggleEvent)
+    return page(toggleEvent, isMode ? stored[key] !== "on" : !stored[key])
+  }
   switch (id) {
     case "action0": return page("playbackFaster")
     case "action1": return page("playbackSlower")

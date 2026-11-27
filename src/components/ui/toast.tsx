@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { Cross1Icon } from "@radix-ui/react-icons"
+import { Icon } from "@/design-system/Icon"
 import * as Toast from "@radix-ui/react-toast"
 import type { ComponentPropsWithoutRef } from "react"
 import { useToast } from "./use-toast"
@@ -21,7 +21,7 @@ export function Toaster() {
           </div>
           <Toast.Close aria-label="Dismiss notification" toast-close=""
             className="absolute right-2 top-2 rounded-[var(--zed-radius-lg)] p-1 text-foreground/50 opacity-0 hover:text-foreground focus:opacity-100 focus:outline-none group-hover:opacity-100">
-            <Cross1Icon className="h-3 w-3" />
+            <Icon name="close" size={12} />
           </Toast.Close>
         </Toast.Root>
       ))}

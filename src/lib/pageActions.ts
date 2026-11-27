@@ -148,12 +148,23 @@ function computeSettingsPatch(
   return patch
 }
 
+function storageKeysForAction(event: PageAction): string[] {
+  const keys = new Set<string>([INSTALLED_FEATURES_KEY])
+  if (Object.prototype.hasOwnProperty.call(MODE_KEYS, event)) keys.add(MODE_KEYS[event as keyof typeof MODE_KEYS])
+  else if (Object.prototype.hasOwnProperty.call(BOOLEAN_KEYS, event)) keys.add(BOOLEAN_KEYS[event as keyof typeof BOOLEAN_KEYS])
+  else if (event.startsWith("playback")) keys.add("speed")
+  else if (event === "applyVideoQuality") keys.add("videoQuality").add("videoQualityFallback")
+  const def = ACTION_REGISTRY[event]
+  if ("settingKey" in def && def.settingKey) keys.add(def.settingKey)
+  return [...keys]
+}
+
 async function perform(request: PageActionRequest & { tabId: number }): Promise<PageActionResult> {
   let saved = false
   const { tabId } = request
 
   try {
-    const stored = await chrome.storage.local.get(null)
+    const stored = await chrome.storage.local.get(storageKeysForAction(request.event))
     const requiredFeature = PAGE_ACTION_FEATURE[request.event]
     if (requiredFeature && !isFeatureInstalled(stored[INSTALLED_FEATURES_KEY], requiredFeature)) {
       return { ok: false, saved: false, tabId, error: `${getFeatureTitle(requiredFeature)} is not installed` }

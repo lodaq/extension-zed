@@ -4,23 +4,16 @@ import { COLLECTIONS_KEY, readCollections, readSaved, mediaUrl, SAVED_BUTTONS_KE
 import { findMediaTargets, findLinkedInActionRow, LINKEDIN_CARD } from "../lib/mediaTargets"
 
 type SaveEntry = { mount: HTMLElement; previousPosition: string | null; host: HTMLDivElement; button: HTMLButtonElement; url: string | null; busy: boolean }
-
 const state = globalThis as typeof globalThis & { __zedSaveInstalled?: boolean }
 
 function installSaveButtons() {
   if (state.__zedSaveInstalled || window !== window.top || !/(^|\.)(youtube\.com|youtu\.be|instagram\.com|facebook\.com|linkedin\.com)$/.test(location.hostname)) return
-  try {
-    if (!chrome.runtime?.id) return
-  } catch (error) {
-    if (/extension context invalidated/i.test(String(error))) return
-    throw error
-  }
+  try { if (!chrome.runtime?.id) return } catch (error) { if (/extension context invalidated/i.test(String(error))) return; throw error }
   state.__zedSaveInstalled = true
-  let items: SavedItem[] = []
-  let dark = true
-  let enabled = false
-  let preferenceChanged = false
+  let items: SavedItem[] = [], dark = true, enabled = false, preferenceChanged = false, stopped = false
+  let timeout: number | undefined, interval: number | undefined, observer: MutationObserver | undefined
   const entries = new Map<HTMLElement, SaveEntry>()
+
   const render = () => {
     for (const entry of entries.values()) {
       entry.host.classList.toggle("dark", dark)
@@ -43,8 +36,7 @@ function installSaveButtons() {
       let mount: HTMLElement | null = entry.mount
       while (mount && !mount.contains(blocker)) mount = mount.parentElement
       if (!mount || mount === entry.mount || mount === document.body || mount === document.documentElement) return
-      const bounds = mount.getBoundingClientRect()
-      const original = entry.mount.getBoundingClientRect()
+      const bounds = mount.getBoundingClientRect(), original = entry.mount.getBoundingClientRect()
       // Promote only within this player, never over unrelated dialogs or feed items.
       if (mount.querySelectorAll("video").length > 1 || bounds.width > original.width * 1.5 || bounds.height > original.height * 1.5) return
       if (entry.previousPosition !== null && entry.mount.style.position === "relative") entry.mount.style.position = entry.previousPosition
@@ -57,30 +49,20 @@ function installSaveButtons() {
       throw error
     }
   }
-  let stopped = false
-  let timeout: number | undefined
-  let interval: number | undefined
-  let observer: MutationObserver | undefined
+  const resetMount = (entry: SaveEntry) => {
+    entry.host.remove()
+    if (entry.previousPosition !== null && entry.mount.style.position === "relative") entry.mount.style.position = entry.previousPosition
+  }
   const stop = () => {
-    stopped = true
-    observer?.disconnect()
-    window.clearTimeout(timeout)
-    window.clearInterval(interval)
-    window.removeEventListener("scroll", schedule, true)
-    window.removeEventListener("resize", schedule)
-    window.removeEventListener("popstate", schedule)
+    stopped = true; observer?.disconnect(); window.clearTimeout(timeout); window.clearInterval(interval)
+    window.removeEventListener("scroll", schedule, true); window.removeEventListener("resize", schedule); window.removeEventListener("popstate", schedule)
     try { chrome.storage.onChanged.removeListener(onStorageChanged) } catch { /* The extension may already be disconnected. */ }
-    for (const entry of entries.values()) {
-      entry.host.remove()
-      if (entry.previousPosition !== null && entry.mount.style.position === "relative") entry.mount.style.position = entry.previousPosition
-    }
+    for (const entry of entries.values()) resetMount(entry)
     entries.clear()
   }
   const contextAvailable = () => {
     if (stopped) return false
-    try {
-      if (chrome.runtime?.id) return true
-    } catch { /* Reloading can invalidate the runtime accessor itself. */ }
+    try { if (chrome.runtime?.id) return true } catch { /* Reloading can invalidate the runtime accessor itself. */ }
     stop()
     return false
   }
@@ -88,22 +70,16 @@ function installSaveButtons() {
     if (!contextAvailable()) return
     const targets = enabled ? findMediaTargets(document, location.href) : new Map<HTMLElement, string | null>()
     for (const [target, entry] of entries) {
-      if (targets.get(target) !== entry.url || !entry.host.isConnected || entry.host.parentElement !== entry.mount) {
-        entry.host.remove()
-        if (entry.previousPosition !== null && entry.mount.style.position === "relative") entry.mount.style.position = entry.previousPosition
-        entries.delete(target)
-      }
+      if (targets.get(target) !== entry.url || !entry.host.isConnected || entry.host.parentElement !== entry.mount) { resetMount(entry); entries.delete(target) }
     }
+    const linkedin = /^(?:www\.|m\.)?linkedin\.com$/.test(location.hostname), facebook = /^(?:www\.|m\.)?facebook\.com$/.test(location.hostname)
     for (const [target, url] of targets) {
       if (entries.has(target)) continue
-      const linkedin = /^(?:www\.|m\.)?linkedin\.com$/.test(location.hostname)
       const actions = linkedin ? findLinkedInActionRow(target) : null
-      // Wait for LinkedIn to hydrate the actions instead of adding a separate row.
       if (linkedin && !actions) continue
       const host = document.createElement("div")
       host.setAttribute("data-zed-save-button", "")
       const card = target.matches(`article, [role=article], [data-pagelet^=FeedUnit], ${LINKEDIN_CARD}`)
-      const facebook = /^(?:www\.|m\.)?facebook\.com$/.test(location.hostname)
       const post = (card || facebook) && !/\/reels?\//.test(url ?? "")
       if (post && !card) host.setAttribute("data-zed-post-inline", "")
       if (post) host.setAttribute("data-zed-post", "")
@@ -121,31 +97,27 @@ function installSaveButtons() {
         .save-button { width: var(--zed-h-save); height: var(--zed-h-save); border: 0; border-radius: var(--zed-radius-pill); background: transparent; }
         .save-button[aria-pressed="true"] svg { fill: currentColor; }
         button:disabled { opacity: .5; cursor: default; }
-        button:focus-visible { outline: 2px solid var(--zed-accent); outline-offset: 2px; }`
+        button:focus-visible { outline: 2px solid var(--zed-accent); outline-offset: 2px; }
+        label:not([hidden]) { display: flex; flex-direction: column; gap: var(--zed-space-2); padding: var(--zed-space-3); background: var(--zed-bg); color: var(--zed-text); border: 1px solid var(--zed-border); border-radius: var(--zed-radius-md); font: var(--zed-fs-sm) var(--zed-font); }
+        select { background: var(--zed-bg); color: var(--zed-text); font: inherit; max-width: 100%; }
+        select:focus-visible { outline: 2px solid var(--zed-accent); }
+        label button { width: auto; padding: var(--zed-space-2); }`
       const button = document.createElement("button")
-      button.type = "button"
-      button.className = "save-button"
-      button.innerHTML = saveIcon
-      button.setAttribute("aria-live", "polite")
-      button.title = url ? `Save ${url} to Zed` : "Save this post to Zed"
+      button.type = "button"; button.className = "save-button"; button.innerHTML = saveIcon
+      button.setAttribute("aria-live", "polite"); button.title = url ? `Save ${url} to Zed` : "Save this post to Zed"
       const picker = document.createElement("label")
-      picker.hidden = true
-      picker.textContent = "Saved in All saved · Move to collection "
+      picker.hidden = true; picker.textContent = "Saved in All saved · Move to collection "
       const select = document.createElement("select")
       select.setAttribute("aria-label", "Move to collection")
       const status = document.createElement("span")
       status.setAttribute("role", "status")
       const done = document.createElement("button")
-      done.type = "button"
-      done.textContent = "Done"
+      done.type = "button"; done.textContent = "Done"
       done.addEventListener("click", event => { event.stopPropagation(); picker.hidden = true; button.focus() })
       picker.addEventListener("click", event => event.stopPropagation())
-      picker.addEventListener("keydown", event => {
-        event.stopPropagation()
-        if (event.key === "Escape") { picker.hidden = true; button.focus() }
-      })
+      picker.addEventListener("keydown", event => { event.stopPropagation(); if (event.key === "Escape") { picker.hidden = true; button.focus() } })
       select.addEventListener("change", async () => {
-        const item = items.find(item => item.kind === "link" && mediaUrl(item.url) === entry.url)
+        const item = items.find(i => i.kind === "link" && mediaUrl(i.url) === entry.url)
         if (!item) return
         select.disabled = true
         try {
@@ -156,65 +128,44 @@ function installSaveButtons() {
         finally { select.disabled = false }
       })
       picker.append(select, done, status)
-      style.textContent += `label:not([hidden]) { display: flex; flex-direction: column; gap: var(--zed-space-2); padding: var(--zed-space-3); background: var(--zed-bg); color: var(--zed-text); border: 1px solid var(--zed-border); border-radius: var(--zed-radius-md); font: var(--zed-fs-sm) var(--zed-font); }
-        select { background: var(--zed-bg); color: var(--zed-text); font: inherit; max-width: 100%; }
-        select:focus-visible { outline: 2px solid var(--zed-accent); }
-        label button { width: auto; padding: var(--zed-space-2); }`
       shadow.append(style, button, picker)
       const previousPosition = !post && getComputedStyle(target).position === "static" ? target.style.position : null
       if (previousPosition !== null) target.style.position = "relative"
       const mount = actions ?? (post ? target.parentElement : target)
       if (!mount) continue
-      if (actions) actions.append(host)
-      else if (post) target.before(host)
-      else target.append(host)
+      if (actions) actions.append(host); else if (post) target.before(host); else target.append(host)
       const entry = { host, button, url, busy: false, previousPosition, mount }
       entries.set(target, entry)
-      for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"]) {
-        button.addEventListener(type, event => event.stopPropagation())
-      }
+      for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"]) button.addEventListener(type, event => event.stopPropagation())
       button.addEventListener("click", async (event) => {
-        event.preventDefault()
-        event.stopPropagation()
+        event.preventDefault(); event.stopPropagation()
         if (!contextAvailable()) return
-        entry.busy = true
-        button.disabled = true
-        button.setAttribute("aria-label", "Updating…")
-        button.title = "Updating…"
+        entry.busy = true; button.disabled = true; button.setAttribute("aria-label", "Updating…"); button.title = "Updating…"
         try {
-          // Facebook hydrates timestamp hrefs in response to pointer events.
           if (!url) {
             for (const link of target.querySelectorAll('a[href]')) link.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
             await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
           }
           const resolvedUrl = findMediaTargets(document, location.href).get(target)
           if (!resolvedUrl) throw new Error("Post link unavailable. Open the post and try again.")
-          entry.url = resolvedUrl
-          button.title = `Save ${resolvedUrl} to Zed`
-          const saved = items.find(item => item.kind === "link" && mediaUrl(item.url) === resolvedUrl)
+          entry.url = resolvedUrl; button.title = `Save ${resolvedUrl} to Zed`
+          const saved = items.find(i => i.kind === "link" && mediaUrl(i.url) === resolvedUrl)
           const result = await chrome.runtime.sendMessage(saved ? { type: "saved:remove", id: saved.id } : { type: "saved:add", url: resolvedUrl })
           if (!result?.ok) throw new Error(result?.error || "Save failed")
           items = readSaved((await chrome.storage.local.get(SAVED_KEY))[SAVED_KEY])
           picker.hidden = true
           if (!saved) {
             const stored = await chrome.storage.local.get(COLLECTIONS_KEY)
-            select.replaceChildren()
-            for (const name of ["", ...readCollections(stored[COLLECTIONS_KEY])]) {
-              const option = document.createElement("option")
-              option.value = name
-              option.textContent = name || "All saved"
-              select.append(option)
-            }
+            select.replaceChildren(...["", ...readCollections(stored[COLLECTIONS_KEY])].map(name => {
+              const option = document.createElement("option"); option.value = name; option.textContent = name || "All saved"; return option
+            }))
             status.textContent = select.options.length === 1 ? "Create collections in Zed’s Saved tab." : ""
             picker.hidden = false
           }
-          entry.busy = false
-          render()
+          entry.busy = false; render()
         } catch (error) {
           button.title = error instanceof Error ? error.message : "Save failed"
-          entry.busy = false
-          button.disabled = false
-          button.setAttribute("aria-label", `Update failed — retry. ${button.title}`)
+          entry.busy = false; button.disabled = false; button.setAttribute("aria-label", `Update failed — retry. ${button.title}`)
         }
       })
     }
@@ -235,18 +186,14 @@ function installSaveButtons() {
   }
   chrome.storage.onChanged.addListener(onStorageChanged)
   let scheduled = false
-  const schedule = () => {
-    if (!contextAvailable() || scheduled) return
-    scheduled = true
-    timeout = window.setTimeout(() => { scheduled = false; scan() }, 100)
-  }
+  const schedule = () => { if (!contextAvailable() || scheduled) return; scheduled = true; timeout = window.setTimeout(() => { scheduled = false; scan() }, 100) }
   observer = new MutationObserver(schedule)
   observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["href", "video-id", "data-video-id", "src", "aria-hidden", "data-urn", "data-id", "componentkey", "data-zed-linkedin-url"] })
   window.addEventListener("scroll", schedule, { capture: true, passive: true })
   window.addEventListener("resize", schedule)
   window.addEventListener("popstate", schedule)
   let pageUrl = location.href
-  interval = window.setInterval(() => { if (!contextAvailable()) return; if (location.href !== pageUrl) { pageUrl = location.href; schedule() } }, 750)
+  interval = window.setInterval(() => { if (contextAvailable() && location.href !== pageUrl) { pageUrl = location.href; schedule() } }, 750)
   scan()
 }
 

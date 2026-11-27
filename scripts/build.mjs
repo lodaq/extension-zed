@@ -19,6 +19,7 @@ const define = {
 
 const contentScripts = [
   { entry: "src/content/playback.ts", output: "scripts/playbackRatePersist.js" },
+  { entry: "src/content/savedPage.ts", output: "scripts/savedPage.js" },
   { entry: "src/content/shortcuts.ts", output: "scripts/shortcuts.js" },
   { entry: "src/content/youtubeStyles.ts", output: "scripts/youtubeStyles.js" },
 ]

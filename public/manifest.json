@@ -64,6 +64,19 @@
       ],
       "run_at": "document_idle",
       "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.youtube.com/*",
+        "https://youtu.be/*",
+        "https://*.instagram.com/*",
+        "https://*.facebook.com/*",
+        "https://*.linkedin.com/*"
+      ],
+      "js": [
+        "scripts/savedPage.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "permissions": [

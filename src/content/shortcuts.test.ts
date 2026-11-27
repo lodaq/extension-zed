@@ -1,6 +1,5 @@
 import { afterEach, expect, it, vi } from "@/test/bun-test"
 
-vi.mock("./savedPage", () => ({}))
 vi.mock("./savedIndicator", () => ({ installSavedIndicator: vi.fn() }))
 
 afterEach(() => {

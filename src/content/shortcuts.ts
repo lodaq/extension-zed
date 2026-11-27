@@ -1,4 +1,3 @@
-import "./savedPage"
 import { installSavedIndicator } from "./savedIndicator"
 import { readShortcuts, recordCombo, SHORTCUT_ACTIONS } from "../lib/shortcuts"
 import { INSTALLED_FEATURES_KEY, readInstalledFeatures, SHORTCUT_FEATURE, type FeatureId } from "../lib/features"

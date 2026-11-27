@@ -113,6 +113,31 @@ async function run() {
     const hasPopupConsoleErrors = consoleText.includes('"level":"error"') || consoleText.includes("Error:");
     record("Popup has zero console errors", !hasPopupConsoleErrors, hasPopupConsoleErrors ? consoleText : "clean");
 
+    // Install Password generator, Keyboard hints, and Black and white from the Feature Store
+    const storeInstall = await client.callTool("evaluate_script", {
+      pageId: 1,
+      function: `async () => {
+        const openStore = document.getElementById('zed-open-store');
+        if (!openStore) return { opened: false };
+        openStore.click();
+        await new Promise(r => setTimeout(r, 300));
+        for (const title of ['Password generator', 'Keyboard hints', 'Black and white']) {
+          document.querySelector(\`button[aria-label="Install \${title}"]\`)?.click();
+          await new Promise(r => setTimeout(r, 100));
+        }
+        document.querySelector('.zed-back')?.click();
+        await new Promise(r => setTimeout(r, 300));
+        return {
+          opened: true,
+          hasPasswordTile: !!document.getElementById('zed-tool-password'),
+          hasHintsTile: !!document.getElementById('zed-tool-hints'),
+          hasBwTile: !!document.getElementById('zed-tool-blackAndWhite'),
+        };
+      }`,
+    });
+    const storeInstallText = parseTextContent(storeInstall);
+    record("Feature Store installs Password generator, Keyboard hints, and Black and white", storeInstallText.includes('"hasPasswordTile":true') && storeInstallText.includes('"hasHintsTile":true') && storeInstallText.includes('"hasBwTile":true'), storeInstallText);
+
     // Test password generator in popup
     const tileHelp = await client.callTool("evaluate_script", {
       pageId: 1,

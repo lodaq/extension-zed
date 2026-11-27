@@ -28,7 +28,7 @@ it.each(["accessor", "synchronous message", "rejected message"])("handles invali
   vi.stubGlobal("window", win)
   vi.stubGlobal("chrome", {
     runtime,
-    storage: { onChanged: { addListener: vi.fn() }, local: { get: vi.fn(async () => ({ keyboardShortcuts: { action0: "Alt+Shift+→" } })) } },
+    storage: { onChanged: { addListener: vi.fn() }, local: { get: vi.fn(async () => ({ keyboardShortcuts: { action0: "Alt+Shift+→" }, installedFeatures: ["playback"] })) } },
   })
   const log = vi.spyOn(console, "error").mockImplementation(() => {})
   await import("./shortcuts")

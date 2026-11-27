@@ -4,6 +4,21 @@ const SESSION = "siteLimiterCheckpoint"
 const FIRST_ID = 700_000
 // Serialize read/modify/write operations across tab, alarm and popup events.
 let pending: Promise<unknown> = Promise.resolve()
+let limiterEnabled = false
+let limiterInstalled = false
+
+export function setSiteLimiterEnabled(enabled: boolean) {
+  limiterEnabled = enabled
+  if (!enabled) {
+    const task = pending.then(async () => {
+      await chrome.alarms?.clear(ALARM)
+      const current = await chrome.declarativeNetRequest?.getDynamicRules()
+      const removeRuleIds = current?.filter(rule => rule.id >= FIRST_ID && rule.id < FIRST_ID + 1000).map(rule => rule.id) ?? []
+      if (removeRuleIds.length) await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds })
+    })
+    pending = task.catch(() => {})
+  }
+}
 export function updateSiteLimiter(input?: { url?: unknown; mode?: unknown; minutes?: unknown }) {
   const task = pending.then(async () => {
     const now = Date.now()
@@ -53,14 +68,18 @@ export function updateSiteLimiter(input?: { url?: unknown; mode?: unknown; minut
   return task
 }
 export function installSiteLimiter() {
-  const refresh = () => { void updateSiteLimiter().catch(console.error) }
-  chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === ALARM) refresh() })
-  chrome.tabs.onActivated.addListener(refresh)
-  chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url || change.status === "complete") refresh() })
-  chrome.tabs.onRemoved.addListener(refresh)
-  chrome.windows.onFocusChanged.addListener(refresh)
-  chrome.idle.onStateChanged.addListener(refresh)
-  chrome.runtime.onStartup.addListener(refresh)
-  chrome.runtime.onInstalled.addListener(refresh)
+  limiterEnabled = true
+  const refresh = () => { if (limiterEnabled) void updateSiteLimiter().catch(console.error) }
+  if (!limiterInstalled) {
+    limiterInstalled = true
+    chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === ALARM) refresh() })
+    chrome.tabs.onActivated.addListener(refresh)
+    chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url || change.status === "complete") refresh() })
+    chrome.tabs.onRemoved.addListener(refresh)
+    chrome.windows.onFocusChanged.addListener(refresh)
+    chrome.idle.onStateChanged.addListener(refresh)
+    chrome.runtime.onStartup.addListener(refresh)
+    chrome.runtime.onInstalled.addListener(refresh)
+  }
   refresh()
 }

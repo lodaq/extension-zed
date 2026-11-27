@@ -3,7 +3,7 @@ const page=vi.fn(async()=>({ok:true}))
 vi.mock('./pageActions',()=>({handlePageAction:page}))
 vi.mock('./screenshots',()=>({handleScreenshotMessage:vi.fn()}))
 const { executeShortcut } = await import("./shortcutExecution")
-beforeEach(()=>{vi.stubGlobal('chrome',{storage:{local:{get:vi.fn(async()=>({volumeBoost:1995})),set:vi.fn()}},tabs:{get:vi.fn(),remove:vi.fn()}})})
+beforeEach(()=>{vi.stubGlobal('chrome',{storage:{local:{get:vi.fn(async()=>({volumeBoost:1995,installedFeatures:['playback','volume']})),set:vi.fn()}},tabs:{get:vi.fn(),remove:vi.fn()}})})
 afterEach(()=>{vi.unstubAllGlobals();vi.clearAllMocks()})
 it('dispatches existing playback contracts and clamps boosted volume',async()=>{
  await executeShortcut('action0',7)

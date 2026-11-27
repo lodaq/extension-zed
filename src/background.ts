@@ -1,11 +1,38 @@
-import { installSystemSiteLimiter, reportSystemForeground, systemSiteLimiter } from "./lib/systemSiteLimiter"
-import { installSiteLimiter, updateSiteLimiter } from "./lib/siteLimiterWorker"
+import { installSystemSiteLimiter, reportSystemForeground, setSystemSiteLimiterEnabled, systemSiteLimiter } from "./lib/systemSiteLimiter"
+import { installSiteLimiter, setSiteLimiterEnabled, updateSiteLimiter } from "./lib/siteLimiterWorker"
 import { changeSaved } from "./lib/saved"
 import { openSavedLink } from "./lib/links"
 import { executeShortcut } from "./lib/shortcutExecution"
 import { handleScreenshotMessage } from "./lib/screenshots"
 import { handlePageAction, type PageActionResult } from "./lib/pageActions"
 import { handleDownloaderCommand } from "./lib/downloaderWorker"
+import { getFeatureTitle, INSTALLED_FEATURES_KEY, readInstalledFeatures, type FeatureId } from "./lib/features"
+import { syncFeatureContentScripts } from "./lib/featureContentScripts"
+
+async function getInstalledFeatures(): Promise<FeatureId[]> {
+  if (!chrome.storage?.local?.get) return []
+  const stored = await chrome.storage.local.get(INSTALLED_FEATURES_KEY)
+  return readInstalledFeatures(stored[INSTALLED_FEATURES_KEY])
+}
+
+async function requireFeature(id: FeatureId) {
+  const installed = await getInstalledFeatures()
+  if (!installed.includes(id)) throw new Error(`${getFeatureTitle(id)} is not installed`)
+}
+
+async function syncInstalledFeatures(raw?: unknown) {
+  const installed = raw === undefined ? await getInstalledFeatures() : readInstalledFeatures(raw)
+  await syncFeatureContentScripts(installed)
+  if (chrome.alarms && chrome.declarativeNetRequest) {
+    if (installed.includes("limiter")) {
+      installSiteLimiter()
+      if (typeof chrome.management?.getSelf === "function") installSystemSiteLimiter()
+    } else {
+      setSiteLimiterEnabled(false)
+      setSystemSiteLimiterEnabled(false)
+    }
+  }
+}
 
 async function showResult(result: PageActionResult) {
   if (result.tabId === undefined) {
@@ -21,13 +48,16 @@ async function showResult(result: PageActionResult) {
 chrome.runtime.onMessage.addListener((data, sender, reply) => {
   if (sender.id !== chrome.runtime.id) return
   if (data?.type === "downloader:command") {
-    void handleDownloaderCommand(data, sender).then(reply, error => reply({ ok: false, error: String(error.message || error) }))
+    void requireFeature("downloader")
+      .then(() => handleDownloaderCommand(data, sender))
+      .then(reply, error => reply({ ok: false, error: String(error.message || error) }))
     return true
   }
   if (typeof data?.type === "string" && data.type.startsWith("limiter:")) {
     if (sender.tab || sender.url !== chrome.runtime.getURL("index.html")) return
     if (data.type === "limiter:system-status" || (data.type === "limiter:add" && data.system === true)) {
       const run = async () => {
+        await requireFeature("limiter")
         if (data.type === "limiter:add") await reportSystemForeground()
         return systemSiteLimiter(data.type === "limiter:add" ? "add" : "status", data)
       }
@@ -36,7 +66,8 @@ chrome.runtime.onMessage.addListener((data, sender, reply) => {
       return true
     }
     if (data.type !== "limiter:add" && data.type !== "limiter:list") return
-    void updateSiteLimiter(data.type === "limiter:add" ? data : undefined)
+    void requireFeature("limiter")
+      .then(() => updateSiteLimiter(data.type === "limiter:add" ? data : undefined))
       .then(rules => reply({ ok: true, rules }), error => reply({ ok: false, error: String(error) }))
     return true
   }
@@ -62,7 +93,9 @@ chrome.runtime.onMessage.addListener((data, sender, reply) => {
     return true
   }
   if (typeof data?.type === "string" && data.type.startsWith("screenshot:")) {
-    void handleScreenshotMessage(data, sender).then(reply, (error) => reply({ ok: false, error: String(error.message || error) }))
+    void requireFeature("capture")
+      .then(() => handleScreenshotMessage(data, sender))
+      .then(reply, (error) => reply({ ok: false, error: String(error.message || error) }))
     return true
   }
   void handlePageAction(data).then(async (result) => {
@@ -90,14 +123,22 @@ async function installShortcutsInOpenTabs(tabId?: number) {
 }
 chrome.runtime.onInstalled.addListener(() => {
   void installShortcutsInOpenTabs().catch(console.error)
+  void syncInstalledFeatures().catch(console.error)
 })
-chrome.runtime.onStartup.addListener(() => { void installShortcutsInOpenTabs().catch(console.error) })
+chrome.runtime.onStartup.addListener(() => {
+  void installShortcutsInOpenTabs().catch(console.error)
+  void syncInstalledFeatures().catch(console.error)
+})
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.blackAndWhite) void installShortcutsInOpenTabs().catch(console.error)
+  if (area === "local" && changes[INSTALLED_FEATURES_KEY]) {
+    void syncInstalledFeatures(changes[INSTALLED_FEATURES_KEY].newValue).catch(console.error)
+  }
 })
 
 // Extension reloads also restart the worker without a browser-startup event.
 void installShortcutsInOpenTabs().catch(console.error)
+void syncInstalledFeatures().catch(console.error)
 
 
 // Tab events wake a lazy worker after reload, without opening the popup.
@@ -123,7 +164,3 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       error => showResult({ ok: false, saved: false, tabId: tab?.id, error: String(error) }))
     .catch(console.error)
 })
-
-if (chrome.alarms && chrome.declarativeNetRequest) installSiteLimiter()
-
-if (chrome.alarms && chrome.declarativeNetRequest && typeof chrome.management?.getSelf === "function") installSystemSiteLimiter()

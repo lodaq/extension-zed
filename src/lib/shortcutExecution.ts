@@ -3,12 +3,17 @@ import { handlePageAction } from "./pageActions"
 import { handleScreenshotMessage } from "./screenshots"
 import { generatePassword } from "./passwordGenerator"
 import { SHORTCUT_ACTIONS, readShortcuts } from "./shortcuts"
+import { getFeatureTitle, INSTALLED_FEATURES_KEY, isFeatureInstalled, SHORTCUT_FEATURE } from "./features"
 import { MODE_KEYS, BOOLEAN_KEYS, type PageActionRequest } from "./actionRegistry"
 
 export async function executeShortcut(id: string, tabId: number) {
   const action = SHORTCUT_ACTIONS.find(a => a.id === id)
   if (!action) throw new Error("Unknown shortcut")
   const stored = await chrome.storage.local.get(null)
+  const requiredFeature = SHORTCUT_FEATURE[id]
+  if (requiredFeature && !isFeatureInstalled(stored[INSTALLED_FEATURES_KEY], requiredFeature)) {
+    throw new Error(`${getFeatureTitle(requiredFeature)} is not installed`)
+  }
   if (!readShortcuts(stored.keyboardShortcuts)[id]) throw new Error("Shortcut is not assigned")
   const page = async (event: PageActionRequest['event'], value?: number | boolean) => {
     const result = await handlePageAction({ event, value, tabId })

@@ -7,6 +7,21 @@ const FIRST_RULE = 710_000
 export type SystemSiteLimit = SiteLimit & { locked?: boolean; system: true }
 type Response = { ok: boolean; rules?: SystemSiteLimit[]; error?: string; allowUnmanaged?: boolean }
 let pending: Promise<unknown> = Promise.resolve()
+let systemLimiterEnabled = false
+let systemLimiterInstalled = false
+
+export function setSystemSiteLimiterEnabled(enabled: boolean) {
+  systemLimiterEnabled = enabled
+  if (!enabled) {
+    const task = pending.then(async () => {
+      await chrome.alarms?.clear(SYSTEM_LIMITER_ALARM)
+      const current = await chrome.declarativeNetRequest?.getDynamicRules()
+      const removeRuleIds = current?.filter(rule => rule.id >= FIRST_RULE && rule.id < FIRST_RULE + 1000).map(rule => rule.id) ?? []
+      if (removeRuleIds.length) await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds })
+    })
+    pending = task.catch(() => {})
+  }
+}
 
 export function systemSiteLimiter(action: "status" | "add" | "report", input: { url?: unknown; mode?: unknown; minutes?: unknown } = {}) {
   const task = pending.then(async () => {
@@ -53,12 +68,16 @@ export async function reportSystemForeground() {
 }
 
 export function installSystemSiteLimiter() {
+  systemLimiterEnabled = true
   // Probe once per worker start; unavailable services never downgrade existing rules.
-  const refresh = () => { void reportSystemForeground().catch(() => {}) }
-  chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === SYSTEM_LIMITER_ALARM) refresh() })
-  chrome.tabs.onActivated.addListener(refresh)
-  chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url) refresh() })
-  chrome.windows.onFocusChanged.addListener(refresh)
-  chrome.idle.onStateChanged.addListener(refresh)
+  const refresh = () => { if (systemLimiterEnabled) void reportSystemForeground().catch(() => {}) }
+  if (!systemLimiterInstalled) {
+    systemLimiterInstalled = true
+    chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === SYSTEM_LIMITER_ALARM) refresh() })
+    chrome.tabs.onActivated.addListener(refresh)
+    chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url) refresh() })
+    chrome.windows.onFocusChanged.addListener(refresh)
+    chrome.idle.onStateChanged.addListener(refresh)
+  }
   refresh()
 }

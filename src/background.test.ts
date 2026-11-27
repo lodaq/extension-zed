@@ -5,7 +5,7 @@ afterEach(() => vi.unstubAllGlobals())
 it("replies to runtime messages, reports failure badge, and clears badge on success", async () => {
   vi.resetModules()
   let message!: (data: unknown, sender: { id: string }, reply: (result: unknown) => void) => void
-  const values: Record<string, unknown> = {}
+  const values: Record<string, unknown> = { installedFeatures: ["modes", "scrollbars"] }
   const inject = vi.fn().mockRejectedValue(new Error("Restricted page"))
   const badge = vi.fn(async () => {})
   const title = vi.fn(async () => {})
@@ -54,7 +54,7 @@ it("runs page shortcuts from a focused frame before any popup interaction", asyn
       onMessage: { addListener: (listener: typeof message) => { message = listener } },
       onInstalled: { addListener: vi.fn() }, onStartup: { addListener: vi.fn() },
     },
-    storage: { onChanged: { addListener: vi.fn() }, local: { get: async () => ({}), set: vi.fn(async () => {}) } },
+    storage: { onChanged: { addListener: vi.fn() }, local: { get: async () => ({ installedFeatures: ["modes"] }), set: vi.fn(async () => {}) } },
     scripting: { executeScript: inject },
     tabs: { onActivated: { addListener: vi.fn() }, onUpdated: { addListener: vi.fn() }, query: async () => [] },
   })

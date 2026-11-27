@@ -17,6 +17,7 @@ import {
 import { Icon } from "@/design-system/Icon"
 import { currentExtensionId, openTab, reloadExtension } from "@/lib/extensionManager"
 import { useStoredValue } from "@/lib/useStoredValue"
+import { DEFAULT_INSTALLED_FEATURES, INSTALLED_FEATURES_KEY, readInstalledFeatures, type FeatureId } from "@/lib/features"
 
 function downloadSettings(backup: Awaited<ReturnType<typeof exportSettings>>) {
   const blob = new Blob([JSON.stringify(backup, null, 2)], {
@@ -34,6 +35,8 @@ export default function SettingsTab() {
   const [dark, setDark] = useStoredValue("darkTheme", true)
   const [blackAndWhite, setBlackAndWhite] = useStoredValue<boolean>("blackAndWhite", false)
   const [order,setOrder] = useStoredValue<readonly MiscSectionId[]>("miscSectionOrder", DEFAULT_TOOL_ORDER)
+  const [storedInstalled] = useStoredValue<readonly FeatureId[]>(INSTALLED_FEATURES_KEY, DEFAULT_INSTALLED_FEATURES)
+  const installed = readInstalledFeatures(storedInstalled)
   const [hintMode, setHintMode] = useStoredValue<HintMode>("hintMode", DEFAULT_HINT_MODE)
   const [busy, setBusy] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -147,7 +150,7 @@ export default function SettingsTab() {
         onChange={(event) => void onImport(event)}
       />
 
-      <details className="zed-tool-order"><summary>Tool order<span className="zed-helper">Reorder the Misc tools</span></summary><div className="zed-stack">{order.map((id,index)=><div className="zed-row" key={id}><span className="flex-1">{({password:"Password generator",playback:"Playback speed",volume:"Volume boost",quality:"Video quality",scrollbars:"Scrollbars",modes:"Modes",screenshot:"Capture screenshot"})[id]}</span>{[-1,1].map(delta=><Button size="sm" key={delta} disabled={index+delta<0||index+delta>=order.length} aria-label={`Move ${id} ${delta<0?"up":"down"}`} onClick={()=>{const next=moveMiscSection(order,index,index+delta);void setOrder(next).catch(error=>toast({title:String(error),variant:"destructive"}))}}>{delta<0?"↑":"↓"}</Button>)}</div>)}</div></details>
+      <details className="zed-tool-order"><summary>Tool order<span className="zed-helper">Reorder the Misc tools</span></summary><div className="zed-stack">{(() => { const installedOrder = order.filter(id => installed.includes(id === "screenshot" ? "capture" : id)); return installedOrder.length === 0 ? <p className="zed-helper">Install features from the Feature Store to reorder them here.</p> : installedOrder.map((id, installedIndex) => { const index = order.indexOf(id); return <div className="zed-row" key={id}><span className="flex-1">{({password:"Password generator",playback:"Playback speed",volume:"Volume boost",quality:"Video quality",scrollbars:"Scrollbars",modes:"Modes",screenshot:"Capture screenshot"})[id]}</span>{[-1,1].map(delta=>{ const targetId = installedOrder[installedIndex + delta]; const targetIndex = targetId ? order.indexOf(targetId) : -1; return <Button size="sm" key={delta} disabled={targetIndex < 0} aria-label={`Move ${id} ${delta<0?"up":"down"}`} onClick={()=>{const next=moveMiscSection(order,index,targetIndex);void setOrder(next).catch(error=>toast({title:String(error),variant:"destructive"}))}}>{delta<0?"↑":"↓"}</Button> })}</div> }) })()}</div></details>
 
       <section aria-labelledby="zed-about-heading" className="flex flex-col gap-2 border-t border-border pt-3">
         <h2 id="zed-about-heading" className={popupSectionTitle}>About Extension Zed</h2>

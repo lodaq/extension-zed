@@ -1,4 +1,5 @@
 import { ACTION_REGISTRY, type ActionExecution, type PageAction } from "./actionRegistry"
+import { FEATURE_IDS } from "./features"
 import { applyPageStyle } from "../content/pageStyle"
 import { afterEach, beforeEach, describe, expect, it, vi } from "@/test/bun-test"
 import { handlePageAction } from "./pageActions"
@@ -7,7 +8,7 @@ let values: Record<string, unknown>
 let set: ReturnType<typeof vi.fn>
 let inject: ReturnType<typeof vi.fn>
 beforeEach(() => {
-  values = { speed: "1.36" }
+  values = { speed: "1.36", installedFeatures: [...FEATURE_IDS] }
   set = vi.fn(async (patch: Record<string, unknown>) => { Object.assign(values, patch) })
   inject = vi.fn(async () => [{ frameId: 0, result: { ok: true } }])
   vi.stubGlobal("chrome", {

@@ -9,6 +9,7 @@ import {
   type PageActionRequest,
   type PageActionResult,
 } from "./actionRegistry"
+import { getFeatureTitle, INSTALLED_FEATURES_KEY, isFeatureInstalled, PAGE_ACTION_FEATURE } from "./features"
 import { nearestPreset, stepPlayback } from "./playbackPresets"
 import { readSetting } from "./settings"
 import { QUALITY_OPTIONS } from "./videoQuality"
@@ -153,6 +154,10 @@ async function perform(request: PageActionRequest & { tabId: number }): Promise<
 
   try {
     const stored = await chrome.storage.local.get(null)
+    const requiredFeature = PAGE_ACTION_FEATURE[request.event]
+    if (requiredFeature && !isFeatureInstalled(stored[INSTALLED_FEATURES_KEY], requiredFeature)) {
+      return { ok: false, saved: false, tabId, error: `${getFeatureTitle(requiredFeature)} is not installed` }
+    }
     if (request.event === "applyVideoQuality") {
       saved = stored.videoQuality !== undefined
     }

@@ -14,6 +14,7 @@ const hooks: {
 vi.mock("react", () => ({
   useState: (initial: unknown) => initial === null ? [hooks.loadedKey, hooks.setLoadedKey] : [typeof initial === "function" ? (initial as () => unknown)() : initial, hooks.setValue],
   useEffect: (effect: () => void | (() => void)) => { hooks.effect = effect },
+  useCallback: (callback: unknown) => callback,
   useRef: (initial: unknown) => ({ current: initial }),
 }))
 
@@ -113,6 +114,23 @@ it("does not overwrite live state when an older save completes", async () => {
   write.resolve()
   await pending
   expect(hooks.setValue.mock.calls).toEqual([[false], [true]])
+})
+
+it("shows optimistic navigation before storage responds and ignores stale reads", async () => {
+  const initial = { tab: "Misc", detail: null, settings: false }
+  const library = { ...initial, tab: "Saved" }
+  const [, save] = useStoredValue("popupLocation", initial, true)
+  cleanup = hooks.effect?.()
+  const pending = save(library)
+  expect(hooks.setValue.mock.calls).toEqual([[library]])
+  read.resolve({ popupLocation: initial })
+  change(initial, "local", "popupLocation")
+  await settle()
+  expect(hooks.setValue.mock.calls).toEqual([[library]])
+  write.resolve()
+  await pending
+  change(initial, "local", "popupLocation")
+  expect(hooks.setValue).toHaveBeenLastCalledWith(initial)
 })
 
 it("propagates save errors without changing displayed state", async () => {

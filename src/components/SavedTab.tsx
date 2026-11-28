@@ -1,27 +1,35 @@
 import { useStoredValue } from "@/lib/useStoredValue"
-import { COLLECTIONS_KEY, readCollections, SAVED_KEY, SAVED_BUTTONS_KEY, readSaved, type SavedItem } from "@/lib/saved"
+import { COLLECTIONS_KEY, SAVED_KEY, SAVED_BUTTONS_KEY, type SavedItem } from "@/lib/saved"
 import { Button } from "./ui/button"
 import { Icon } from "@/design-system/Icon"
 import { LetterAvatar } from "@/design-system/components"
 import { SwitchRow } from "@/design-system/components"
-import { useState } from "react"
+import { Activity, useMemo, useState } from "react"
 
 const EMPTY_COLLECTIONS: string[] = []
 const EMPTY: SavedItem[] = []
-export default function SavedTab() {
+export default function SavedTab({ visible }: { visible: boolean }) {
   const [stored] = useStoredValue<SavedItem[]>(SAVED_KEY, EMPTY)
   const [storedCollections] = useStoredValue<string[]>(COLLECTIONS_KEY, EMPTY_COLLECTIONS)
-  const collections = readCollections(storedCollections)
+  return <Activity mode={visible ? "visible" : "hidden"}>
+    <LibraryItems allItems={stored} collections={storedCollections} />
+  </Activity>
+}
+
+function LibraryItems({ allItems, collections }: { allItems: SavedItem[]; collections: string[] }) {
   const [collection, setCollection] = useState("")
   const [rename, setRename] = useState("")
   const [name, setName] = useState("")
   const [creating, setCreating] = useState(false)
-  const allItems = readSaved(stored)
-  const items = allItems.filter(item => !collection || item.collection === collection)
-  const collectionCounts = new Map<string, number>()
-  for (const item of allItems) {
-    if (item.collection) collectionCounts.set(item.collection, (collectionCounts.get(item.collection) ?? 0) + 1)
-  }
+  const [openPickers, setOpenPickers] = useState<ReadonlySet<string>>(() => new Set())
+  const items = useMemo(() => collection ? allItems.filter(item => item.collection === collection) : allItems, [allItems, collection])
+  const collectionCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const item of allItems) {
+      if (item.collection) counts.set(item.collection, (counts.get(item.collection) ?? 0) + 1)
+    }
+    return counts
+  }, [allItems])
   async function request(data: object) {
     try {
       const result = await chrome.runtime.sendMessage(data)
@@ -77,7 +85,16 @@ export default function SavedTab() {
         <div className="zed-saved-copy"><strong dir="auto">{title}</strong><p className="zed-helper">{item.kind === "text" ? "Selected text" : url.pathname.replace(/^\//, "") + url.search}</p></div>
         {item.collection && <span className="zed-pill zed-saved-tag">{item.collection}</span>}
         <a className="zed-icon-button" aria-label={item.kind === "text" ? "Open source" : "Open saved link"} href={item.url} target="_blank" rel="noopener noreferrer"><Icon name="open" size={18} /></a>
-        <details className="zed-collection-picker" onKeyDown={event => {
+        <details className="zed-collection-picker" onToggle={event => {
+          const open = event.currentTarget.open
+          setOpenPickers(current => {
+            if (current.has(item.id) === open) return current
+            const next = new Set(current)
+            if (open) next.add(item.id)
+            else next.delete(item.id)
+            return next
+          })
+        }} onKeyDown={event => {
           if (event.key === "Escape") {
             event.preventDefault()
             event.stopPropagation()
@@ -86,14 +103,14 @@ export default function SavedTab() {
           }
         }}>
           <summary className="zed-icon-button" aria-label="Move to collection"><Icon name="folder" size={18} /></summary>
-          <div className="zed-collection-menu">
+          {openPickers.has(item.id) && <div className="zed-collection-menu">
             <p className="zed-helper">Move to collection</p>
             {["", ...collections].map(value => <Button key={value} variant="ghost" aria-pressed={(item.collection || "") === value} onClick={async event => {
               const details = event.currentTarget.closest("details")
               if (await request({ type: "saved:move", id: item.id, collection: value })) { details?.removeAttribute("open"); details?.querySelector("summary")?.focus() }
             }}>{value || "No collection"}{(item.collection || "") === value && <Icon name="check" size={16} />}</Button>)}
             <Button variant="ghost" onClick={() => setCreating(true)}><Icon name="plus" size={16} />New collection…</Button>
-          </div>
+          </div>}
         </details>
         <Button size="icon" variant="ghost" aria-label="Remove saved item" onClick={() => void request({ type: "saved:remove", id: item.id })}><Icon name="delete" size={18} /></Button>
       </article>

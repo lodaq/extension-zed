@@ -205,6 +205,45 @@ async function run() {
       if (result.isError || !json) throw new Error(parseTextContent(result));
       return JSON.parse(json[1]);
     };
+    const library = await popupEvaluate(`async () => {
+      const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+      const savedItems = Array.from({ length: 120 }, (_, index) => ({
+        id: String(index), kind: "link", url: "https://example.com/item/" + index, text: "", createdAt: index,
+      }));
+      const savedCollections = Array.from({ length: 20 }, (_, index) => "Collection " + index);
+      await chrome.storage.local.set({savedItems, savedCollections, hintMode:"shortcut"});
+      for (let attempt = 0; attempt < 60 && document.querySelectorAll(".zed-saved-row").length !== savedItems.length; attempt++) await nextFrame();
+      document.querySelector(".zed-tab[title^='Library']").click();
+      await nextFrame();
+      await nextFrame();
+      const section = document.querySelector(".zed-saved");
+      const rows = [...section.querySelectorAll(".zed-saved-row")];
+      const visibleRows = section.getBoundingClientRect().height > 0 ? rows.length : 0;
+      const closedMenus = section.querySelectorAll(".zed-collection-menu").length;
+      const firstPicker = rows[0]?.querySelector("details");
+      if (!firstPicker) return {rows: rows.length};
+      firstPicker.querySelector("summary").click();
+      await nextFrame();
+      await nextFrame();
+      const menuChoices = firstPicker.querySelectorAll(".zed-collection-menu button").length;
+      firstPicker.querySelector("summary").click();
+      await nextFrame();
+      await nextFrame();
+      const scroll = document.querySelector(".zed-content");
+      const lastLink = rows.at(-1).querySelector("a");
+      const startsBelow = lastLink.getBoundingClientRect().top >= scroll.getBoundingClientRect().bottom;
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "f", code: "KeyF", cancelable: true }));
+      const hint = lastLink.querySelector(".zed-hint");
+      scroll.scrollTop = scroll.scrollHeight;
+      await nextFrame();
+      const hintScrolled = hint?.isConnected && hint.getBoundingClientRect().top < scroll.getBoundingClientRect().bottom;
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", cancelable: true }));
+      await chrome.storage.local.remove(["savedItems", "savedCollections"]);
+      return {rows: visibleRows, closedMenus, menuChoices, startsBelow, hintScrolled};
+    }`);
+    record("Library has one ready list and builds collection choices only on demand", library.rows === 120 && library.closedMenus === 0 && library.menuChoices === 22, JSON.stringify(library));
+    record("Library shortcut hints follow controls below the fold", library.startsBelow && library.hintScrolled, JSON.stringify(library));
+
     await popupEvaluate(`async () => {
       await chrome.storage.local.set({popupLocation:{tab:"Misc",detail:null,settings:false},keyboardShortcuts:{tab1:"A",tab6:"7",action2:"Cmd+K"},popupShortcutKeysV2:false});
       return true;

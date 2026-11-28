@@ -25,16 +25,16 @@ type TestBadge = {
   remove: ReturnType<typeof vi.fn>
 }
 
-function mountHints(count = 1, persistent = false, tags = Array.from({ length: count }, () => "BUTTON"), position = "relative") {
+function mountHints(count = 1, persistent = false, tags = Array.from({ length: count }, () => "BUTTON"), position = "relative", top = 10) {
   const window = new EventTarget()
   const badges: TestBadge[] = []
-  const parent = { children: [] as unknown[], append: vi.fn((node: unknown) => { parent.children.push(node) }), setAttribute: vi.fn(), removeAttribute: vi.fn(), getBoundingClientRect: () => ({ left: 10, top: 10, right: 110, width: 100, height: 30 }), clientTop: 0, clientLeft: 0 }
+  const parent = { hasAttribute: () => false, children: [] as unknown[], append: vi.fn((node: unknown) => { parent.children.push(node) }), setAttribute: vi.fn(), removeAttribute: vi.fn(), getBoundingClientRect: () => ({ left: 10, top: 10, right: 110, width: 100, height: 30 }), clientTop: 0, clientLeft: 0 }
   const targets = tags.map(tagName => ({
-    tagName, style: {}, matches: () => false, closest: () => null, contains: () => true, isConnected: true,
+    tagName, hasAttribute: () => false, style: {}, matches: () => false, closest: () => null, contains: () => true, isConnected: true,
     parentElement: parent, children: [] as unknown[],
     setAttribute: vi.fn(), removeAttribute: vi.fn(),
     append: vi.fn(function (this: unknown, node: unknown) { (this as { children: unknown[] }).children.push(node) }),
-    getBoundingClientRect: () => ({ left: 10, top: 10, right: 110, width: 100, height: 30 }),
+    getBoundingClientRect: () => ({ left: 10, top, bottom: top + 30, right: 110, width: 100, height: 30 }),
     focus: vi.fn(), click: vi.fn(),
   }))
   vi.stubGlobal('window', window)
@@ -120,6 +120,17 @@ describe('click hint activation', () => {
       expect(press('a', 'KeyA').defaultPrevented).toBe(true)
       expect(targets[0].click).toHaveBeenCalledTimes(2)
       expect(targets[0].focus).toHaveBeenCalledTimes(2)
+    } finally { cleanup() }
+  })
+
+  it('keeps below-the-fold hints attached while scrolling by keyboard', () => {
+    const { targets, badges, press, cleanup } = mountHints(1, false, ['BUTTON'], 'relative', 900)
+    try {
+      expect(targets[0].append).toHaveBeenCalledWith(badges[0])
+      expect(press('PageDown', 'PageDown').defaultPrevented).toBe(false)
+      expect(badges[0].remove).not.toHaveBeenCalled()
+      expect(press('a', 'KeyA').defaultPrevented).toBe(true)
+      expect(targets[0].click).toHaveBeenCalledOnce()
     } finally { cleanup() }
   })
 

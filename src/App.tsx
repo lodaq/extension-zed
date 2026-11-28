@@ -1,4 +1,4 @@
-import { Activity, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type LazyExoticComponent, type ReactNode } from "react"
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type LazyExoticComponent, type ReactNode } from "react"
 import { DEFAULT_PASSWORD_OPTIONS } from "@/lib/passwordGenerator"
 import { QUALITY_OPTIONS } from "@/lib/videoQuality"
 import { Icon } from "@/design-system/Icon"
@@ -15,15 +15,15 @@ import { DOWNLOADER_ENABLED } from "@/lib/downloader"
 import { useDownloader } from "@/lib/useDownloader"
 import { AVAILABLE_FEATURES, DEFAULT_INSTALLED_FEATURES, INSTALLED_FEATURES_KEY, isFeatureId, readInstalledFeatures, type FeatureDefinition, type FeatureId } from "@/lib/features"
 import { TAB_IDS, TAB_LABELS, type TabId } from "@/lib/tabs"
+import ExtensionsTab from "@/components/ExtensionsTab"
+import SettingsTab from "@/components/SettingsTab"
+import YoutubeTab from "@/components/YoutubeTab"
+import SavedTab from "@/components/SavedTab"
+import { LinksTab } from "@/components/LinksTab"
+import ShortcutsTab from "@/components/ShortcutsTab"
+import FeatureStore from "@/components/FeatureStore"
+import HintsBridge from "@/components/HintsBridge"
 
-const ExtensionsTab = lazy(() => import("@/components/ExtensionsTab"))
-const SettingsTab = lazy(() => import("@/components/SettingsTab"))
-const YoutubeTab = lazy(() => import("@/components/YoutubeTab"))
-const SavedTab = lazy(() => import("@/components/SavedTab"))
-const LinksTab = lazy(() => import("@/components/LinksTab").then((m) => ({ default: m.LinksTab })))
-const ShortcutsTab = lazy(() => import("@/components/ShortcutsTab"))
-const FeatureStore = lazy(() => import("@/components/FeatureStore"))
-const HintsBridge = lazy(() => import("@/components/HintsBridge"))
 const PasswordGenerator = lazy(() => import("@/components/PasswordGenerator"))
 const VideoDownloader = lazy(() => import("@/components/VideoDownloader"))
 
@@ -105,7 +105,10 @@ export default function App() {
     nav.addEventListener("wheel", scrollTabs, { passive: false })
     return () => nav.removeEventListener("wheel", scrollTabs)
   }, [])
-  const [location, setLocation] = useStoredValue("popupLocation", DEFAULT_LOCATION)
+  const [location, storeLocation] = useStoredValue("popupLocation", DEFAULT_LOCATION, true)
+  const setLocation = useCallback((next: typeof DEFAULT_LOCATION) => {
+    void storeLocation(next).catch(() => toast({ title: "Could not save popup location", variant: "destructive" }))
+  }, [storeLocation])
   const { tab, detail, settings } = location
   const [storedInstalled] = useStoredValue<readonly FeatureId[]>(INSTALLED_FEATURES_KEY, DEFAULT_INSTALLED_FEATURES)
   const installed = readInstalledFeatures(storedInstalled)
@@ -197,10 +200,7 @@ export default function App() {
 
   let content: ReactNode
   if (settings) content = <SettingsTab />
-  else if (tab === "Extensions") content = null
-  else if (tab === "YouTube") content = <YoutubeTab />
-  else if (tab === "Saved") content = <SavedTab />
-  else if (tab === "Links") content = <LinksTab />
+  else if (tab === "Extensions" || tab === "Saved" || tab === "YouTube" || tab === "Links") content = null
   else if (tab === "Shortcuts") content = <ShortcutsTab />
   else if (selectedStore) content = <FeatureStore />
   else if (selectedFeature?.id === "password") content = <PasswordGenerator initialOptions={passwordOptions} onOptionsChange={setPasswordOptions} />
@@ -246,7 +246,7 @@ export default function App() {
       {downloaderFeature && (tab !== "Misc" || Boolean(selected) || settings) && (
         <DownloaderBridge detail={detail} feature={downloaderFeature} showTile={false} onOpen={openDownloader} />
       )}
-      {hintsInstalled && <Suspense fallback={null}><HintsBridge locationKey={`${tab}-${detail}-${settings}`} shortcuts={shortcuts} registerTrigger={registerHintTrigger} /></Suspense>}
+      {hintsInstalled && <HintsBridge locationKey={`${tab}-${detail}-${settings}`} shortcuts={shortcuts} registerTrigger={registerHintTrigger} />}
       <nav className="zed-navigation" aria-label="Popup navigation">
         <div ref={tabbar} className="zed-tabbar">
           {TAB_IDS.map((id, index) => (
@@ -267,10 +267,11 @@ export default function App() {
       )}
       {!(settings || selected) && <h1 ref={viewTitle} tabIndex={-1} className="sr-only">{pageTitle}</h1>}
       <div className="zed-content zed-scroll" ref={restoreScroll} onScroll={event => saveStoredScrollPosition(`${tab}-${detail}-${settings}`, event.currentTarget.scrollTop)}>
-        <Suspense fallback={<div className="zed-helper zed-root">Loading…</div>}>
-          {selected && !settings ? <div className="zed-stack zed-root"><p className="zed-helper">{selected.description}</p>{content}</div> : content}
-          <Activity mode={!settings && tab === "Extensions" ? "visible" : "hidden"}><ExtensionsTab /></Activity>
-        </Suspense>
+        {selected && !settings ? <div className="zed-stack zed-root"><p className="zed-helper">{selected.description}</p><Suspense fallback={null}>{content}</Suspense></div> : content}
+        <div hidden={settings || tab !== "Extensions"}><ExtensionsTab /></div>
+        <div hidden={settings || tab !== "YouTube"}><YoutubeTab /></div>
+        <div hidden={settings || tab !== "Links"}><LinksTab /></div>
+        <SavedTab visible={!settings && tab === "Saved"} />
       </div>
       <Toaster />
     </main>

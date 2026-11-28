@@ -214,6 +214,8 @@ async function run() {
       await chrome.storage.local.set({savedItems, savedCollections, hintMode:"shortcut"});
       for (let attempt = 0; attempt < 60 && !document.querySelector(".zed-saved-row"); attempt++) await nextFrame();
       document.querySelector(".zed-tab[title^='Library']").click();
+      for (let attempt = 0; attempt < 60 && ![...document.querySelectorAll(".zed-saved .zed-btn")].some(button => button.textContent.startsWith("Show more")); attempt++) await nextFrame();
+      [...document.querySelectorAll(".zed-saved .zed-btn")].find(button => button.textContent.startsWith("Show more")).click();
       for (let attempt = 0; attempt < 60 && document.querySelectorAll(".zed-saved-row").length !== savedItems.length; attempt++) await nextFrame();
       const section = document.querySelector(".zed-saved");
       const rows = [...section.querySelectorAll(".zed-saved-row")];

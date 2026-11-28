@@ -296,7 +296,7 @@ export default function App() {
         <div hidden={settings || tab !== "Extensions"}><ExtensionsTab /></div>
         <div hidden={settings || tab !== "YouTube"}><YoutubeTab /></div>
         <div hidden={settings || tab !== "Links"}><LinksTab /></div>
-        <SavedTab visible={!settings && tab === "Saved"} scrollKey={`Saved-${detail}-false`} />
+        <SavedTab visible={!settings && tab === "Saved"} />
       </div>
       <Toaster />
     </main>

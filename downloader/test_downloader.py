@@ -1,12 +1,13 @@
 import io
 import json
+import os
 from pathlib import Path
 import struct
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from zed_downloader import Host, MAX_MESSAGE, format_error, media_info, read_message, safe_name, valid_directory, valid_url
+from zed_downloader import HOST, Host, MAX_MESSAGE, format_error, media_info, read_message, safe_name, valid_directory, valid_url
 from install import discover_ids, install, setup
 
 
@@ -413,6 +414,45 @@ class DownloaderTests(unittest.TestCase):
             self.assertEqual(calls[0][:2], ["--socket-timeout", "15"])
             self.assertEqual(host.state["phase"], "done")
             self.assertEqual(host.completed.read_bytes(), b"video")
+
+
+    def test_uninstall_removes_only_its_own_registration_and_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            helper = root / "helper"
+            helper.mkdir()
+            (helper / "zed_downloader.py").write_text("x")
+            config = root / "config"
+            own_dir = config / "google-chrome" / "NativeMessagingHosts"
+            own_dir.mkdir(parents=True)
+            own_manifest = own_dir / (HOST + ".json")
+            own_manifest.write_text(json.dumps({"name": HOST, "path": str(helper / "zed-downloader")}))
+            other_dir = config / "BraveSoftware" / "Brave-Browser" / "NativeMessagingHosts"
+            other_dir.mkdir(parents=True)
+            foreign_manifest = other_dir / (HOST + ".json")
+            foreign_manifest.write_text(json.dumps({"name": HOST, "path": str(root / "someone-else" / "host")}))
+            with patch("zed_downloader.shutil.which", side_effect=lambda name: "/bin/" + name), \
+                 patch("zed_downloader.Path.home", return_value=root / "home"), \
+                 patch.dict(os.environ, {"XDG_CONFIG_HOME": str(config)}), \
+                 patch("zed_downloader.sys.platform", "linux"), \
+                 patch("zed_downloader.os.name", "posix"):
+                host = Host(Mock(), root, root=helper)
+                reply = host.handle({"id": "1", "command": "uninstall"})
+            self.assertTrue(reply["ok"])
+            self.assertTrue(host.stopping)
+            self.assertFalse(own_manifest.exists())
+            self.assertTrue(foreign_manifest.exists())
+            self.assertFalse(helper.exists())
+
+    def test_uninstall_refuses_while_busy(self):
+        with tempfile.TemporaryDirectory() as root:
+            with patch("zed_downloader.shutil.which", side_effect=lambda name: "/bin/" + name):
+                host = Host(Mock(), root)
+            host.thread = Mock()
+            host.thread.is_alive.return_value = True
+            with self.assertRaisesRegex(ValueError, "Cancel the current task first"):
+                host.handle({"id": "1", "command": "uninstall"})
+            self.assertFalse(host.stopping)
 
 
 if __name__ == "__main__":

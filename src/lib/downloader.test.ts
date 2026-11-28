@@ -152,6 +152,32 @@ it("cleans up a silent native connection so Check again can reconnect", async ()
   await expect(retry).resolves.toMatchObject({ ok: true })
 })
 
+it("forwards uninstall and stores a clean setup state when the helper exits", async () => {
+  vi.resetModules()
+  const { events, postMessage } = nativeMock()
+  const { handleDownloaderCommand, readDownloaderState } = await import("./downloaderWorker")
+  const result = handleDownloaderCommand({ command: "uninstall" }, sender)
+  expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ command: "uninstall" }))
+  events.message({ id: "1", ok: true, state: { phase: "ready" } })
+  await expect(result).resolves.toMatchObject({ ok: true })
+  events.disconnect()
+  expect(await readDownloaderState()).toMatchObject({ phase: "setup" })
+  expect((await readDownloaderState()).error).toBeUndefined()
+})
+
+it("keeps the error when a non-uninstall disconnect happens after a failed uninstall", async () => {
+  vi.resetModules()
+  const { events } = nativeMock()
+  const { handleDownloaderCommand, readDownloaderState } = await import("./downloaderWorker")
+  const result = handleDownloaderCommand({ command: "uninstall" }, sender)
+  events.message({ id: "1", ok: false, error: "Cancel the current task first" })
+  await expect(result).rejects.toThrow("Cancel the current task first")
+  const ping = handleDownloaderCommand({ command: "ping" }, sender)
+  events.disconnect()
+  await expect(ping).rejects.toThrow("disconnected")
+  expect(await readDownloaderState()).toMatchObject({ phase: "setup", error: expect.stringContaining("disconnected") })
+})
+
 it("automatically connects once and preserves an existing download on repeated opens", async () => {
   vi.resetModules()
   const { events, connectNative } = nativeMock()

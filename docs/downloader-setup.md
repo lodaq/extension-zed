@@ -17,7 +17,7 @@ Without ffmpeg, formats are limited to single-file video and original audio. Wit
 
 Downloads continue while the popup is closed. Closing the browser, reloading/updating the extension, or disconnecting/crashing the helper interrupts an active job; an interrupted job is reported when the popup reopens, not silently resumed. Completed state survives worker suspension in session storage. Browser restart starts a new session. Normal cancellation/disconnect cleans partials; an OS crash may leave `.zed-*` staging folders that you can remove manually.
 
-To uninstall, close the browser, delete the generated host manifest and helper directory (`~/.local/share/extension-zed-downloader`, `~/Library/Application Support/ExtensionZedDownloader`, or `%LOCALAPPDATA%\ExtensionZedDownloader`), and on Windows remove the corresponding HKCU native-host key. Keep your chosen download folder to retain downloaded files.
+To uninstall from Zed, open Video downloader and choose **Uninstall helper**, then confirm. The helper removes only its own native messaging registration (manifest or HKCU key) and its helper directory; downloaded files and your save folder are kept. If the button cannot reach the helper, close the browser and remove the generated host manifest and helper directory manually (`~/.local/share/extension-zed-downloader`, `~/Library/Application Support/ExtensionZedDownloader`, or `%LOCALAPPDATA%\ExtensionZedDownloader`), plus the corresponding HKCU native-host key on Windows.
 
 Validation:
 

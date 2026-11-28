@@ -2,6 +2,7 @@ import { DOWNLOADER_ENABLED, DOWNLOADER_STATE_KEY, EMPTY_DOWNLOADER, validDownlo
 
 const HOST = "com.extension_zed.downloader"
 let port: chrome.runtime.Port | undefined
+let uninstalling = false
 let serial = 0
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
 let writes = Promise.resolve()
@@ -17,7 +18,10 @@ function disconnect(connection: chrome.runtime.Port, error: Error) {
   port = undefined
   for (const request of pending.values()) { clearTimeout(request.timer); request.reject(error) }
   pending.clear()
-  void save({ phase: "setup", error: error.message }).catch(console.error)
+  // The helper exits right after a successful uninstall; that is not an error.
+  const clean = uninstalling
+  uninstalling = false
+  void save(clean ? { phase: "setup" } : { phase: "setup", error: error.message }).catch(console.error)
   connection.disconnect()
 }
 
@@ -82,7 +86,7 @@ export async function handleDownloaderCommand(data: Record<string, unknown>, sen
     if (state.phase === "done") await save({ ...state, seen: true })
     return { ok: true, state }
   }
-  if (typeof command !== "string" || !["ping", "formats", "download", "cancel", "open", "reveal", "update", "reset"].includes(command)) throw new Error("Invalid downloader command")
+  if (typeof command !== "string" || !["ping", "formats", "download", "cancel", "open", "reveal", "update", "reset", "uninstall"].includes(command)) throw new Error("Invalid downloader command")
   if (command === "formats" && (typeof data.url !== "string" || !validDownloadUrl(data.url))) throw new Error("Only HTTP(S) video links are supported")
   if (command === "download") {
     if (typeof data.formatId !== "string" || !/^(video|audio|mp3):[\w.-]{1,100}$/.test(data.formatId)) throw new Error("Invalid format")
@@ -108,8 +112,10 @@ export async function handleDownloaderCommand(data: Record<string, unknown>, sen
       if (!request) return
       clearTimeout(request.timer)
       pending.delete(message.id!)
-      if (!message.ok) request.reject(new Error(message.error || "The helper could not complete this task"))
-      else request.resolve({ ok: true, state: message.state })
+      if (!message.ok) {
+        uninstalling = false
+        request.reject(new Error(message.error || "The helper could not complete this task"))
+      } else request.resolve({ ok: true, state: message.state })
     })
     connection.onDisconnect.addListener(() => {
       const error = new Error(chrome.runtime.lastError?.message || "The downloader helper disconnected")
@@ -118,6 +124,7 @@ export async function handleDownloaderCommand(data: Record<string, unknown>, sen
   }
   const connection = port
   const id = String(++serial)
+  if (command === "uninstall") uninstalling = true
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       disconnect(connection, new Error("The downloader helper did not respond. Check the setup guide."))

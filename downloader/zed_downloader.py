@@ -52,6 +52,27 @@ def is_transient_error(message):
     return any(token in lowered for token in TRANSIENT_NETWORK_ERRORS)
 
 
+def host_manifest_dirs():
+    """NativeMessagingHosts folders of Chrome and Brave for this user and OS."""
+    if os.name == "nt":
+        return []
+    home = Path.home()
+    if sys.platform == "darwin":
+        base = home / "Library" / "Application Support"
+        roots = [base / "Google" / "Chrome", base / "BraveSoftware" / "Brave-Browser"]
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME", str(home / ".config")))
+        roots = [base / "google-chrome", base / "BraveSoftware" / "Brave-Browser"]
+    return [root / "NativeMessagingHosts" for root in roots]
+
+
+def points_into(directory, path):
+    try:
+        return directory in Path(str(path)).resolve().parents
+    except OSError:
+        return False
+
+
 def valid_url(value):
     if not isinstance(value, str) or len(value) > 8192 or any(ord(c) < 32 for c in value):
         raise ValueError("That doesn’t look like a link.")
@@ -213,9 +234,11 @@ def read_message(stream):
 
 
 class Host:
-    def __init__(self, emit, output=OUTPUT):
+    def __init__(self, emit, output=OUTPUT, root=None):
         self.emit = emit
         self.output = Path(output)
+        self.root = Path(root).resolve() if root else Path(__file__).resolve().parent
+        self.stopping = False
         self.lock = threading.RLock()
         self.process = None
         self.thread = None
@@ -299,6 +322,39 @@ class Host:
                     except ProcessLookupError:
                         pass
 
+    def uninstall(self):
+        """Remove only this helper's own registrations and files; other hosts stay untouched."""
+        own = self.root
+        removed = []
+        if os.name == "nt":
+            import winreg
+            for vendor in ("Google\\Chrome", "BraveSoftware\\Brave-Browser"):
+                key_path = "Software\\" + vendor + "\\NativeMessagingHosts\\" + HOST
+                try:
+                    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+                        manifest = Path(winreg.QueryValueEx(key, "")[0])
+                except OSError:
+                    continue
+                if not points_into(own, manifest):
+                    continue
+                winreg.DeleteKey(winreg.HKEY_CURRENT_USER, key_path)
+                manifest.unlink(missing_ok=True)
+                removed.append(str(manifest))
+        else:
+            for directory in host_manifest_dirs():
+                manifest = directory / (HOST + ".json")
+                try:
+                    data = json.loads(manifest.read_text())
+                except (OSError, ValueError):
+                    continue
+                if not points_into(own, data.get("path", "")):
+                    continue
+                manifest.unlink()
+                removed.append(str(manifest))
+        # Delete the helper files last; the running executable can stay locked on Windows.
+        shutil.rmtree(own, ignore_errors=True)
+        return removed
+
     def handle(self, message):
         if not isinstance(message, dict) or not isinstance(message.get("id"), str):
             raise ValueError("Invalid command")
@@ -334,6 +390,11 @@ class Host:
                     self.url = ""
                     self.state = {"phase": "ready", "version": self.state.get("version", ""), "ffmpeg": self.ffmpeg, "capabilities": list(CAPABILITIES)}
                 self.publish()
+            elif command == "uninstall":
+                if busy:
+                    raise ValueError("Cancel the current task first")
+                self.uninstall()
+                self.stopping = True
             elif command in ("ping", "formats", "download", "update"):
                 if busy:
                     raise ValueError("Another task is already running")
@@ -536,6 +597,8 @@ def main():
                 emit(host.handle(message))
             except Exception as error:
                 emit({"id": message.get("id") if isinstance(message, dict) else None, "ok": False, "error": str(error)[:120]})
+            if host.stopping:
+                break
     finally:
         host.cancelled.set()
         host.stop_process()

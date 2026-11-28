@@ -109,4 +109,16 @@ describe("TimelineTrimmer and merged VideoDownloader markup", () => {
     expect(doneHtml).toContain("Clip another part")
     expect(doneHtml).toContain("New download")
   })
+
+  it("offers an uninstall helper action on the ready screen", () => {
+    vi.stubGlobal("chrome", {
+      storage: {
+        local: { get: async () => ({}), set: async () => {} },
+        onChanged: { addListener: () => {}, removeListener: () => {} },
+      },
+    })
+    const html = renderToStaticMarkup(createElement(VideoDownloader, { state: { phase: "ready", version: "2026.11.17", ffmpeg: true } }))
+    expect(html).toContain("Uninstall helper")
+    expect(html).toContain("Update")
+  })
 })

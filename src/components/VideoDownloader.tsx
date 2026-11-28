@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
-import { Card, Notice, SwitchRow, TimelineTrimmer } from "@/design-system/components"
+import { Card, Dialog, Notice, SwitchRow, TimelineTrimmer } from "@/design-system/components"
 import { Icon } from "@/design-system/Icon"
 import { clampClipRange, defaultClipFilename, defaultClipRange, estimateClipSize, formatTime, validateClipTimeInput } from "@/lib/clip"
 import { DEFAULT_DOWNLOAD_DIRECTORY, defaultDownloadFormat, downloadSize, downloaderCommand, validDownloadDirectory, validDownloadUrl, type DownloaderState } from "@/lib/downloader"
@@ -34,6 +34,7 @@ export default function VideoDownloader({ state }: { state: DownloaderState }) {
   const [timeError, setTimeError] = useState("")
   const [precise, setPrecise] = useState(true)
   const [tabVideo, setTabVideo] = useState<YoutubeTabVideo | null>(null)
+  const [confirmUninstall, setConfirmUninstall] = useState(false)
   const [storedDirectory, setStoredDirectory] = useStoredValue("downloaderDirectory", DEFAULT_DOWNLOAD_DIRECTORY)
   const [directory, setDirectory] = useState(storedDirectory)
   const [folderError, setFolderError] = useState("")
@@ -42,6 +43,7 @@ export default function VideoDownloader({ state }: { state: DownloaderState }) {
   const folderInput = useRef<HTMLInputElement>(null)
   const previous = useRef(state)
   const pendingTabTime = useRef<number | null>(null)
+  const uninstallRequested = useRef(false)
   const lastMediaKey = useRef("")
 
   useEffect(() => { setDirectory(storedDirectory) }, [storedDirectory])
@@ -55,6 +57,10 @@ export default function VideoDownloader({ state }: { state: DownloaderState }) {
     }
     if (before.phase === "downloading" && state.phase === "results" && state.cancelled) toast({ title: "Download cancelled" })
     if (before.phase !== "done" && state.phase === "done") toast({ title: state.section ? "Clip saved" : "Download complete" })
+    if (uninstallRequested.current && before.phase !== "setup" && state.phase === "setup") {
+      uninstallRequested.current = false
+      toast({ title: "Downloader helper uninstalled" })
+    }
   }, [state])
 
   const media = state.media
@@ -366,7 +372,8 @@ export default function VideoDownloader({ state }: { state: DownloaderState }) {
 
   return <div className="zed-stack">
     <div className="zed-helper-row"><span className="zed-pill zed-pill--active">{working ? "Working" : "Ready"}</span><span className="zed-helper">yt-dlp {state.version || "checking…"}</span>
-      <Button variant="ghost" disabled={pending || working} onClick={() => void run("update")}>Update</Button></div>
+      <Button variant="ghost" disabled={pending || working} onClick={() => void run("update")}>Update</Button>
+      <Button variant="ghost" disabled={pending || working} onClick={() => setConfirmUninstall(true)}>Uninstall helper</Button></div>
     {setupCommands}
     {state.ffmpeg === false && <Notice title="ffmpeg is not installed">Merging video and audio and cutting clips need ffmpeg. Single-file videos and original audio are still available.
       <Button type="button" disabled={working || pending} onClick={() => void run("ping")}>Check again</Button></Notice>}
@@ -393,5 +400,16 @@ export default function VideoDownloader({ state }: { state: DownloaderState }) {
     </form>
     {folderField}
     <p className="zed-helper">Works with YouTube and the 1,000+ other sites yt-dlp supports. Clips are cut on this computer. Download only content you own or have permission to save.</p>
+    {confirmUninstall && <Dialog title="Uninstall the downloader helper?" onClose={() => setConfirmUninstall(false)}>
+      <p>Removes the native messaging registration and helper files from this computer. Downloaded files are kept. Re-run the setup commands to install it again.</p>
+      <div className="zed-grid">
+        <Button size="sm" onClick={() => setConfirmUninstall(false)}>Cancel</Button>
+        <Button size="sm" variant="destructive" disabled={pending} onClick={() => {
+          setConfirmUninstall(false)
+          uninstallRequested.current = true
+          void run("uninstall")
+        }}>Uninstall</Button>
+      </div>
+    </Dialog>}
   </div>
 }

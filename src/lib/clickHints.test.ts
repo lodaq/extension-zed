@@ -25,13 +25,14 @@ type TestBadge = {
   remove: ReturnType<typeof vi.fn>
 }
 
-function mountHints(count = 1, persistent = false, tags = Array.from({ length: count }, () => "BUTTON")) {
+function mountHints(count = 1, persistent = false, tags = Array.from({ length: count }, () => "BUTTON"), position = "relative") {
   const window = new EventTarget()
   const badges: TestBadge[] = []
-  const parent = { children: [] as unknown[], append: vi.fn((node: unknown) => { parent.children.push(node) }) }
+  const parent = { children: [] as unknown[], append: vi.fn((node: unknown) => { parent.children.push(node) }), setAttribute: vi.fn(), removeAttribute: vi.fn(), getBoundingClientRect: () => ({ left: 10, top: 10, right: 110, width: 100, height: 30 }), clientTop: 0, clientLeft: 0 }
   const targets = tags.map(tagName => ({
     tagName, style: {}, matches: () => false, closest: () => null, contains: () => true, isConnected: true,
     parentElement: parent, children: [] as unknown[],
+    setAttribute: vi.fn(), removeAttribute: vi.fn(),
     append: vi.fn(function (this: unknown, node: unknown) { (this as { children: unknown[] }).children.push(node) }),
     getBoundingClientRect: () => ({ left: 10, top: 10, right: 110, width: 100, height: 30 }),
     focus: vi.fn(), click: vi.fn(),
@@ -39,7 +40,7 @@ function mountHints(count = 1, persistent = false, tags = Array.from({ length: c
   vi.stubGlobal('window', window)
   vi.stubGlobal('innerWidth', 640)
   vi.stubGlobal('innerHeight', 600)
-  vi.stubGlobal('getComputedStyle', () => ({ visibility: 'visible', position: 'relative' }))
+  vi.stubGlobal('getComputedStyle', () => ({ visibility: 'visible', position }))
   vi.stubGlobal('document', {
     querySelectorAll: () => targets, querySelector: () => null, elementFromPoint: () => ({}),
     createElement: () => {
@@ -122,14 +123,22 @@ describe('click hint activation', () => {
     } finally { cleanup() }
   })
 
-  it('inserts each hint inside its element at the top right', () => {
+  it('inserts each hint inside its element and lets CSS place it at the top right', () => {
     const { targets, badges, cleanup } = mountHints()
     try {
       expect(targets[0].append).toHaveBeenCalledWith(badges[0])
       expect(badges[0].className).toContain('zed-hint')
       expect(badges[0].setAttribute).toHaveBeenCalledWith('aria-hidden', 'true')
-      expect(badges[0].style.top).toBe('0')
-      expect(badges[0].style.right).toBe('0')
+      expect(targets[0].setAttribute).not.toHaveBeenCalled()
+    } finally { cleanup() }
+  })
+
+  it('anchors static hosts and removes the anchor on cleanup without measuring the page', () => {
+    const { targets, cleanup } = mountHints(1, false, ['BUTTON'], 'static')
+    try {
+      expect(targets[0].setAttribute).toHaveBeenCalledWith('data-zed-hint-anchor', '')
+      cleanup()
+      expect(targets[0].removeAttribute).toHaveBeenCalledWith('data-zed-hint-anchor')
     } finally { cleanup() }
   })
 

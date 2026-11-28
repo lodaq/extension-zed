@@ -106,7 +106,7 @@ function installSaveButtons() {
       button.type = "button"; button.className = "save-button"; button.innerHTML = saveIcon
       button.setAttribute("aria-live", "polite"); button.title = url ? `Save ${url} to Zed` : "Save this post to Zed"
       const picker = document.createElement("label")
-      picker.hidden = true; picker.textContent = "Saved in All saved · Move to collection "
+      picker.hidden = true; picker.textContent = "Saved in Library · Move to collection "
       const select = document.createElement("select")
       select.setAttribute("aria-label", "Move to collection")
       const status = document.createElement("span")
@@ -157,9 +157,9 @@ function installSaveButtons() {
           if (!saved) {
             const stored = await chrome.storage.local.get(COLLECTIONS_KEY)
             select.replaceChildren(...["", ...readCollections(stored[COLLECTIONS_KEY])].map(name => {
-              const option = document.createElement("option"); option.value = name; option.textContent = name || "All saved"; return option
+              const option = document.createElement("option"); option.value = name; option.textContent = name || "All items"; return option
             }))
-            status.textContent = select.options.length === 1 ? "Create collections in Zed’s Saved tab." : ""
+            status.textContent = select.options.length === 1 ? "Create collections in Zed’s Library tab." : ""
             picker.hidden = false
           }
           entry.busy = false; render()

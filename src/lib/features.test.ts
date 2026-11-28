@@ -90,7 +90,7 @@ describe("dynamic content scripts & feature isolation", () => {
     })
 
     const denied = await handlePageAction({ event: "playbackFaster" })
-    expect(denied).toMatchObject({ ok: false, saved: false, error: "Playback speed is not installed" })
+    expect(denied).toMatchObject({ ok: false, saved: false, error: "The Playback speed tool is not installed" })
     expect(set).not.toHaveBeenCalled()
     expect(executeScript).not.toHaveBeenCalled()
 
@@ -103,7 +103,7 @@ describe("dynamic content scripts & feature isolation", () => {
       storage: { local: { get: async () => ({ installedFeatures: [], keyboardShortcuts: { action0: "Alt+Shift+→" } }), set: vi.fn() } },
       tabs: { get: vi.fn() },
     })
-    await expect(executeShortcut("action0", 7)).rejects.toThrow("Playback speed is not installed")
+    await expect(executeShortcut("action0", 7)).rejects.toThrow("The Playback speed tool is not installed")
   })
 
   it("does not initialize site limiter or accept limiter/downloader/screenshot messages when uninstalled", async () => {
@@ -130,18 +130,18 @@ describe("dynamic content scripts & feature isolation", () => {
     await import("../background")
     expect(alarmAddListener).not.toHaveBeenCalled()
 
-    await expect(executeShortcut("action27", 7)).rejects.toThrow("Black and white is not installed")
+    await expect(executeShortcut("action27", 7)).rejects.toThrow("The Grayscale tool is not installed")
 
     const dlReply = vi.fn()
     expect(message({ type: "downloader:command", command: "status" }, { id: "zed" }, dlReply)).toBe(true)
-    await vi.waitFor(() => expect(dlReply).toHaveBeenCalledWith({ ok: false, error: "Video downloader is not installed" }))
+    await vi.waitFor(() => expect(dlReply).toHaveBeenCalledWith({ ok: false, error: "The Video downloader tool is not installed" }))
 
     const limReply = vi.fn()
     expect(message({ type: "limiter:list" }, { id: "zed", url: "chrome-extension://zed/index.html" }, limReply)).toBe(true)
-    await vi.waitFor(() => expect(limReply).toHaveBeenCalledWith({ ok: false, error: expect.stringContaining("Site limiter is not installed") }))
+    await vi.waitFor(() => expect(limReply).toHaveBeenCalledWith({ ok: false, error: expect.stringContaining("The Website limits tool is not installed") }))
 
     const shotReply = vi.fn()
     expect(message({ type: "screenshot:start", mode: "visible" }, { id: "zed" }, shotReply)).toBe(true)
-    await vi.waitFor(() => expect(shotReply).toHaveBeenCalledWith({ ok: false, error: "Capture screenshot is not installed" }))
+    await vi.waitFor(() => expect(shotReply).toHaveBeenCalledWith({ ok: false, error: "The Screenshots tool is not installed" }))
   })
 })

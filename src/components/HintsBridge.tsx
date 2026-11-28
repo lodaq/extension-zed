@@ -29,12 +29,8 @@ export default function HintsBridge({
 
   useEffect(() => {
     if (hintMode !== "always") return
-    const timer = window.setTimeout(() => {
-      if (clearHints.current) return
-      clearHints.current = showClickHints(true)
-    }, 150)
+    clearHints.current = showClickHints(true)
     return () => {
-      window.clearTimeout(timer)
       clearHints.current?.()
       clearHints.current = undefined
     }

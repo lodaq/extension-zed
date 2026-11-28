@@ -5,6 +5,7 @@ import { isValidInstalledFeatures } from "./features"
 import { SAVED_KEY, readSaved, COLLECTIONS_KEY, readCollections } from "./saved"
 import { PLAYBACK_MAX, PLAYBACK_MIN } from "./playbackPresets"
 import { QUALITY_LEVEL_MAP } from "./videoQuality"
+import { TAB_IDS } from "./tabs"
 
 const CURRENT_SETTINGS_SCHEMA_VERSION = 1
 export const MAX_SETTINGS_FILE_SIZE = 512 * 1024 // 512 KB
@@ -28,7 +29,7 @@ const isSavedLinks = (value: unknown) => Array.isArray(value) && value.every(lin
 const isShortcutMap = (value: unknown) => isRecord(value) && Object.entries(value).every(([key, combo]) => ALL_SHORTCUT_ACTIONS.some(action => action.id === key) && typeof combo === "string" && combo.length <= 100)
 
 const validators = {
-  popupLocation: value => isRecord(value) && ["Misc", "Extensions", "YouTube", "Links", "Saved", "Shortcuts"].includes(value.tab as string) && (value.detail === null || ["store", "playback", "quality", "password", "volume", "scrollbars", "modes", "blackAndWhite", "capture", "limiter", "hints", "downloader"].includes(value.detail as string)) && typeof value.settings === "boolean",
+  popupLocation: value => isRecord(value) && (TAB_IDS as readonly string[]).includes(value.tab as string) && (value.detail === null || ["store", "playback", "quality", "password", "volume", "scrollbars", "modes", "blackAndWhite", "capture", "limiter", "hints", "downloader"].includes(value.detail as string)) && typeof value.settings === "boolean",
   installedFeatures: isValidInstalledFeatures,
   keyboardShortcuts: isShortcutMap,
   hintMode: isHintMode,

@@ -159,6 +159,7 @@ input[type=range] { width: 100%; accent-color: var(--zed-accent); }
   .zed-switch::after, .zed-radix-thumb { forced-color-adjust: none; }
 }
 
+[data-zed-hint-anchor] { position: relative; }
 .zed-hint { position:absolute;top:0;right:0;z-index:5;color:var(--zed-text);pointer-events:none; }
 .zed-hint[hidden] { display:none; }
 

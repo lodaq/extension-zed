@@ -103,7 +103,7 @@ async function run() {
     let snapshotRes = await client.callTool("take_snapshot", { pageId: 1 });
     let snapshotText = parseTextContent(snapshotRes);
 
-    for (const tab of ["Misc", "YouTube", "Settings", "Shortcuts"]) {
+    for (const tab of ["Tools", "YouTube", "Settings", "Shortcuts"]) {
       record(`Popup tab: ${tab} present`, snapshotText.includes(`"${tab}"`));
     }
 
@@ -113,18 +113,18 @@ async function run() {
     const hasPopupConsoleErrors = consoleText.includes('"level":"error"') || consoleText.includes("Error:");
     record("Popup has zero console errors", !hasPopupConsoleErrors, hasPopupConsoleErrors ? consoleText : "clean");
 
-    // Install Playback speed, Scrollbars, Password generator, Keyboard hints, and Black and white from the Feature Store
+    // Install Playback speed, Scrollbars, Password generator, Shortcut hints, and Grayscale from the Tool library
     const storeInstall = await client.callTool("evaluate_script", {
       pageId: 1,
       function: `async () => {
         const openStore = document.getElementById('zed-open-store');
         if (!openStore) return { opened: false };
         openStore.click();
-        for (let i = 0; i < 20 && !document.querySelector('button[aria-label="Install Password generator"]'); i++) {
+        for (let i = 0; i < 20 && !document.querySelector('button[aria-label="Add Password generator"]'); i++) {
           await new Promise(r => setTimeout(r, 100));
         }
-        for (const title of ['Playback speed', 'Scrollbars', 'Password generator', 'Keyboard hints', 'Black and white']) {
-          document.querySelector(\`button[aria-label="Install \${title}"]\`)?.click();
+        for (const title of ['Playback speed', 'Scrollbars', 'Password generator', 'Shortcut hints', 'Grayscale']) {
+          document.querySelector(\`button[aria-label="Add \${title}"]\`)?.click();
           await new Promise(r => setTimeout(r, 50));
         }
         await new Promise(r => setTimeout(r, 200));
@@ -141,7 +141,7 @@ async function run() {
       }`,
     });
     const storeInstallText = parseTextContent(storeInstall);
-    record("Feature Store installs Playback speed, Scrollbars, Password generator, Keyboard hints, and Black and white", storeInstallText.includes('"hasPlaybackTile":true') && storeInstallText.includes('"hasScrollbarsTile":true') && storeInstallText.includes('"hasPasswordTile":true') && storeInstallText.includes('"hasHintsTile":true') && storeInstallText.includes('"hasBwTile":true'), storeInstallText);
+    record("Tool library installs Playback speed, Scrollbars, Password generator, Shortcut hints, and Grayscale", storeInstallText.includes('"hasPlaybackTile":true') && storeInstallText.includes('"hasScrollbarsTile":true') && storeInstallText.includes('"hasPasswordTile":true') && storeInstallText.includes('"hasHintsTile":true') && storeInstallText.includes('"hasBwTile":true'), storeInstallText);
 
     // Test password generator in popup
     const tileHelp = await client.callTool("evaluate_script", {
@@ -183,7 +183,7 @@ async function run() {
     record("Feature description appears inside the opened tool", pwGenText.includes('"descriptionVisible":true'));
 
     for (const { tab, name, matches, delay } of [
-      { tab: "Extensions", name: "Extensions tab brave://extensions button present", matches: text => text.includes("brave://extensions"), delay: 200 },
+      { tab: "Other extensions", name: "Other extensions tab brave://extensions button present", matches: text => text.includes("brave://extensions"), delay: 200 },
       { tab: "YouTube", name: "Switch to YouTube tab", matches: text => text.includes('heading "YouTube"') && text.includes("Focus mode") && text.includes("Hide thumbnail timestamps") && text.includes("Hide all timestamps"), delay: 200 },
       { tab: "Settings", name: "Switch to Settings tab & verify Export/Import", matches: text => text.includes("Export") && text.includes("Import") && text.includes("Reset to defaults"), delay: 600 },
     ]) {
@@ -215,7 +215,7 @@ async function run() {
       return (await chrome.storage.local.get('keyboardShortcuts')).keyboardShortcuts.action2 === 'Cmd+K';
     }`));
     await client.callTool("press_key", { pageId: 1, key: "2" });
-    record("2 opens Extensions with an existing shortcut map", await popupEvaluate('() => document.querySelector("h1").textContent === "Extensions" && document.querySelector(\'[aria-keyshortcuts="2"]\').textContent.includes("Extensions")'));
+    record("2 opens Other extensions with an existing shortcut map", await popupEvaluate('() => document.querySelector("h1").textContent === "Other extensions" && document.querySelector(\'[aria-keyshortcuts="2"]\').textContent.includes("Other extensions")'));
     await client.callTool("press_key", { pageId: 1, key: "s" });
     record("S opens Settings with an existing shortcut map", await popupEvaluate('() => document.querySelector("h1").textContent === "Settings" && document.querySelector(\'[aria-label="Settings"]\').getAttribute("aria-keyshortcuts") === "S"'));
     await popupEvaluate(`async () => {

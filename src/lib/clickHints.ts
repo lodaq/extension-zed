@@ -17,71 +17,80 @@ export function hintLabels(count: number): string[] {
   })
 }
 
-function hintTargets(): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>('main button, main a[href], main input:not([type="hidden"]), main select, main textarea, main [role="switch"], main [role="checkbox"], main summary')].filter(node => {
-    if (node.matches(':disabled, [aria-disabled="true"]') || node.closest('[inert], [hidden], .zed-tabbar, .zed-settings')) return false
-    const rect = node.getBoundingClientRect()
-    if (!rect.width || !rect.height || getComputedStyle(node).visibility !== "visible") return false
-    const x = Math.max(0, rect.left) + Math.min(rect.width, innerWidth - Math.max(0, rect.left)) / 2
-    const y = Math.max(0, rect.top) + Math.min(rect.height, innerHeight - Math.max(0, rect.top)) / 2
-    const top = document.elementFromPoint(x, y)
-    return y > 0 && x > 0 && !!top && (node === top || node.contains(top))
-  })
+const TARGET_SELECTOR = 'main button, main a[href], main input:not([type="hidden"]), main select, main textarea, main [role="switch"], main [role="checkbox"], main summary'
+const VOID_ELEMENTS = new Set(["INPUT", "SELECT", "TEXTAREA"])
+const ANCHOR_ATTRIBUTE = "data-zed-hint-anchor"
+
+type HintTarget = { target: HTMLElement; rect: DOMRect }
+
+// Layout is read once per target here; hints never measure on scroll or on every mutation.
+function hintTargets(): HintTarget[] {
+  const found: HintTarget[] = []
+  for (const target of document.querySelectorAll<HTMLElement>(TARGET_SELECTOR)) {
+    if (target.matches(':disabled, [aria-disabled="true"]') || target.closest('[inert], [hidden], .zed-tabbar, .zed-settings')) continue
+    const rect = target.getBoundingClientRect()
+    if (!rect.width || !rect.height || rect.bottom <= 0 || rect.top >= innerHeight || rect.right <= 0 || rect.left >= innerWidth) continue
+    const visible = typeof target.checkVisibility === "function" ? target.checkVisibility({ visibilityProperty: true }) : getComputedStyle(target).visibility === "visible"
+    if (visible) found.push({ target, rect })
+  }
+  return found
 }
 
-const VOID_ELEMENTS = new Set(["INPUT", "SELECT", "TEXTAREA", "IMG", "VIDEO", "AUDIO", "CANVAS", "IFRAME", "OBJECT", "EMBED", "BR", "HR", "SOURCE", "TRACK", "WBR"])
-
-function positionHint(element: HTMLElement, target: HTMLElement) {
-  element.style.left = "auto"
-  element.style.transform = ""
-  if (getComputedStyle(target).position !== "static") {
-    Object.assign(element.style, { position: "absolute", top: "0", right: "0" })
-    return
+// The badge becomes a child of its control, so the browser moves it on scroll and reflow for free.
+function anchorHint(element: HTMLElement, { target, rect }: HintTarget, hosts: Set<HTMLElement>) {
+  const isVoid = VOID_ELEMENTS.has(target.tagName)
+  const host = isVoid ? target.parentElement : target
+  if (!host) return
+  const staticHost = getComputedStyle(host).position === "static"
+  const hostRect = isVoid ? host.getBoundingClientRect() : null
+  if (staticHost) { host.setAttribute(ANCHOR_ATTRIBUTE, ""); hosts.add(host) }
+  if (hostRect) {
+    element.style.top = `${rect.top - hostRect.top - host.clientTop}px`
+    element.style.right = `${hostRect.right - rect.right - host.clientLeft}px`
   }
-  const rect = target.getBoundingClientRect()
-  const parent = target.offsetParent as HTMLElement | null
-  if (!parent) {
-    Object.assign(element.style, { position: "fixed", top: `${rect.top}px`, right: `${Math.max(0, innerWidth - rect.right)}px` })
-    return
-  }
-  const parentRect = parent.getBoundingClientRect()
-  Object.assign(element.style, { position: "absolute", top: `${rect.top - parentRect.top - parent.clientTop}px`, right: `${parentRect.right - rect.right - parent.clientLeft}px` })
+  host.append(element)
 }
 
 export function showClickHints(persistent = false): () => void {
   let targets: HTMLElement[] = [], labels: string[] = [], badges: { element: HTMLElement; target: HTMLElement }[] = [], prefix = '', disposed = false
-  let observer: MutationObserver | undefined, redraw: ReturnType<typeof setTimeout> | undefined
+  const hosts = new Set<HTMLElement>()
+  let observer: MutationObserver | undefined, frame: number | undefined
   const capture = { capture: true }
-  const positions = () => badges.forEach(({ element, target }) => { if (element.isConnected !== false) positionHint(element, target) })
   const showAll = () => badges.forEach(({ element }) => { element.hidden = false })
   const detach = () => { badges.forEach(({ element }) => element.remove()); badges = [] }
   const render = () => {
+    const next = hintTargets()
+    // shortcut: an unchanged control set is not re-measured, so a layout-only move can leave a field hint slightly off; upgrade to a ResizeObserver if that shows up.
+    if (next.length === targets.length && next.every((entry, index) => entry.target === targets[index])) return
     detach()
-    targets = hintTargets()
+    targets = next.map(entry => entry.target)
     labels = hintLabels(targets.length)
     prefix = ''
-    badges = targets.map((target, index) => {
+    badges = next.map((entry, index) => {
       const element = document.createElement('kbd')
       element.className = 'zed-key zed-tab-key zed-hint'
       element.setAttribute('aria-hidden', 'true')
       element.textContent = labels[index]
-      const host = VOID_ELEMENTS.has(target.tagName) ? target.parentElement : target
-      if (host) { host.append(element); positionHint(element, target) }
-      return { element, target }
+      anchorHint(element, entry, hosts)
+      return { element, target: entry.target }
     })
   }
   const cleanup = () => {
     if (disposed) return
     disposed = true
-    if (redraw) clearTimeout(redraw)
+    if (frame !== undefined) cancelAnimationFrame(frame)
     observer?.disconnect()
     detach()
+    hosts.forEach(host => host.removeAttribute(ANCHOR_ATTRIBUTE))
+    hosts.clear()
     window.removeEventListener('keydown', keydown, capture)
-    window.removeEventListener('scroll', onViewportChange, capture)
-    window.removeEventListener('resize', onViewportChange)
     window.removeEventListener('pointerdown', onPointer, capture)
   }
-  const activate = (index: number) => { const target = targets[index]; if (target?.isConnected) { target.focus(); target.click() } }
+  const activate = (index: number) => {
+    const target = targets[index]
+    if (!target?.isConnected || target.matches(':disabled, [aria-disabled="true"]') || target.closest('[hidden], [inert]')) return
+    target.focus(); target.click()
+  }
   const keydown = (event: KeyboardEvent) => {
     if (event.isComposing || event.repeat || event.key === 'Shift') return
     const key = (/^Key[A-Z]$/.test(event.code) ? event.code.slice(3) : event.key).toLowerCase()
@@ -106,24 +115,23 @@ export function showClickHints(persistent = false): () => void {
     }
     badges.forEach(({ element }, index) => { element.hidden = !labels[index].startsWith(prefix) })
   }
-  const onViewportChange = () => { if (persistent) positions(); else cleanup() }
-  const onPointer = () => { if (!persistent) { cleanup(); return } prefix = ''; showAll(); positions() }
+  const onPointer = () => { if (!persistent) { cleanup(); return } prefix = ''; showAll() }
 
   render()
   window.addEventListener('keydown', keydown, capture)
-  window.addEventListener('scroll', onViewportChange, capture)
-  window.addEventListener('resize', onViewportChange)
   window.addEventListener('pointerdown', onPointer, capture)
   if (persistent && typeof MutationObserver !== "undefined") {
     const root = document.querySelector("main")
     if (root) {
+      // Structural changes and disabled flips matter; our own badges are ignored so renders never trigger themselves.
       observer = new MutationObserver(records => {
-        const relevant = records.some(record => record.type !== "childList" ||
-          [...record.addedNodes, ...record.removedNodes].some(node => (node as HTMLElement).classList?.contains("zed-hint") !== true))
-        if (!relevant || redraw || disposed) return
-        redraw = setTimeout(() => { redraw = undefined; if (!disposed) render() }, 50)
+        if (disposed || frame !== undefined) return
+        const relevant = records.some(record => record.type === "attributes" ||
+          [...record.addedNodes, ...record.removedNodes].some(node => (node as Element).classList?.contains("zed-hint") !== true))
+        if (!relevant) return
+        frame = requestAnimationFrame(() => { frame = undefined; if (!disposed) render() })
       })
-      observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "disabled", "aria-disabled"] })
+      observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled", "aria-disabled"] })
     }
   }
   return cleanup

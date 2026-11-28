@@ -17,7 +17,7 @@ async function getInstalledFeatures(): Promise<FeatureId[]> {
 
 async function requireFeature(id: FeatureId) {
   const installed = await getInstalledFeatures()
-  if (!installed.includes(id)) throw new Error(`${getFeatureTitle(id)} is not installed`)
+  if (!installed.includes(id)) throw new Error(`The ${getFeatureTitle(id)} tool is not installed`)
 }
 
 async function syncInstalledFeatures(raw?: unknown) {

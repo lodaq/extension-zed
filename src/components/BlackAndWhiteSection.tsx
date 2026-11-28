@@ -7,7 +7,7 @@ export default function BlackAndWhiteSection() {
   return (
     <section className="zed-stack">
       <SwitchRow
-        label="Black and white"
+        label="Grayscale"
         description="Show all websites in grayscale."
         checked={blackAndWhite}
         onChange={(enabled) =>

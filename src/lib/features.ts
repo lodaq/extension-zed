@@ -18,14 +18,14 @@ export const FEATURES: readonly FeatureDefinition[] = [
   f("quality", "Video quality", "Media", "quality", "Set a preferred resolution", "Automatically select your preferred video resolution (Auto, 144p–8K) with higher or lower fallback."),
   f("volume", "Volume boost", "Media", "volume", "Amplify audio up to 2000%", "Boost quiet tab audio up to 2000% using Web Audio amplification."),
   f("downloader", "Video downloader", "Media", "download", "Download videos, audio, or trimmed clips with the local helper", "Download videos, extract MP3 audio, or trim clips with the local yt-dlp and ffmpeg helper.", DOWNLOADER_ENABLED),
-  f("modes", "Modes", "Page tools", "modes", "Inspect, design and RTL", "Inspect page elements, temporarily edit page text in design mode, and switch Arabic-leading text to RTL."),
+  f("modes", "Inspect & edit", "Page tools", "modes", "Inspect elements, edit text, and flip RTL", "Inspect page elements, temporarily edit page text in design mode, and switch Arabic-leading text to RTL."),
   f("scrollbars", "Scrollbars", "Page tools", "scrollbars", "Restyle or hide scrollbars", "Apply a minimal custom scrollbar style or hide main and nested scrollbars on any page."),
-  f("blackAndWhite", "Black and white", "Page tools", "contrast", "Show all websites in grayscale", "Display all websites in grayscale across open and newly loaded pages."),
-  f("capture", "Capture screenshot", "Capture", "capture", "Selected area, visible area, full page or element", "Capture a selected area, visible viewport, full rendered page, or element to copy, save, or edit."),
+  f("blackAndWhite", "Grayscale", "Page tools", "contrast", "Show all websites in grayscale", "Display all websites in grayscale across open and newly loaded pages."),
+  f("capture", "Screenshots", "Capture", "capture", "Selected area, visible area, full page or element", "Capture a selected area, visible viewport, full rendered page, or element to copy, save, or edit."),
   f("password", "Password generator", "Productivity", "password", "Random, customizable passwords", "Generate cryptographic passwords (4–128 characters) with customizable character sets."),
-  f("limiter", "Site limiter", "Productivity", "modes", "Locked website blocks and daily usage limits", "Set timed website blocks and daily foreground usage limits, with optional system-level protection."),
-  f("hints", "Keyboard hints", "Productivity", "keyboard", "Click hints for popup controls", "Display keyboard hint labels on popup controls (always, on F press, or disabled)."),
-  f("saveTab", "Save & close tab", "Productivity", "save", "Save this tab’s URL to Links, then close the tab", "Save the active tab’s URL to Links and close the tab in one click or keyboard shortcut."),
+  f("limiter", "Website limits", "Productivity", "modes", "Timed blocks and daily usage limits", "Set timed website blocks and daily foreground usage limits, with optional system-level protection."),
+  f("hints", "Shortcut hints", "Productivity", "keyboard", "Key labels for popup controls", "Display shortcut hint labels on popup controls (always, on F press, or disabled)."),
+  f("saveTab", "Save tab & close", "Productivity", "save", "Save this tab’s URL to Read later, then close the tab", "Save the active tab’s URL to Read later and close the tab in one click or keyboard shortcut."),
 ]
 
 export const AVAILABLE_FEATURES = FEATURES.filter((feature) => feature.available !== false)

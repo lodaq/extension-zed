@@ -245,7 +245,7 @@ export default function VideoDownloader({ state }: { state: DownloaderState }) {
     const clipFormatSummary = selected ? (mode === "audio" ? selected.label.split(" · ")[0] : `${selected.label} · ${selected.meta.split(" · ")[0]}`) : "Choose another media type"
     const formatIds = formats.map(f => f.id)
     const clipNotices = [
-      !helperSupportsClip && { title: "Update the Zed helper to cut clips", body: "Your installed helper is from an older version and cannot cut clips yet. Re-run the setup command, then click Check again." },
+      !helperSupportsClip && { title: "Update the downloader helper to cut clips", body: "Your installed helper is from an older version and cannot cut clips yet. Re-run the setup command, then click Check again." },
       state.ffmpeg === false && { title: "Cutting a clip needs ffmpeg.", body: "Install ffmpeg to cut clips, then click Check again." },
     ].filter((item): item is { title: string; body: string } => Boolean(item))
 

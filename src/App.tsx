@@ -14,6 +14,7 @@ import { DEFAULT_SHORTCUTS, readShortcuts, recordCombo } from "@/lib/shortcuts"
 import { DOWNLOADER_ENABLED } from "@/lib/downloader"
 import { useDownloader } from "@/lib/useDownloader"
 import { AVAILABLE_FEATURES, DEFAULT_INSTALLED_FEATURES, INSTALLED_FEATURES_KEY, isFeatureId, readInstalledFeatures, type FeatureDefinition, type FeatureId } from "@/lib/features"
+import { TAB_IDS, TAB_LABELS, type TabId } from "@/lib/tabs"
 
 const ExtensionsTab = lazy(() => import("@/components/ExtensionsTab"))
 const SettingsTab = lazy(() => import("@/components/SettingsTab"))
@@ -38,8 +39,7 @@ const TOOL_COMPONENTS: Partial<Record<FeatureId, LazyExoticComponent<ComponentTy
   hints: lazy(() => import("@/components/KeyboardHintsSection")),
 }
 
-const tabs = ["Misc", "Extensions", "YouTube", "Links", "Saved", "Shortcuts"] as const
-const DEFAULT_LOCATION = { tab: "Misc", detail: null as string | null, settings: false }
+const DEFAULT_LOCATION: { tab: TabId; detail: string | null; settings: boolean } = { tab: "Misc", detail: null, settings: false }
 const UNRESTRICTED_FEATURES = new Set<FeatureId>(["limiter", "password", "blackAndWhite", "hints", "saveTab"])
 
 type TileProps = { feature: FeatureDefinition; disabled: boolean; onOpen: () => void }
@@ -158,7 +158,7 @@ export default function App() {
       event.preventDefault()
       if (id.startsWith("tab")) {
         if (id === "tab6") { void current.setLocation({ ...current.location, settings: true }); return }
-        const target = tabs[Number(id.slice(3))]
+        const target = TAB_IDS[Number(id.slice(3))]
         if (target) void current.setLocation({ ...current.location, tab: target, settings: false })
         return
       }
@@ -185,15 +185,15 @@ export default function App() {
     return () => window.removeEventListener(PAGE_ACTION_FEEDBACK_EVENT, listener)
   }, [])
 
-  const selectedStore = tab === "Misc" && detail === "store" ? { id: "store", title: "Feature Store", description: "Install only the features you want to load" } : undefined
+  const selectedStore = tab === "Misc" && detail === "store" ? { id: "store", title: "Tool library", description: "Add only the tools you want to run" } : undefined
   const selectedFeature = tab === "Misc" && isFeatureId(detail) && detail !== "saveTab" && installedSet.has(detail) ? AVAILABLE_FEATURES.find((f) => f.id === detail) : undefined
   const selected = selectedStore ?? selectedFeature
-  const pageTitle = settings ? "Settings" : selected?.title ?? tab
+  const pageTitle = settings ? "Settings" : selected?.title ?? TAB_LABELS[tab]
   useEffect(() => { document.title = `${pageTitle} · Extension Zed` }, [pageTitle])
 
   const installedTools = AVAILABLE_FEATURES.filter((feature) => installedSet.has(feature.id) && feature.id !== "downloader")
   const downloaderFeature = downloaderInstalled ? AVAILABLE_FEATURES.find((feature) => feature.id === "downloader") : undefined
-  const saveTab = () => void saveCurrentTab().then(added => toast({ title: added ? "Saved to Links · tab closed" : "Already in Links · tab closed" })).catch(error => toast({ title: String(error), variant: "destructive" }))
+  const saveTab = () => void saveCurrentTab().then(added => toast({ title: added ? "Saved to Read later · tab closed" : "Already in Read later · tab closed" })).catch(error => toast({ title: String(error), variant: "destructive" }))
 
   let content: ReactNode
   if (settings) content = <SettingsTab />
@@ -212,14 +212,14 @@ export default function App() {
     content = (
       <div className="zed-stack zed-root">
         <div className="zed-helper-row">
-          <span className="zed-helper">{installed.length === 0 ? "No features installed" : `${installed.length} feature${installed.length === 1 ? "" : "s"} installed`}</span>
-          <Button type="button" variant="outline" size="sm" id="zed-open-store" onClick={() => setDetail("store")}>Feature Store</Button>
+          <span className="zed-helper">{installed.length === 0 ? "No tools added" : `${installed.length} tool${installed.length === 1 ? "" : "s"} added`}</span>
+          <Button type="button" variant="outline" size="sm" id="zed-open-store" onClick={() => setDetail("store")}>Tool library</Button>
         </div>
         {installed.length === 0 ? (
           <Card><div className="zed-stack">
-            <strong>No features installed yet</strong>
-            <p className="zed-helper">Install only the tools you need from the Feature Store. Uninstalled features are never loaded and do not run on web pages.</p>
-            <div className="zed-actions"><Button type="button" onClick={() => setDetail("store")}>Browse Feature Store</Button></div>
+            <strong>No tools added yet</strong>
+            <p className="zed-helper">Add only the tools you need from the Tool library. Removed tools are never loaded and do not run on web pages.</p>
+            <div className="zed-actions"><Button type="button" onClick={() => setDetail("store")}>Browse Tool library</Button></div>
           </div></Card>
         ) : (
           <>
@@ -247,11 +247,11 @@ export default function App() {
         <DownloaderBridge detail={detail} feature={downloaderFeature} showTile={false} onOpen={openDownloader} />
       )}
       {hintsInstalled && <Suspense fallback={null}><HintsBridge locationKey={`${tab}-${detail}-${settings}`} shortcuts={shortcuts} registerTrigger={registerHintTrigger} /></Suspense>}
-      <nav className="zed-navigation" aria-label="Extension navigation">
+      <nav className="zed-navigation" aria-label="Popup navigation">
         <div ref={tabbar} className="zed-tabbar">
-          {tabs.map((name, index) => (
-            <button key={name} title={bindings[`tab${index}`] ? `${name} (${bindings[`tab${index}`]})` : name} aria-keyshortcuts={bindings[`tab${index}`] || undefined} className="zed-tab" aria-current={!settings && tab === name ? "page" : undefined}
-              onClick={() => void setLocation({ ...location, tab: name, settings: false })}>{name} {bindings[`tab${index}`] && <kbd aria-hidden="true" className="zed-key zed-tab-key">{bindings[`tab${index}`]}</kbd>}</button>
+          {TAB_IDS.map((id, index) => (
+            <button key={id} title={bindings[`tab${index}`] ? `${TAB_LABELS[id]} (${bindings[`tab${index}`]})` : TAB_LABELS[id]} aria-keyshortcuts={bindings[`tab${index}`] || undefined} className="zed-tab" aria-current={!settings && tab === id ? "page" : undefined}
+              onClick={() => void setLocation({ ...location, tab: id, settings: false })}>{TAB_LABELS[id]} {bindings[`tab${index}`] && <kbd aria-hidden="true" className="zed-key zed-tab-key">{bindings[`tab${index}`]}</kbd>}</button>
           ))}
         </div>
         <button className="zed-tab zed-settings" aria-label="Settings" title={bindings.tab6 ? `Settings (${bindings.tab6})` : "Settings"}

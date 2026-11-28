@@ -8,13 +8,13 @@ export default function KeyboardHintsSection() {
   return (
     <section className="zed-stack">
       <ChoiceGroup
-        label="Keyboard hints"
+        label="Shortcut hints"
         value={hintMode}
         options={HINT_MODES}
         onChange={(mode) =>
           void setHintMode(mode).catch((error) =>
             toast({
-              title: "Could not save keyboard hints",
+              title: "Could not save shortcut hints",
               description: String(error),
               variant: "destructive",
             })

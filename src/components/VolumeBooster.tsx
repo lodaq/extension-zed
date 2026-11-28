@@ -25,7 +25,7 @@ export default function VolumeBooster() {
   return (
     <section className="zed-stack">
       <Card><div className="flex flex-wrap items-center justify-between gap-3">
-        <label htmlFor="zed-volume-boost" className="text-sm font-medium">Amplification</label>
+        <label htmlFor="zed-volume-boost" className="text-sm font-medium">Volume boost</label>
         <output htmlFor="zed-volume-boost" className="zed-volume">{boost}%</output>
       </div>
       <input
@@ -37,7 +37,7 @@ export default function VolumeBooster() {
         value={boost}
         onChange={(event) => applyBoost(Number(event.target.value))}
         className="w-full accent-primary"
-        aria-label="Amplification"
+        aria-label="Volume boost"
       />
       <p className="text-xs leading-relaxed text-muted-foreground">
         Boosts audio and video up to 2000%. High levels may cause distortion or damage speakers.

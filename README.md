@@ -15,17 +15,17 @@ Open `chrome://extensions` or `brave://extensions`, enable Developer mode, choos
 
 ## Features
 
-- **Feature Store:** browse, search, and install or uninstall Misc tools (`Playback speed`, `Video quality`, `Volume boost`, `Video downloader`, `Modes`, `Scrollbars`, `Black and white`, `Capture screenshot`, `Password generator`, `Site limiter`, `Keyboard hints`, `Save & close tab`). Uninstalled features are not loaded in the popup, shortcuts, background worker, or web pages.
+- **Tool library:** browse, search, and add or remove tools (`Playback speed`, `Video quality`, `Volume boost`, `Video downloader`, `Inspect & edit`, `Scrollbars`, `Grayscale`, `Screenshots`, `Password generator`, `Website limits`, `Shortcut hints`, `Save tab & close`). Removed tools are not loaded in the popup, shortcuts, background worker, or web pages.
 - **Media:** playback speed from 0.1×–10×, volume boost from 100%–2000%, and preferred video quality from Auto/144p–8K with higher/lower fallback. Support depends on the site's player; unsupported players retain their own settings.
 - **Screenshots:** selected area, visible area, full page, or element; preview, copy PNG, download, or explicitly send the image to miniPaint for editing. Full-page capture uses temporary debugger access, native image strips, and guaranteed viewport/scroll restoration. It does not scroll through the page. Image-size limits apply; DevTools can conflict with capture.
 - **Page tools:** inspect element details, temporarily edit page content, adjust Arabic-leading text to RTL, apply grayscale, and restyle/hide scrollbars. Reloading restores website content edited in design mode.
 - **YouTube:** focus/half-screen layouts and independent progress, player duration, thumbnail timestamp, all-timestamp, and control hiding. All-timestamp hiding covers the player, thumbnails, comments/descriptions, chapters, and transcripts. Saved YouTube styles are reapplied before first paint on every page load.
 - **Passwords:** cryptographic generation, 4–128 characters, selectable character groups, and explicit copy. Generated passwords are not saved or backed up.
-- **Video downloader:** choose the save folder, yt-dlp video quality and audio formats, rename the file before downloading, and merge or convert to MP3 when ffmpeg is installed. Requires the one-time [native helper setup](docs/downloader-setup.md).
-- **Extensions:** optional management access; list, enable/disable, reload, open settings, and uninstall other extensions. Browser policy restrictions are respected.
-- **Links/Saved:** save tabs and media links, collect selected text through the context menu, toggle in-page save buttons, organize saved items into collections, and open/copy/remove saved items. New saves appear in All saved; the in-page picker lets you move them to a collection. Create collections in Saved. Opening a link from Links removes it after the new tab opens.
-- **Shortcuts/settings:** configurable keyboard shortcuts, keyboard hint modes (always, F shortcut, or off), remembered popup views/scroll, theme, validated JSON preference export/merge-import, and reset.
-- **Site limiter:** timed domain/subdomain blocks and daily foreground-usage limits, with no early-unblock control. Browser-only rules require Zed to remain enabled. Optional system protection requires the separate [administrator companion](companion/README.md).
+- **Video downloader:** choose the save folder, yt-dlp video quality and audio formats, rename the file before downloading, and merge or convert to MP3 when ffmpeg is installed. Requires the one-time [downloader helper setup](docs/downloader-setup.md).
+- **Other extensions:** optional management access; list, enable/disable, reload, open settings, and uninstall other extensions. Browser policy restrictions are respected.
+- **Read later / Library:** save tabs and media links, collect selected text through the context menu, toggle in-page save buttons, organize saved items into collections, and open/copy/remove saved items. New saves appear in All items; the in-page picker lets you move them to a collection. Create collections in Library. Opening a link from Read later removes it after the new tab opens.
+- **Shortcuts/settings:** configurable keyboard shortcuts, shortcut hint modes (always, F shortcut, or off), remembered popup views/scroll, theme, validated JSON preference export/merge-import, and reset.
+- **Website limits:** timed domain/subdomain blocks and daily foreground-usage limits, with no early-unblock control. Browser-only rules require Zed to remain enabled. Optional system protection requires the separate [system blocker](companion/README.md).
 
 ## Development
 

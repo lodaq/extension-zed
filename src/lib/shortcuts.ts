@@ -1,3 +1,5 @@
+import { TAB_IDS, TAB_LABELS } from "./tabs"
+
 export const SHORTCUT_ACTIONS = [
   { id: "action0", group: 'Playback speed', name: 'Faster', combo: 'Alt+Shift+→' },
   { id: "action1", group: 'Playback speed', name: 'Slower', combo: 'Alt+Shift+←' },
@@ -12,13 +14,13 @@ export const SHORTCUT_ACTIONS = [
   { id: "action10", group: 'Scrollbars', name: 'Hide main scrollbar', combo: '' },
   { id: "action11", group: 'Scrollbars', name: 'Hide all scrollbars', combo: '' },
   { id: "action12", group: 'Scrollbars', name: 'Reset scrollbars', combo: '' },
-  { id: "action13", group: 'Modes', name: 'Toggle inspect mode', combo: 'Alt+Shift+I' },
-  { id: "action14", group: 'Modes', name: 'Toggle design mode', combo: 'Alt+Shift+D' },
-  { id: "action15", group: 'Modes', name: 'Toggle Arabic RTL mode', combo: 'Alt+Shift+A' },
-  { id: "action16", group: 'Capture screenshot', name: 'Selected area', combo: 'Alt+Shift+S' },
-  { id: "action17", group: 'Capture screenshot', name: 'Visible area', combo: '' },
-  { id: "action18", group: 'Capture screenshot', name: 'Full page', combo: '' },
-  { id: "action19", group: 'Capture screenshot', name: 'Element', combo: '' },
+  { id: "action13", group: 'Inspect & edit', name: 'Toggle inspect mode', combo: 'Alt+Shift+I' },
+  { id: "action14", group: 'Inspect & edit', name: 'Toggle design mode', combo: 'Alt+Shift+D' },
+  { id: "action15", group: 'Inspect & edit', name: 'Toggle Arabic RTL mode', combo: 'Alt+Shift+A' },
+  { id: "action16", group: 'Screenshots', name: 'Selected area', combo: 'Alt+Shift+S' },
+  { id: "action17", group: 'Screenshots', name: 'Visible area', combo: '' },
+  { id: "action18", group: 'Screenshots', name: 'Full page', combo: '' },
+  { id: "action19", group: 'Screenshots', name: 'Element', combo: '' },
   { id: "action20", group: 'Tabs', name: 'Save URL and close tab', combo: 'Ctrl+Cmd+S' },
   { id: "action21", group: 'YouTube', name: 'Focus mode', combo: 'Alt+Shift+F' },
   { id: "action22", group: 'YouTube', name: 'Hide progress bar', combo: '' },
@@ -26,10 +28,11 @@ export const SHORTCUT_ACTIONS = [
   { id: "action24", group: 'YouTube', name: 'Hide controls', combo: '' },
   { id: "action25", group: 'YouTube', name: 'Half-screen layout', combo: '' },
   { id: "action26", group: 'Appearance', name: 'Toggle dark theme', combo: '' },
-  { id: "action27", group: 'Appearance', name: 'Toggle black and white', combo: '' },
+  { id: "action27", group: 'Appearance', name: 'Toggle grayscale', combo: '' },
 ] as const
 export const POPUP_SHORTCUT_ACTIONS = [
-  ...["Misc", "Extensions", "YouTube", "Links", "Saved", "Shortcuts", "Settings"].map((name, index) => ({ id: `tab${index}`, group: "Popup · Tabs", name: `Open ${name}`, combo: name === "Settings" ? "S" : String(index + 1) })),
+  ...TAB_IDS.map((id, index) => ({ id: `tab${index}`, group: "Popup · Tabs", name: `Open ${TAB_LABELS[id]}`, combo: String(index + 1) })),
+  { id: "tab6", group: "Popup · Tabs", name: "Open Settings", combo: "S" },
   { id: "back", group: "Popup · Navigation", name: "Back", combo: "Escape" },
   { id: "hints", group: "Popup · Navigation", name: "Show click hints", combo: "F" },
 ]

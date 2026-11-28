@@ -31,7 +31,7 @@ export async function executeShortcut(id: string, tabId: number) {
   ])
   const requiredFeature = SHORTCUT_FEATURE[id]
   if (requiredFeature && !isFeatureInstalled(stored[INSTALLED_FEATURES_KEY], requiredFeature)) {
-    throw new Error(`${getFeatureTitle(requiredFeature)} is not installed`)
+    throw new Error(`The ${getFeatureTitle(requiredFeature)} tool is not installed`)
   }
   if (!readShortcuts(stored.keyboardShortcuts)[id]) throw new Error("Shortcut is not assigned")
   const page = async (event: PageActionRequest["event"], value?: number | boolean) => {

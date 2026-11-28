@@ -32,15 +32,15 @@ export default function SavedTab() {
   }
   const [buttonsEnabled, setButtonsEnabled] = useStoredValue(SAVED_BUTTONS_KEY, true)
   const [error, setError] = useState("")
-  return <section className="zed-stack zed-root zed-saved" aria-label="Saved items">
-    <div className="zed-saved-heading"><h2 className="zed-title">Saved</h2><span className="zed-helper">{allItems.length} {allItems.length === 1 ? "item" : "items"}</span></div>
+  return <section className="zed-stack zed-root zed-saved" aria-label="Library items">
+    <div className="zed-saved-heading"><h2 className="zed-title">Library</h2><span className="zed-helper">{allItems.length} {allItems.length === 1 ? "item" : "items"}</span></div>
     <p className="zed-helper">Save posts, videos and reels with the page’s Save to Zed button. Right-click selected text to save it here. Stored on this device.</p>
     <SwitchRow label="Show Save to Zed buttons" description="Show save/remove controls on posts, reels and videos." checked={buttonsEnabled} onChange={checked => {
       void setButtonsEnabled(checked).catch(error => setError(String(error)))
     }} />
     <div className="zed-collection-bar" role="group" aria-label="Collections">
       {["", ...collections].map(value => <Button key={value} variant={collection === value ? "default" : "outline"} aria-pressed={collection === value} onClick={() => { setCollection(value); setRename(value) }}>
-        {value || "All saved"}<span>{value ? (collectionCounts.get(value) ?? 0) : allItems.length}</span>
+        {value || "All items"}<span>{value ? (collectionCounts.get(value) ?? 0) : allItems.length}</span>
       </Button>)}
       <Button variant="ghost" className="zed-new-collection" aria-expanded={creating} onClick={() => setCreating(!creating)}><Icon name="plus" size={16} />New</Button>
     </div>
@@ -57,7 +57,7 @@ export default function SavedTab() {
           if (await request({ type: "saved:delete-collection", collection })) { setCollection(""); setRename("") }
         }}>Delete collection</Button>
       </div>
-      <p className="zed-helper">Deleting this collection keeps its items in All saved.</p>
+      <p className="zed-helper">Deleting this collection keeps its items in All items.</p>
     </form></details>}
     {creating && <form className="zed-actions" onSubmit={async event => {
       event.preventDefault()

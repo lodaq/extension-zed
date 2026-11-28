@@ -167,7 +167,7 @@ async function perform(request: PageActionRequest & { tabId: number }): Promise<
     const stored = await chrome.storage.local.get(storageKeysForAction(request.event))
     const requiredFeature = PAGE_ACTION_FEATURE[request.event]
     if (requiredFeature && !isFeatureInstalled(stored[INSTALLED_FEATURES_KEY], requiredFeature)) {
-      return { ok: false, saved: false, tabId, error: `${getFeatureTitle(requiredFeature)} is not installed` }
+      return { ok: false, saved: false, tabId, error: `The ${getFeatureTitle(requiredFeature)} tool is not installed` }
     }
     if (request.event === "applyVideoQuality") {
       saved = stored.videoQuality !== undefined

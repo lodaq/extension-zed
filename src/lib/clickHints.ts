@@ -141,7 +141,7 @@ export function showClickHints(persistent = false): () => void {
   render()
   window.addEventListener('keydown', keydown, capture)
   window.addEventListener(pointerEvent, onPointer, capture)
-  if (persistent && typeof MutationObserver !== "undefined") {
+  if (typeof MutationObserver !== "undefined") {
     const root = document.querySelector("main")
     if (root) {
       // Structural changes and disabled flips matter; our own badges are ignored so renders never trigger themselves.

@@ -212,10 +212,9 @@ async function run() {
       }));
       const savedCollections = Array.from({ length: 20 }, (_, index) => "Collection " + index);
       await chrome.storage.local.set({savedItems, savedCollections, hintMode:"shortcut"});
-      for (let attempt = 0; attempt < 60 && document.querySelectorAll(".zed-saved-row").length !== savedItems.length; attempt++) await nextFrame();
+      for (let attempt = 0; attempt < 60 && !document.querySelector(".zed-saved-row"); attempt++) await nextFrame();
       document.querySelector(".zed-tab[title^='Library']").click();
-      await nextFrame();
-      await nextFrame();
+      for (let attempt = 0; attempt < 60 && document.querySelectorAll(".zed-saved-row").length !== savedItems.length; attempt++) await nextFrame();
       const section = document.querySelector(".zed-saved");
       const rows = [...section.querySelectorAll(".zed-saved-row")];
       const visibleRows = section.getBoundingClientRect().height > 0 ? rows.length : 0;
@@ -237,12 +236,20 @@ async function run() {
       scroll.scrollTop = scroll.scrollHeight;
       await nextFrame();
       const hintScrolled = hint?.isConnected && hint.getBoundingClientRect().top < scroll.getBoundingClientRect().bottom;
+      scroll.scrollTop -= 24;
+      const scrollTop = Math.round(scroll.scrollTop);
+      scroll.dispatchEvent(new Event("scroll"));
+      window.dispatchEvent(new Event("pagehide"));
+      const boot = JSON.parse(localStorage.getItem("zed.boot"));
+      const { tab, detail, settings } = boot.location;
+      const savedScrollTop = boot.scrollPositions?.[[tab, String(detail), settings].join("-")];
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", cancelable: true }));
       await chrome.storage.local.remove(["savedItems", "savedCollections"]);
-      return {rows: visibleRows, closedMenus, menuChoices, startsBelow, hintScrolled};
+      return {rows: visibleRows, closedMenus, menuChoices, startsBelow, hintScrolled, scrollTop, savedScrollTop};
     }`);
     record("Library has one ready list and builds collection choices only on demand", library.rows === 120 && library.closedMenus === 0 && library.menuChoices === 22, JSON.stringify(library));
     record("Library shortcut hints follow controls below the fold", library.startsBelow && library.hintScrolled, JSON.stringify(library));
+    record("Library scroll position is persisted when the popup closes", library.scrollTop > 0 && library.scrollTop === library.savedScrollTop, JSON.stringify(library));
 
     await popupEvaluate(`async () => {
       await chrome.storage.local.set({popupLocation:{tab:"Misc",detail:null,settings:false},keyboardShortcuts:{tab1:"A",tab6:"7",action2:"Cmd+K"},popupShortcutKeysV2:false});

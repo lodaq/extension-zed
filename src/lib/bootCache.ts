@@ -9,6 +9,7 @@ type BootState = {
 
 const STORAGE_KEY = "zed.boot"
 let memoryBootCache: BootState = {}
+const pendingScrollPositions = new Map<string, number>()
 
 function isScrollPositions(value: unknown): value is Record<string, number> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -33,7 +34,12 @@ export function readBootState(): BootState {
 }
 
 export function updateBootState(patch: BootState) {
-  memoryBootCache = { ...readBootState(), ...patch }
+  const current = readBootState()
+  const scrollPositions = pendingScrollPositions.size
+    ? { ...current.scrollPositions, ...Object.fromEntries(pendingScrollPositions) }
+    : current.scrollPositions
+  pendingScrollPositions.clear()
+  memoryBootCache = { ...current, scrollPositions, ...patch }
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryBootCache)) }
   catch { /* Keep the in-memory mirror when persistence is unavailable. */ }
 }
@@ -46,17 +52,20 @@ export function mirrorBootValue(key: string, value: unknown) {
 }
 
 export function getStoredScrollPosition(key: string): number {
-  const top = readBootState().scrollPositions?.[key] ?? 0
+  const top = pendingScrollPositions.get(key) ?? readBootState().scrollPositions?.[key] ?? 0
   return Number.isFinite(top) ? Math.max(0, top) : 0
 }
 
 export function saveStoredScrollPosition(key: string, top: number) {
-  const current = readBootState().scrollPositions ?? {}
-  const rounded = Math.max(0, Math.round(top))
-  if (current[key] !== rounded) updateBootState({ scrollPositions: { ...current, [key]: rounded } })
+  if (Number.isFinite(top)) pendingScrollPositions.set(key, Math.max(0, Math.round(top)))
+}
+
+export function flushStoredScrollPositions() {
+  if (pendingScrollPositions.size) updateBootState({})
 }
 
 export function _resetBootStateForTesting() {
   memoryBootCache = {}
+  pendingScrollPositions.clear()
   try { localStorage.removeItem(STORAGE_KEY) } catch { /* Storage may be unavailable in tests. */ }
 }

@@ -63,6 +63,9 @@ it("includes existing saved Instagram reels in Links without duplicating URLs or
   const existing = { url: rows[0].url, href, title: "My reel" }
   expect(includeSavedMedia([existing], [media])).toEqual([{ ...existing, savedId: "reel" }])
   expect(existing).not.toHaveProperty("savedId")
+  const duplicate = { ...existing, title: "Duplicate from older storage" }
+  expect(includeSavedMedia([existing, duplicate], [media, { ...media, id: "second" }]))
+    .toEqual([{ ...existing, savedId: "second" }, duplicate])
 })
 
 it("removes opened reels in the worker while preserving saved text", async () => {

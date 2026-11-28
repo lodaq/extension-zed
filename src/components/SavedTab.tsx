@@ -1,22 +1,38 @@
+import { getStoredScrollPosition } from "@/lib/bootCache"
 import { useStoredValue } from "@/lib/useStoredValue"
 import { COLLECTIONS_KEY, SAVED_KEY, SAVED_BUTTONS_KEY, type SavedItem } from "@/lib/saved"
 import { Button } from "./ui/button"
 import { Icon } from "@/design-system/Icon"
 import { LetterAvatar } from "@/design-system/components"
 import { SwitchRow } from "@/design-system/components"
-import { Activity, useMemo, useState } from "react"
+import { Activity, memo, useEffect, useMemo, useState } from "react"
 
 const EMPTY_COLLECTIONS: string[] = []
 const EMPTY: SavedItem[] = []
-export default function SavedTab({ visible }: { visible: boolean }) {
+const INITIAL_ROWS = 16
+export default function SavedTab({ visible, scrollKey }: { visible: boolean; scrollKey: string }) {
   const [stored] = useStoredValue<SavedItem[]>(SAVED_KEY, EMPTY)
   const [storedCollections] = useStoredValue<string[]>(COLLECTIONS_KEY, EMPTY_COLLECTIONS)
   return <Activity mode={visible ? "visible" : "hidden"}>
-    <LibraryItems allItems={stored} collections={storedCollections} />
+    <LibraryItems allItems={stored} collections={storedCollections} scrollKey={scrollKey} />
   </Activity>
 }
 
-function LibraryItems({ allItems, collections }: { allItems: SavedItem[]; collections: string[] }) {
+const LibraryItems = memo(function LibraryItems({ allItems, collections, scrollKey }: { allItems: SavedItem[]; collections: string[]; scrollKey: string }) {
+  const [renderAll, setRenderAll] = useState(false)
+  const firstBatchOnly = !renderAll && allItems.length > INITIAL_ROWS && getStoredScrollPosition(scrollKey) === 0
+  useEffect(() => {
+    if (!firstBatchOnly) return
+    // Let the first screen paint before mounting the rest of the list.
+    let secondFrame = 0
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => setRenderAll(true))
+    })
+    return () => {
+      cancelAnimationFrame(firstFrame)
+      cancelAnimationFrame(secondFrame)
+    }
+  }, [firstBatchOnly])
   const [collection, setCollection] = useState("")
   const [rename, setRename] = useState("")
   const [name, setName] = useState("")
@@ -76,7 +92,7 @@ function LibraryItems({ allItems, collections }: { allItems: SavedItem[]; collec
     </form>}
     {error && <p role="alert" className="zed-saved-error">{error}</p>}
     {!items.length && <p className="zed-helper">No saved items yet.</p>}
-    {items.map(item => {
+    {(firstBatchOnly ? items.slice(0, INITIAL_ROWS) : items).map(item => {
       let url: URL
       try { url = new URL(item.url) } catch { return null }
       const title = item.kind === "text" ? item.text : url.hostname.replace(/^www\./, "")
@@ -116,4 +132,4 @@ function LibraryItems({ allItems, collections }: { allItems: SavedItem[]; collec
       </article>
     })}
   </section>
-}
+})

@@ -44,13 +44,22 @@ export async function openSavedLink(link: SavedLink) {
 
 export function includeSavedMedia(links: SavedLink[], stored: unknown): (SavedLink & { savedId?: string })[] {
   const result: (SavedLink & { savedId?: string })[] = links.map(link => ({ ...link }))
+  const byUrl = new Map<string, (typeof result)[number]>()
+  for (const link of result) {
+    if (!byUrl.has(link.url)) byUrl.set(link.url, link)
+  }
   for (const item of readSaved(stored)) {
     if (item.kind !== "link") continue
     const link = normalizeLink(item.url)
     if (!link) continue
-    const existing = result.find(candidate => candidate.url === link.url)
-    if (existing) existing.savedId = item.id
-    else result.push({ ...link, savedId: item.id })
+    const existing = byUrl.get(link.url)
+    if (existing) {
+      existing.savedId = item.id
+    } else {
+      const row = { ...link, savedId: item.id }
+      byUrl.set(row.url, row)
+      result.push(row)
+    }
   }
   return result
 }

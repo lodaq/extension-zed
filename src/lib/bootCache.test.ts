@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from "@/test/bun-test"
 import {
+  flushStoredScrollPositions,
   getStoredScrollPosition,
   saveStoredScrollPosition,
   readBootState,
@@ -70,6 +71,12 @@ it("validates cached preferences, migrates legacy order, and ignores obsolete ca
     expect(getStoredScrollPosition("misc")).toBe(0)
     storage.set("zed.boot", "broken JSON")
     expect(readBootState().dark).toBe(false)
+    saveStoredScrollPosition("library", 100)
+    saveStoredScrollPosition("library", 200)
+    expect(getStoredScrollPosition("library")).toBe(200)
+    expect(storage.get("zed.boot")).toBe("broken JSON")
+    flushStoredScrollPositions()
+    expect(JSON.parse(storage.get("zed.boot")!)).toMatchObject({ scrollPositions: { library: 200 } })
     saveStoredScrollPosition("misc", Number.NaN)
     expect(getStoredScrollPosition("misc")).toBe(0)
   } finally {

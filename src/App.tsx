@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type LazyExoticComponent, type ReactNode } from "react"
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react"
 import { DEFAULT_PASSWORD_OPTIONS } from "@/lib/passwordGenerator"
 import { QUALITY_OPTIONS } from "@/lib/videoQuality"
 import { Icon } from "@/design-system/Icon"
@@ -9,34 +9,47 @@ import { toast } from "@/components/ui/use-toast"
 import { isRestrictedPage, PAGE_ACTION_FEEDBACK_EVENT } from "@/lib/withActiveTab"
 import { useStoredValue } from "@/lib/useStoredValue"
 import { saveCurrentTab } from "@/lib/links"
-import { getStoredScrollPosition, saveStoredScrollPosition } from "@/lib/bootCache"
+import { flushStoredScrollPositions, getStoredScrollPosition, saveStoredScrollPosition } from "@/lib/bootCache"
 import { DEFAULT_SHORTCUTS, readShortcuts, recordCombo } from "@/lib/shortcuts"
 import { DOWNLOADER_ENABLED } from "@/lib/downloader"
 import { useDownloader } from "@/lib/useDownloader"
 import { AVAILABLE_FEATURES, DEFAULT_INSTALLED_FEATURES, INSTALLED_FEATURES_KEY, isFeatureId, readInstalledFeatures, type FeatureDefinition, type FeatureId } from "@/lib/features"
 import { TAB_IDS, TAB_LABELS, type TabId } from "@/lib/tabs"
-import ExtensionsTab from "@/components/ExtensionsTab"
+import ExtensionsView from "@/components/ExtensionsTab"
 import SettingsTab from "@/components/SettingsTab"
-import YoutubeTab from "@/components/YoutubeTab"
+import YoutubeView from "@/components/YoutubeTab"
 import SavedTab from "@/components/SavedTab"
-import { LinksTab } from "@/components/LinksTab"
+import { LinksTab as LinksView } from "@/components/LinksTab"
 import ShortcutsTab from "@/components/ShortcutsTab"
 import FeatureStore from "@/components/FeatureStore"
 import HintsBridge from "@/components/HintsBridge"
 
-const PasswordGenerator = lazy(() => import("@/components/PasswordGenerator"))
-const VideoDownloader = lazy(() => import("@/components/VideoDownloader"))
+import PasswordGenerator from "@/components/PasswordGenerator"
+import VideoDownloader from "@/components/VideoDownloader"
+import SiteLimiter from "@/components/SiteLimiter"
+import ChangePlaybackRate from "@/components/ChangePlaybackRate"
+import VideoQualitySection from "@/components/VideoQualitySection"
+import VolumeBooster from "@/components/VolumeBooster"
+import ScrollbarsSection from "@/components/ScrollbarsSection"
+import ModesSection from "@/components/ModesSection"
+import BlackAndWhiteSection from "@/components/BlackAndWhiteSection"
+import ScreenshotSection from "@/components/ScreenshotSection"
+import KeyboardHintsSection from "@/components/KeyboardHintsSection"
 
-const TOOL_COMPONENTS: Partial<Record<FeatureId, LazyExoticComponent<ComponentType>>> = {
-  limiter: lazy(() => import("@/components/SiteLimiter")),
-  playback: lazy(() => import("@/components/ChangePlaybackRate")),
-  quality: lazy(() => import("@/components/VideoQualitySection")),
-  volume: lazy(() => import("@/components/VolumeBooster")),
-  scrollbars: lazy(() => import("@/components/ScrollbarsSection")),
-  modes: lazy(() => import("@/components/ModesSection")),
-  blackAndWhite: lazy(() => import("@/components/BlackAndWhiteSection")),
-  capture: lazy(() => import("@/components/ScreenshotSection")),
-  hints: lazy(() => import("@/components/KeyboardHintsSection")),
+const ExtensionsTab = memo(ExtensionsView)
+const YoutubeTab = memo(YoutubeView)
+const LinksTab = memo(LinksView)
+
+const TOOL_COMPONENTS: Partial<Record<FeatureId, ComponentType>> = {
+  limiter: SiteLimiter,
+  playback: ChangePlaybackRate,
+  quality: VideoQualitySection,
+  volume: VolumeBooster,
+  scrollbars: ScrollbarsSection,
+  modes: ModesSection,
+  blackAndWhite: BlackAndWhiteSection,
+  capture: ScreenshotSection,
+  hints: KeyboardHintsSection,
 }
 
 const DEFAULT_LOCATION: { tab: TabId; detail: string | null; settings: boolean } = { tab: "Misc", detail: null, settings: false }
@@ -130,6 +143,18 @@ export default function App() {
       : viewTitle.current ?? tabbar.current?.querySelector<HTMLElement>('[aria-current="page"]')
     target?.focus()
   }, [tab, detail, settings])
+  useEffect(() => {
+    const flushWhenHidden = () => {
+      if (document.hidden) flushStoredScrollPositions()
+    }
+    document.addEventListener("visibilitychange", flushWhenHidden)
+    window.addEventListener("pagehide", flushStoredScrollPositions)
+    return () => {
+      document.removeEventListener("visibilitychange", flushWhenHidden)
+      window.removeEventListener("pagehide", flushStoredScrollPositions)
+      flushStoredScrollPositions()
+    }
+  }, [])
   const restoreScroll = useCallback((node: HTMLDivElement | null) => { if (node) node.scrollTop = getStoredScrollPosition(`${tab}-${detail}-${settings}`) }, [tab, detail, settings])
   const setDetail = (nextDetail: string | null) => void setLocation({ ...location, detail: nextDetail })
   const [shortcuts] = useStoredValue("keyboardShortcuts", DEFAULT_SHORTCUTS)
@@ -218,7 +243,7 @@ export default function App() {
         {installed.length === 0 ? (
           <Card><div className="zed-stack">
             <strong>No tools added yet</strong>
-            <p className="zed-helper">Add only the tools you need from the Tool library. Removed tools are never loaded and do not run on web pages.</p>
+            <p className="zed-helper">Add only the tools you need from the Tool library. Removed tools do not run on web pages.</p>
             <div className="zed-actions"><Button type="button" onClick={() => setDetail("store")}>Browse Tool library</Button></div>
           </div></Card>
         ) : (
@@ -266,12 +291,12 @@ export default function App() {
         </div>
       )}
       {!(settings || selected) && <h1 ref={viewTitle} tabIndex={-1} className="sr-only">{pageTitle}</h1>}
-      <div className="zed-content zed-scroll" ref={restoreScroll} onScroll={event => saveStoredScrollPosition(`${tab}-${detail}-${settings}`, event.currentTarget.scrollTop)}>
-        {selected && !settings ? <div className="zed-stack zed-root"><p className="zed-helper">{selected.description}</p><Suspense fallback={null}>{content}</Suspense></div> : content}
+      <div className="zed-content zed-scroll" ref={restoreScroll} onScrollEnd={flushStoredScrollPositions} onScroll={event => saveStoredScrollPosition(`${tab}-${detail}-${settings}`, event.currentTarget.scrollTop)}>
+        {selected && !settings ? <div className="zed-stack zed-root"><p className="zed-helper">{selected.description}</p>{content}</div> : content}
         <div hidden={settings || tab !== "Extensions"}><ExtensionsTab /></div>
         <div hidden={settings || tab !== "YouTube"}><YoutubeTab /></div>
         <div hidden={settings || tab !== "Links"}><LinksTab /></div>
-        <SavedTab visible={!settings && tab === "Saved"} />
+        <SavedTab visible={!settings && tab === "Saved"} scrollKey={`Saved-${detail}-false`} />
       </div>
       <Toaster />
     </main>

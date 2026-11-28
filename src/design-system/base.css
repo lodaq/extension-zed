@@ -177,6 +177,11 @@ input[type=range] { width: 100%; accent-color: var(--zed-accent); }
 .zed-saved-copy { flex:1;min-width:0; }
 .zed-saved-copy strong,.zed-saved-copy p { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .zed-saved-copy strong { font-size:var(--zed-fs-base);font-weight:600; }
+.zed-saved-row:nth-of-type(n+17):not(:has(details[open])),
+.zed-read-later > .zed-row:nth-of-type(n+17) {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto var(--zed-h-compact);
+}
 .zed-saved-row .zed-icon-button { flex-shrink:0; }
 .zed-collection-picker { position:relative; }
 .zed-collection-picker summary { list-style:none;cursor:pointer; }

@@ -1,44 +1,31 @@
-import { getStoredScrollPosition } from "@/lib/bootCache"
 import { useStoredValue } from "@/lib/useStoredValue"
 import { COLLECTIONS_KEY, SAVED_KEY, SAVED_BUTTONS_KEY, type SavedItem } from "@/lib/saved"
 import { Button } from "./ui/button"
 import { Icon } from "@/design-system/Icon"
 import { LetterAvatar } from "@/design-system/components"
 import { SwitchRow } from "@/design-system/components"
-import { Activity, memo, useEffect, useMemo, useState } from "react"
+import { Activity, memo, useMemo, useState } from "react"
 
 const EMPTY_COLLECTIONS: string[] = []
 const EMPTY: SavedItem[] = []
 const INITIAL_ROWS = 16
-export default function SavedTab({ visible, scrollKey }: { visible: boolean; scrollKey: string }) {
+export default function SavedTab({ visible }: { visible: boolean }) {
   const [stored] = useStoredValue<SavedItem[]>(SAVED_KEY, EMPTY)
   const [storedCollections] = useStoredValue<string[]>(COLLECTIONS_KEY, EMPTY_COLLECTIONS)
   return <Activity mode={visible ? "visible" : "hidden"}>
-    <LibraryItems allItems={stored} collections={storedCollections} scrollKey={scrollKey} />
+    <LibraryItems allItems={stored} collections={storedCollections} />
   </Activity>
 }
 
-const LibraryItems = memo(function LibraryItems({ allItems, collections, scrollKey }: { allItems: SavedItem[]; collections: string[]; scrollKey: string }) {
+const LibraryItems = memo(function LibraryItems({ allItems, collections }: { allItems: SavedItem[]; collections: string[] }) {
   const [renderAll, setRenderAll] = useState(false)
-  const firstBatchOnly = !renderAll && allItems.length > INITIAL_ROWS && getStoredScrollPosition(scrollKey) === 0
-  useEffect(() => {
-    if (!firstBatchOnly) return
-    // Let the first screen paint before mounting the rest of the list.
-    let secondFrame = 0
-    const firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() => setRenderAll(true))
-    })
-    return () => {
-      cancelAnimationFrame(firstFrame)
-      cancelAnimationFrame(secondFrame)
-    }
-  }, [firstBatchOnly])
   const [collection, setCollection] = useState("")
   const [rename, setRename] = useState("")
   const [name, setName] = useState("")
   const [creating, setCreating] = useState(false)
   const [openPickers, setOpenPickers] = useState<ReadonlySet<string>>(() => new Set())
   const items = useMemo(() => collection ? allItems.filter(item => item.collection === collection) : allItems, [allItems, collection])
+  const visibleItems = renderAll ? items : items.slice(0, INITIAL_ROWS)
   const collectionCounts = useMemo(() => {
     const counts = new Map<string, number>()
     for (const item of allItems) {
@@ -92,7 +79,7 @@ const LibraryItems = memo(function LibraryItems({ allItems, collections, scrollK
     </form>}
     {error && <p role="alert" className="zed-saved-error">{error}</p>}
     {!items.length && <p className="zed-helper">No saved items yet.</p>}
-    {(firstBatchOnly ? items.slice(0, INITIAL_ROWS) : items).map(item => {
+    {visibleItems.map(item => {
       let url: URL
       try { url = new URL(item.url) } catch { return null }
       const title = item.kind === "text" ? item.text : url.hostname.replace(/^www\./, "")
@@ -131,5 +118,6 @@ const LibraryItems = memo(function LibraryItems({ allItems, collections, scrollK
         <Button size="icon" variant="ghost" aria-label="Remove saved item" onClick={() => void request({ type: "saved:remove", id: item.id })}><Icon name="delete" size={18} /></Button>
       </article>
     })}
+    {items.length > visibleItems.length && <div className="zed-actions"><Button variant="ghost" onClick={() => setRenderAll(true)}>Show more ({items.length - visibleItems.length})</Button></div>}
   </section>
 })

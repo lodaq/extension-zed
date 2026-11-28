@@ -21,38 +21,55 @@ const TARGET_SELECTOR = 'main button, main a[href], main input:not([type="hidden
 const VOID_ELEMENTS = new Set(["INPUT", "SELECT", "TEXTAREA"])
 const ANCHOR_ATTRIBUTE = "data-zed-hint-anchor"
 
-type HintTarget = { target: HTMLElement; rect: DOMRect }
+type HintTarget = { target: HTMLElement; rect: DOMRect | null }
+type HintBadge = { element: HTMLElement; target: HTMLElement; host: HTMLElement | null }
 
-// Include controls below the fold so their hints are ready when the view scrolls.
-function hintTargets(): HintTarget[] {
-  const found: HintTarget[] = []
+// Cheap DOM-only pass with no layout reads: filtering disabled/hidden controls needs only matches/closest.
+function candidateTargets(): HTMLElement[] {
+  const found: HTMLElement[] = []
   for (const target of document.querySelectorAll<HTMLElement>(TARGET_SELECTOR)) {
     if (target.matches(':disabled, [aria-disabled="true"]') || target.closest('[inert], [hidden], .zed-tabbar, .zed-settings')) continue
-    const rect = target.getBoundingClientRect()
-    if (!rect.width || !rect.height) continue
-    const visible = typeof target.checkVisibility === "function" ? target.checkVisibility({ visibilityProperty: true }) : getComputedStyle(target).visibility === "visible"
-    if (visible) found.push({ target, rect })
+    found.push(target)
   }
   return found
 }
 
-// Read anchor geometry before inserting badges so one badge cannot force layout for the next.
+// Visibility comes from computed style alone (no layout). Geometry is measured only for fields,
+// whose badge is anchored to the parent element. Controls below the fold are included so their
+// hints are ready when the view scrolls.
+function measurableTargets(candidates: HTMLElement[]): HintTarget[] {
+  const found: HintTarget[] = []
+  for (const target of candidates) {
+    const visible = typeof target.checkVisibility === "function" ? target.checkVisibility({ visibilityProperty: true }) : getComputedStyle(target).visibility === "visible"
+    if (!visible) continue
+    if (VOID_ELEMENTS.has(target.tagName)) {
+      const rect = target.getBoundingClientRect()
+      if (!rect.width || !rect.height) continue
+      found.push({ target, rect })
+    } else {
+      found.push({ target, rect: null })
+    }
+  }
+  return found
+}
+
+// Read anchor geometry before inserting a badge so one badge cannot force layout for the next.
 function hintAnchor({ target, rect }: HintTarget) {
   const isField = VOID_ELEMENTS.has(target.tagName)
   const host = isField ? target.parentElement : target
-  if (!host) return
+  if (!host) return null
   const staticHost = host.hasAttribute(ANCHOR_ATTRIBUTE) || getComputedStyle(host).position === "static"
-  const hostRect = isField ? host.getBoundingClientRect() : null
+  const hostRect = isField && rect ? host.getBoundingClientRect() : null
   return {
     host,
     staticHost,
-    top: hostRect ? rect.top - hostRect.top - host.clientTop : undefined,
-    right: hostRect ? hostRect.right - rect.right - host.clientLeft : undefined,
+    top: hostRect && rect ? rect.top - hostRect.top - host.clientTop : undefined,
+    right: hostRect && rect ? hostRect.right - rect.right - host.clientLeft : undefined,
   }
 }
 
 export function showClickHints(persistent = false): () => void {
-  let targets: HTMLElement[] = [], labels: string[] = [], badges: { element: HTMLElement; target: HTMLElement }[] = [], prefix = '', disposed = false
+  let targets: HTMLElement[] = [], labels: string[] = [], badges: HintBadge[] = [], prefix = '', disposed = false
   const hosts = new Set<HTMLElement>()
   let observer: MutationObserver | undefined, frame: number | undefined
   const capture = { capture: true }
@@ -60,22 +77,36 @@ export function showClickHints(persistent = false): () => void {
   const showAll = () => badges.forEach(({ element }) => { element.hidden = false })
   const detach = () => { badges.forEach(({ element }) => element.remove()); badges = [] }
   const render = () => {
-    const next = hintTargets()
-    // shortcut: an unchanged control set is not re-measured, so a layout-only move can leave a field hint slightly off; upgrade to a ResizeObserver if that shows up.
-    if (next.length === targets.length && next.every((entry, index) => entry.target === targets[index])) return
-    const anchors = next.map(hintAnchor)
-    detach()
-    hosts.forEach(host => host.removeAttribute(ANCHOR_ATTRIBUTE))
-    hosts.clear()
-    targets = next.map(entry => entry.target)
-    labels = hintLabels(targets.length)
+    const candidates = candidateTargets()
+    // Common case: same controls, so nothing to measure or rebuild — zero layout reads. Badges are
+    // DOM children of their targets, so they track layout and scroll without re-measuring.
+    if (candidates.length === targets.length && candidates.every((target, index) => target === targets[index])) return
+    const next = measurableTargets(candidates)
+    const survivors = new Set(next.map(entry => entry.target))
+    // Keep badges whose control is still present; a re-render only pays for the diff, so views that
+    // mount in stages (e.g. the library list) cost O(changed) per pass instead of O(all) per pass.
+    const kept = badges.filter(badge => {
+      if (survivors.has(badge.target)) return true
+      badge.element.remove()
+      return false
+    })
+    const reusable = new Map(kept.map(badge => [badge.target, badge]))
+    targets = []
+    labels = hintLabels(next.length)
     prefix = ''
     badges = next.map((entry, index) => {
+      targets.push(entry.target)
+      const existing = reusable.get(entry.target)
+      if (existing) {
+        existing.element.hidden = false
+        if (existing.element.textContent !== labels[index]) existing.element.textContent = labels[index]
+        return existing
+      }
       const element = document.createElement('kbd')
       element.className = 'zed-key zed-tab-key zed-hint'
       element.setAttribute('aria-hidden', 'true')
       element.textContent = labels[index]
-      const anchor = anchors[index]
+      const anchor = hintAnchor(entry)
       if (anchor?.staticHost) {
         anchor.host.setAttribute(ANCHOR_ATTRIBUTE, "")
         hosts.add(anchor.host)
@@ -83,8 +114,13 @@ export function showClickHints(persistent = false): () => void {
       if (anchor?.top !== undefined) element.style.top = `${anchor.top}px`
       if (anchor?.right !== undefined) element.style.right = `${anchor.right}px`
       anchor?.host.append(element)
-      return { element, target: entry.target }
+      return { element, target: entry.target, host: anchor?.host ?? null }
     })
+    // Release anchor attributes from hosts that no longer carry a badge.
+    const usedHosts = new Set(badges.map(badge => badge.host).filter((host): host is HTMLElement => host !== null))
+    hosts.forEach(host => { if (!usedHosts.has(host)) host.removeAttribute(ANCHOR_ATTRIBUTE) })
+    hosts.clear()
+    usedHosts.forEach(host => hosts.add(host))
   }
   const cleanup = () => {
     if (disposed) return

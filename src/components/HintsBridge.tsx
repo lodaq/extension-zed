@@ -29,8 +29,14 @@ export default function HintsBridge({
 
   useEffect(() => {
     if (hintMode !== "always") return
-    clearHints.current = showClickHints(true)
+    let disposed = false
+    const frame = requestAnimationFrame(() => {
+      if (disposed || clearHints.current) return
+      clearHints.current = showClickHints(true)
+    })
     return () => {
+      disposed = true
+      cancelAnimationFrame(frame)
       clearHints.current?.()
       clearHints.current = undefined
     }
